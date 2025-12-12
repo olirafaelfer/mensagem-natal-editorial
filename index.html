@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Missão Editorial de Natal 🎄</title>
+    <link rel="icon" href="data:image/svg+xml,
+  <svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'>
+    <text y='0.9em' font-size='90'>🎄</text>
+  </svg>">
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <!-- Neve -->
+  <canvas id="snow"></canvas>
+
+  <main class="app">
+    <header class="topbar">
+      <div class="brand">
+        <span class="badge">🎅 Missão do editor-chefe</span>
+        <h1>Revisão da mensagem de Natal</h1>
+      </div>
+
+      <div class="status">
+        <div class="pill">Correções: <strong id="progressCount">0</strong>/3</div>
+        <div class="pill muted">Erros: <strong id="wrongCount">0</strong>/3</div>
+      </div>
+    </header>
+
+    <!-- Página 1 -->
+    <section class="card" id="page1">
+      <div class="card-inner">
+        <p class="lead" id="instruction"></p>
+
+        <article class="message" id="messageArea" aria-label="Mensagem para revisar"></article>
+
+<div class="actions" id="autoWrap">
+<button id="autoBtn" class="btn ghost is-disabled" aria-disabled="true" title="Disponível após 3 erros">
+  Prefiro usar o corretor automático!
+</button>
+</div>
+      </div>
+    </section>
+
+    <!-- Página 2 (final) -->
+    <section class="card hidden" id="page2">
+      <div class="card-inner center">
+        <h2 class="final-title">🎄</h2>
+
+        <p class="final-text">
+          “Graças ao seu trabalho editorial impecável, esta mensagem de Natal será publicado no prazo!”
+        </p>
+
+        <p class="final-sub">Veja a mensagem que você acabou de corrigir:</p>
+
+        <div class="final-box" id="finalBox"></div>
+<hr>
+        <div class="credits">
+          <p class="credits-title"><strong>Com carinho:</strong></p>
+          <p class="credits-names">
+            Aline dos Santos Carneiro<br>
+            Amanda Firme<br>
+            Anna Catharina Miranda<br>
+            Bianca Gribel<br><br>
+
+            Edrian Josué Pasini<br>
+            Eric Parrot<br>
+            Leonardo A.R.T. dos Santos<br>
+            Marilac Loraine Oleniki<br>
+            Mirela de Oliveira<br>
+            Rafael de Oliveira<br>
+            Samuel Rezende<br>
+            Verônica M. Guedes<br>
+            Vitória Firmino<br>
+            Welder Lancieri Marchini
+          </p>
+        </div>
+<hr>
+        <button class="btn" id="restartBtn">Recomeçar</button>
+      </div>
+    </section>
+  </main>
+
+  <!-- Modal -->
+  <div class="overlay hidden" id="overlay" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <div class="modal">
+      <div class="modal-head">
+        <h3 id="modalTitle">Mensagem</h3>
+        <button class="icon-btn" id="closeModal" aria-label="Fechar">✕</button>
+      </div>
+
+      <div class="modal-body" id="modalBody"></div>
+
+      <div class="modal-foot" id="modalFoot"></div>
+    </div>
+  </div>
+
+  <script src="js/main.js"></script>
+</body>
+</html>
