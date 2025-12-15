@@ -1006,15 +1006,6 @@ function spawnReindeerWave(){
 })();
 
 /** Boot */
-function populateSectors(){
-  userSectorEl.innerHTML = "";
-  for (const s of SECTORS){
-    const opt = document.createElement("option");
-    opt.value = s === "Selecione…" ? "" : s;
-    opt.textContent = s;
-    userSectorEl.appendChild(opt);
-  }
-}
 populateSectors();
 
 // aplica tema salvo
