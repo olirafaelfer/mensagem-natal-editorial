@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Missão Editorial de Natal 🎄</title>
 
-  <!-- favicon imediato -->
   <link rel="icon" href="data:image/svg+xml,
   <svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'>
     <text y='0.9em' font-size='90'>🎄</text>
@@ -35,7 +34,7 @@
     <!-- 1) Loading fake -->
     <section class="card" id="screenLoading">
       <div class="card-inner center">
-        <img class="logo-pulse" src="img/logo-natal.png" alt="Logo natalina da empresa" />
+        <img class="logo-pulse" src="img/logo-natal.png" alt="Logo natalina" />
         <h2 class="loading-title">Preparando sua missão…</h2>
         <p class="muted">Carregando o conteúdo especial de Natal ❄️</p>
       </div>
@@ -46,7 +45,7 @@
       <div class="card-inner">
         <h2 class="h2">Antes de começar</h2>
         <p class="muted">
-          Informe seu nome e selecione seu setor para registrar o desempenho <strong>apenas por setor</strong>.
+          Informe seu nome e selecione seu setor para registrar o desempenho <strong>por setor</strong>.
         </p>
 
         <div class="form-grid">
@@ -65,7 +64,7 @@
           <p class="lgpd-title">LGPD</p>
           <p class="muted" style="margin:6px 0 0">
             Seguimos as diretrizes da LGPD e não faremos compartilhamento de informações pessoais.
-            O ranking exibe apenas resultados agregados por setor.
+            O ranking exibe apenas resultados <strong>agregados por setor</strong>.
             <button type="button" class="linklike" id="lgpdMoreBtn">Saiba mais</button>
           </p>
         </div>
@@ -76,16 +75,21 @@
       </div>
     </section>
 
-    <!-- 3) Atividades (3 níveis) -->
+    <!-- 3) Atividades -->
     <section class="card hidden" id="screenGame">
       <div class="card-inner">
         <div class="status-row">
           <div class="pill">Nível: <strong id="levelLabel">Fácil</strong></div>
           <div class="pill">Correções: <strong id="progressCount">0</strong>/<span id="totalFix">3</span></div>
           <div class="pill muted">Erros: <strong id="wrongCount">0</strong></div>
+
+          <div class="pill">Pontos: <strong id="scoreCount">0</strong></div>
+          <div class="pill">Colas: <strong id="hintCount">0</strong></div>
+          <div class="pill">Auto: <strong id="autoCount">0</strong></div>
         </div>
 
         <p class="lead" id="instruction"></p>
+
         <article class="message" id="messageArea" aria-label="Mensagem para revisar"></article>
 
         <div class="hintbar">
@@ -93,9 +97,8 @@
         </div>
 
         <div class="actions">
-          <button id="autoBtn" class="btn ghost is-disabled" aria-disabled="true" title="Disponível após 3 erros">
-            Prefiro usar o corretor automático!
-          </button>
+          <button id="hintBtn" class="btn ghost">Me dê uma cola!</button>
+          <button id="skipBtn" class="btn ghost">Avançar para a próxima atividade</button>
           <button id="nextLevelBtn" class="btn" disabled>Próximo nível</button>
         </div>
       </div>
@@ -108,13 +111,14 @@
 
         <p class="final-text" id="finalCongrats"></p>
 
+        <p class="final-sub" id="finalScoreLine"></p>
+        <p class="final-sub" id="finalRecado"></p>
+
         <p class="final-sub">Veja as mensagens que você acabou de corrigir:</p>
 
         <div class="final-box" id="finalBox1"></div>
         <div class="final-box" id="finalBox2"></div>
         <div class="final-box" id="finalBox3"></div>
-
-        <div class="final-note" id="finalNote"></div>
 <hr>
         <div class="credits">
           <p class="credits-title"><strong>Com carinho:</strong></p>
