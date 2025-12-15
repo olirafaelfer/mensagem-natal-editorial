@@ -215,18 +215,32 @@ function closeModal(){
   window.scrollTo(0, scrollY);
 }
 
-function showScoreFloat(value){
-  const el = document.createElement("div");
-  el.className = `score-float ${value > 0 ? "plus" : "minus"}`;
-  el.textContent = (value > 0 ? "+" : "") + value;
+function showScoreFloat(value, anchorEl = null) {
+  const float = document.createElement("div");
+  float.className = "score-float";
+  float.textContent = value > 0 ? `+${value}` : `${value}`;
 
-  el.style.left = "50%";
-  el.style.top = "50%";
-  el.style.transform = "translate(-50%, -50%)";
+  // posição: centro da tela ou perto do elemento clicado
+  if (anchorEl) {
+    const rect = anchorEl.getBoundingClientRect();
+    float.style.left = `${rect.left + rect.width / 2}px`;
+    float.style.top = `${rect.top}px`;
+  } else {
+    float.style.left = "50%";
+    float.style.top = "45%";
+    float.style.transform = "translateX(-50%)";
+  }
 
-  document.body.appendChild(el);
-  setTimeout(() => el.remove(), 900);
+  document.body.appendChild(float);
+
+  requestAnimationFrame(() => float.classList.add("show"));
+
+  setTimeout(() => {
+    float.classList.remove("show");
+    float.addEventListener("transitionend", () => float.remove(), { once: true });
+  }, 1200);
 }
+
 
 
 function escapeHtml(s){
@@ -473,18 +487,6 @@ function addScore(delta){
   taskScore[levelIndex] += delta;
   showScoreFloat(delta); // 🎯 aqui
 }
-
-
-
-function showScoreFloat(delta){
-  const el = document.createElement("div");
-  el.className = "score-float";
-  el.textContent = (delta > 0 ? `+${delta}` : `${delta}`);
-  el.style.color = delta > 0 ? "rgba(0,230,118,.95)" : "rgba(255,23,68,.95)";
-  document.body.appendChild(el);
-  setTimeout(() => el.remove(), 950);
-}
-
 
 function registerWrong(){
   wrongCount += 1;
