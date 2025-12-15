@@ -1,39 +1,39 @@
-// js/main.js (ESM)
+// js/main.js (module)
+
+// Firebase (opcional; não quebra se não configurar)
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js";
 import {
-  getFirestore, doc, getDoc, setDoc, runTransaction, serverTimestamp
+  getFirestore, doc, getDoc, runTransaction, serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
 
 /** =========================
- *  Firebase config
- *  =========================
- *  Cole aqui o firebaseConfig do seu app Web (Firebase Console -> Project settings -> Your apps).
- */
+ *  Firebase config (cole aqui quando for configurar)
+ *  ========================= */
 const firebaseConfig = {
-  // TODO: cole suas chaves aqui
+  // apiKey: "...",
+  // authDomain: "...",
+  // projectId: "...",
+  // appId: "..."
 };
 
 let db = null;
-
 function hasFirebaseConfig(cfg){
   return !!(cfg && cfg.apiKey && cfg.projectId && cfg.appId);
 }
-
 try{
   if (hasFirebaseConfig(firebaseConfig)){
     const app = initializeApp(firebaseConfig);
     db = getFirestore(app);
   } else {
-    console.warn("[Modo local] Firebase config não preenchido. Ranking ficará indisponível até configurar.");
+    console.warn("[Modo local] Firebase não configurado. Ranking ficará indisponível.");
   }
-} catch (err){
-  console.warn("[Modo local] Falha ao inicializar Firebase. Ranking ficará indisponível.", err);
+} catch (e){
+  console.warn("[Modo local] Falha ao inicializar Firebase. Ranking ficará indisponível.", e);
   db = null;
 }
 
-
 /** =========================
- *  Setores (VOCÊ vai me passar a lista oficial)
+ *  Setores (substitua aqui com sua lista real)
  *  ========================= */
 const SECTORS = [
   "Selecione…",
@@ -45,57 +45,54 @@ const SECTORS = [
 ];
 
 /** =========================
- *  Conteúdo dos 3 níveis
- *  (Você pode trocar depois com facilidade)
- *  Cada nível: 3 erros
+ *  Níveis (ÚLTIMOS que você testou)
+ *  - Médio: vírgulas crassas + concordância
+ *  - Difícil: colocação pronominal + vírgula indevida + “os ame”
  *  ========================= */
 const levels = [
   {
     name: "Fácil",
     intro: `O Papai Noel, editor-chefe, pediu sua ajuda para revisar a Mensagem de Natal.
 Ele escreveu tão rápido que acabou deixando três errinhos para trás.`,
-    instruction: `Os erros podem envolver acentuação, ortografia ou gramática. Clique nas palavras incorretas para ajudar o Papai Noel nesta importante missão!`,
+    instruction: `Os erros podem envolver acentuação, ortografia, gramática e outros detalhes editoriais. Clique nas palavras incorretas para ajudar o Papai Noel nesta importante missão!`,
     raw: `Mais do que presentes e refeissões caprichadas, o Natal é a época de lembrar o valor de um abraço apertado e de um sorriso sincero! Que para voces, meus amigos, seja uma época xeia de carinho e amor, preenchida pelo que realmente importa nessa vida!`,
-    corrections: {
-      "refeissões": "refeições",
-      "voces": "vocês",
-      "xeia": "cheia"
-    }
+    // regras de correção (regex)
+    rules: [
+      { id:"f1", type:"word", trigger:"refeissões", wrong:/\brefeissões\b/g, correct:"refeições" },
+      { id:"f2", type:"word", trigger:"voces",     wrong:/\bvoces\b/g,     correct:"vocês" },
+      { id:"f3", type:"word", trigger:"xeia",      wrong:/\bxeia\b/g,      correct:"cheia" }
+    ]
   },
-
   {
     name: "Médio",
-    intro: `Agora o desafio aumenta. Aqui, os erros envolvem principalmente pontuação e concordância.`,
-    instruction: `Atenção: neste nível, os erros podem envolver o uso incorreto de vírgulas e problemas de concordância.`,
+    intro: `Agora o desafio aumenta. Aqui aparecem erros editoriais objetivos: vírgulas mal colocadas e concordância.`,
+    instruction: `Atenção: os erros podem envolver pontuação, concordância, acentuação e ortografia. Clique nos pontos problemáticos e corrija.`,
     raw: `O Natal, é um momento especial para celebrar a união e a esperança. As mensagens, que circulam nessa época, precisam transmitir carinho e acolhimento, mas muitas vezes, acabam sendo escritas de forma apressada. Os textos natalinos, exige atenção aos detalhes, para que a mensagem chegue clara ao leitor.`,
-    corrections: {
-      "Natal,": "Natal",
-      "mensagens,": "mensagens",
-      "vezes,": "vezes",
-      "natalinos,": "natalinos",
-      "exige": "exigem"
-    }
+    rules: [
+      { id:"m1", type:"word", trigger:"Natal",      wrong:/\bNatal,\b/g,      correct:"Natal" },
+      { id:"m2", type:"word", trigger:"mensagens",  wrong:/\bmensagens,\b/g,  correct:"mensagens" },
+      { id:"m3", type:"word", trigger:"vezes",      wrong:/\bvezes,\b/g,      correct:"vezes" },
+      { id:"m4", type:"word", trigger:"natalinos",  wrong:/\bnatalinos,\b/g,  correct:"natalinos" },
+      { id:"m5", type:"word", trigger:"exige",      wrong:/\bexige\b/g,       correct:"exigem" }
+    ]
   },
-
   {
     name: "Difícil",
-    intro: `Este é o nível mais desafiador. Aqui entram questões avançadas de colocação pronominal e pontuação.`,
-    instruction: `Os erros podem envolver ortografia, pontuação e colocação pronominal. Leia com atenção cada frase.`,
+    intro: `Nível difícil: além de ortografia e pontuação, entram escolhas editoriais como colocação pronominal e paralelismo.`,
+    instruction: `Os erros podem envolver pontuação, gramática e colocação pronominal. Leia com atenção e corrija com precisão.`,
     raw: `No Natal, se deve pensar no amor ao próximo e na importância da empatia. Aos pais, respeite-os; aos filhos, os ame; aos necessitados, ajude-os. Essas atitudes, reforçam os valores natalinos e mostram como a revisão textual é essencial para evitar ruídos na comunicação.`,
-    corrections: {
-      "se": "se",
-      "os": "ame-os",
-      "atitudes,": "atitudes"
-    }
+    rules: [
+      // colocação pronominal: "No Natal, se deve pensar" -> "No Natal, deve-se pensar"
+      { id:"d1", type:"phrase", trigger:"se", wrong:/No Natal,\s*se deve pensar/g, correct:"No Natal, deve-se pensar" },
+
+      // após vírgula: "aos filhos, os ame" -> "aos filhos, ame-os"
+      { id:"d2", type:"phrase", trigger:"os", wrong:/aos filhos,\s*os ame/gi, correct:"aos filhos, ame-os" },
+
+      // vírgula separando sujeito do verbo: "Essas atitudes, reforçam" -> "Essas atitudes reforçam"
+      { id:"d3", type:"word", trigger:"atitudes", wrong:/\b(atitudes),\b/g, correct:"$1" }
+    ]
   }
 ];
-
-
-/**
- * IMPORTANTE:
- * Nos níveis Médio/Difícil eu deixei 2 “placeholders” onde você pode trocar por erros reais.
- * Se você me mandar as frases médias/difíceis prontas com 3 erros cada, eu ajusto 100% redondo.
- */
 
 /** =========================
  *  Elementos / telas
@@ -122,6 +119,7 @@ const autoBtn = document.getElementById("autoBtn");
 const nextLevelBtn = document.getElementById("nextLevelBtn");
 
 const finalCongrats = document.getElementById("finalCongrats");
+const finalRecado = document.getElementById("finalRecado");
 const finalBox1 = document.getElementById("finalBox1");
 const finalBox2 = document.getElementById("finalBox2");
 const finalBox3 = document.getElementById("finalBox3");
@@ -131,6 +129,7 @@ const finalRankingBtn = document.getElementById("finalRankingBtn");
 const rankingBtn = document.getElementById("rankingBtn");
 const customizeBtn = document.getElementById("customizeBtn");
 const openCustomizeInline = document.getElementById("openCustomizeInline");
+const lgpdMoreBtn = document.getElementById("lgpdMoreBtn");
 
 const lightsEl = document.getElementById("lights");
 const reindeerLayer = document.getElementById("reindeerLayer");
@@ -169,13 +168,46 @@ function closeModal(){
 }
 
 /** =========================
+ *  LGPD modal (funciona no Opera)
+ *  ========================= */
+lgpdMoreBtn.addEventListener("click", () => {
+  openModal({
+    title: "LGPD — Informações sobre tratamento de dados",
+    bodyHTML: `
+      <p class="muted">
+        Esta dinâmica é recreativa e foi criada para destacar a importância da revisão editorial.
+      </p>
+
+      <h3 style="margin:14px 0 6px">Quais dados são coletados?</h3>
+      <ul style="margin:0; padding-left:18px; color:rgba(255,255,255,.72); line-height:1.6">
+        <li><strong>Nome</strong>: usado apenas para exibir a mensagem de parabéns no final.</li>
+        <li><strong>Setor</strong>: usado para consolidar o ranking de forma <strong>agregada por setor</strong>.</li>
+      </ul>
+
+      <h3 style="margin:14px 0 6px">Compartilhamento</h3>
+      <p class="muted">
+        Não há compartilhamento de informações pessoais no ranking. O ranking mostra apenas números por setor.
+      </p>
+
+      <h3 style="margin:14px 0 6px">Dúvidas</h3>
+      <p class="muted">
+        Em caso de dúvidas sobre o tratamento de dados, procure o responsável interno por privacidade/controles da sua organização.
+      </p>
+    `,
+    buttons: [{ label: "Fechar", onClick: closeModal }]
+  });
+});
+
+/** =========================
  *  Estado do jogo
  *  ========================= */
 let levelIndex = 0;
-let fixedSet = new Set();
+let fixedRuleIds = new Set();
 let wrongAttempts = 0;
 let allowAuto = false;
 
+let currentText = "";           // texto “vivo” do nível (vai sendo corrigido)
+let currentRules = [];          // regras do nível
 const correctedHTMLByLevel = []; // para mostrar no final
 
 function normalize(str){
@@ -193,7 +225,7 @@ function showOnly(screen){
 }
 
 function updateCounters(){
-  progressCount.textContent = String(fixedSet.size);
+  progressCount.textContent = String(fixedRuleIds.size);
   wrongCount.textContent = String(wrongAttempts);
 }
 
@@ -206,7 +238,7 @@ function unlockAutoIfNeeded(){
 }
 
 function resetLevelState(){
-  fixedSet = new Set();
+  fixedRuleIds = new Set();
   wrongAttempts = 0;
   allowAuto = false;
   autoBtn.classList.add("is-disabled");
@@ -216,7 +248,7 @@ function resetLevelState(){
 }
 
 /** =========================
- *  Mensagem clicável
+ *  Tokenização clicável (preserva pontuação como texto)
  *  ========================= */
 function buildClickableMessage(text){
   const tokens = text.split(/(\s+)/);
@@ -228,6 +260,7 @@ function buildClickableMessage(text){
       return;
     }
 
+    // separa pontuação “grudada”, mas mantém a palavra limpa clicável
     const m = tok.match(/^([“"(']*)(.+?)([”"')!?,.:;]*)$/);
     if (!m){
       frag.appendChild(document.createTextNode(tok));
@@ -235,11 +268,12 @@ function buildClickableMessage(text){
     }
 
     const [, pre, core, post] = m;
+
     if (pre) frag.appendChild(document.createTextNode(pre));
 
     const span = document.createElement("span");
     span.className = "word";
-    span.dataset.word = core;
+    span.dataset.word = core; // sem pontuação final
     span.textContent = core;
     span.addEventListener("click", () => onWordClick(span));
     frag.appendChild(span);
@@ -252,22 +286,23 @@ function buildClickableMessage(text){
   requestAnimationFrame(() => messageArea.classList.add("show"));
 }
 
-function markWordCorrected(span, corrections){
+function markWordCorrected(span){
   span.classList.remove("error");
   span.classList.add("corrected");
   span.dataset.fixed = "1";
-  const wrong = span.dataset.word;
-  span.textContent = corrections[wrong] || span.textContent;
 }
 
 function onWordClick(span){
-  const lvl = levels[levelIndex];
-  const corrections = lvl.corrections;
-  const word = span.dataset.word;
-  const isWrong = Object.prototype.hasOwnProperty.call(corrections, word);
+  const clicked = span.dataset.word || "";
 
-  if (!isWrong){
-    // clique em palavra correta = erro + marca vermelho (uma vez por palavra)
+  // 1) procurar regra “ativa” cujo trigger combine
+  const rule = currentRules.find(r =>
+    !fixedRuleIds.has(r.id) &&
+    normalize(r.trigger) === normalize(clicked)
+  );
+
+  // se não é erro “alvo”, conta como erro e marca vermelho (1x por palavra)
+  if (!rule){
     if (span.dataset.misclick !== "1"){
       span.dataset.misclick = "1";
       wrongAttempts += 1;
@@ -283,53 +318,31 @@ function onWordClick(span){
     return;
   }
 
-  if (span.dataset.fixed === "1"){
+  // já corrigiu esse “ponto” (regra)
+  if (fixedRuleIds.has(rule.id)){
     openModal({
       title: "Tudo certo!",
-      bodyHTML: `<p>Essa já foi corrigida. ✅</p>`,
+      bodyHTML: `<p>Essa correção já foi feita. ✅</p>`,
       buttons: [{ label: "Fechar", onClick: closeModal }]
     });
     return;
   }
 
-  const correct = corrections[word];
+  // pedir a correção
   openModal({
-    title: "Corrigir palavra",
+    title: "Corrigir",
     bodyHTML: `
-      <p>Você clicou em: <strong>${word}</strong></p>
+      <p>Você clicou em: <strong>${clicked}</strong></p>
       <p>Digite a forma correta:</p>
       <input class="input" id="fixInput" type="text" autocomplete="off" placeholder="Digite aqui..." />
+      <p class="muted" style="margin:10px 0 0">
+        Lembrete: os erros podem envolver acentuação, ortografia, pontuação, concordância, colocação pronominal etc.
+      </p>
     `,
     buttons: [
       {
         label: "Confirmar correção",
-        onClick: () => {
-          const typed = document.getElementById("fixInput")?.value ?? "";
-          const ok = normalize(typed) === normalize(correct);
-
-          if (ok){
-            fixedSet.add(word);
-            updateCounters();
-            markWordCorrected(span, corrections);
-
-            openModal({
-              title: "Perfeito!",
-              bodyHTML: `<p><strong>Obrigado, sua correção está certinha!</strong> ✅</p>`,
-              buttons: [{ label: "Continuar", onClick: () => { closeModal(); checkLevelDone(); } }]
-            });
-          } else {
-            wrongAttempts += 1;
-            updateCounters();
-            unlockAutoIfNeeded();
-            span.classList.add("error");
-
-            openModal({
-              title: "Ops!",
-              bodyHTML: `<p>Ops, você errou. O correto seria <strong>${correct}</strong>.</p>`,
-              buttons: [{ label: "Tentar outra", onClick: closeModal }]
-            });
-          }
-        }
+        onClick: () => confirmRule(rule, span)
       }
     ]
   });
@@ -337,52 +350,47 @@ function onWordClick(span){
   setTimeout(() => document.getElementById("fixInput")?.focus(), 30);
 }
 
-function getCorrectedMessageHTML(levelRaw, corrections){
-  let corrected = levelRaw;
-  for (const [wrong, right] of Object.entries(corrections)){
-    corrected = corrected.replaceAll(wrong, `@@${right}@@`);
+function confirmRule(rule, span){
+  const typed = document.getElementById("fixInput")?.value ?? "";
+  const expected = rule.correct;
+
+  const ok = normalize(typed) === normalize(expected);
+
+  if (ok){
+    // aplica regra ao texto inteiro
+    currentText = currentText.replace(rule.wrong, rule.correct);
+
+    fixedRuleIds.add(rule.id);
+    updateCounters();
+    markWordCorrected(span);
+
+    // reconstruir mensagem para refletir mudanças (principalmente em frases)
+    buildClickableMessage(currentText);
+
+    closeModal();
+    checkLevelDone();
+    return;
   }
-  corrected = corrected.replaceAll(/@@(.*?)@@/g, `<span class="final-highlight">$1</span>`);
-  return corrected;
+
+  // erro
+  wrongAttempts += 1;
+  updateCounters();
+  unlockAutoIfNeeded();
+  span.classList.add("error");
+
+  openModal({
+    title: "Ops!",
+    bodyHTML: `<p>Ops, você errou. O correto seria <strong>${expected}</strong>.</p>`,
+    buttons: [{ label: "Ok", onClick: closeModal }]
+  });
 }
 
 function checkLevelDone(){
-  const lvl = levels[levelIndex];
-  const total = Object.keys(lvl.corrections).length;
-  if (fixedSet.size >= total){
+  const total = currentRules.length;
+  if (fixedRuleIds.size >= total){
     nextLevelBtn.disabled = false;
   }
 }
-const lgpdMoreBtn = document.getElementById("lgpdMoreBtn");
-
-lgpdMoreBtn.addEventListener("click", () => {
-  openModal({
-    title: "LGPD — Informações sobre tratamento de dados",
-    bodyHTML: `
-      <p class="muted">
-        Esta página explica, de forma transparente, como os dados informados nesta dinâmica são tratados.
-      </p>
-
-      <h3 style="margin:14px 0 6px">Quais dados são coletados?</h3>
-      <ul class="list">
-        <li><strong>Nome</strong> (usado para exibir a mensagem de parabéns ao final da dinâmica).</li>
-        <li><strong>Setor</strong> (para consolidar métricas agregadas no ranking).</li>
-      </ul>
-
-      <h3 style="margin:14px 0 6px">Como os dados são usados?</h3>
-      <ul class="list">
-        <li>O ranking exibe apenas <strong>resultados agregados por setor</strong> (sem nomes).</li>
-        <li>Não há compartilhamento público de informações pessoais.</li>
-      </ul>
-
-      <h3 style="margin:14px 0 6px">Dúvidas</h3>
-      <p class="muted">
-        Em caso de dúvidas sobre o tratamento de dados, procure o responsável interno pela área de privacidade/controles da sua organização.
-      </p>
-    `,
-    buttons: [{ label: "Fechar", onClick: closeModal }]
-  });
-});
 
 /** =========================
  *  Corretor automático
@@ -397,20 +405,22 @@ autoBtn.addEventListener("click", () => {
     return;
   }
 
-  const lvl = levels[levelIndex];
-  document.querySelectorAll(".word").forEach(span => {
-    const w = span.dataset.word;
-    if (lvl.corrections[w] && span.dataset.fixed !== "1"){
-      fixedSet.add(w);
-      markWordCorrected(span, lvl.corrections);
+  // aplica todas as regras restantes
+  for (const rule of currentRules){
+    if (!fixedRuleIds.has(rule.id)){
+      currentText = currentText.replace(rule.wrong, rule.correct);
+      fixedRuleIds.add(rule.id);
     }
-  });
+  }
 
   updateCounters();
+  buildClickableMessage(currentText);
+  nextLevelBtn.disabled = false;
+
   openModal({
     title: "Corretor automático",
     bodyHTML: `<p>Pronto! As correções restantes foram aplicadas automaticamente. ✨</p>`,
-    buttons: [{ label: "Continuar", onClick: () => { closeModal(); checkLevelDone(); } }]
+    buttons: [{ label: "Continuar", onClick: closeModal }]
   });
 });
 
@@ -426,77 +436,6 @@ function populateSectors(){
     userSectorEl.appendChild(opt);
   }
 }
-
-function startLevel(){
-  const lvl = levels[levelIndex];
-  resetLevelState();
-
-  headerTitle.textContent = `Revisão da Mensagem de Natal — ${lvl.name}`;
-  levelLabel.textContent = lvl.name;
-
-  instruction.textContent = "";
-  messageArea.classList.remove("show");
-  messageArea.innerHTML = "";
-
-  totalFixEl.textContent = String(Object.keys(lvl.corrections).length);
-
-  // modal de intro com countdown 3s
-  let countdown = 3;
-  let interval;
-
-  openModal({
-    title: `🎅 ${lvl.name}`,
-    bodyHTML: `
-      <p style="white-space:pre-line">${lvl.intro}</p>
-      <p style="margin-top:12px">
-        Você poderá avançar em <strong><span id="countdown">${countdown}</span></strong> segundos…
-      </p>
-    `,
-    buttons: [{ label: "Avançar", disabled: true, onClick: closeModal }]
-  });
-
-  interval = setInterval(() => {
-    countdown -= 1;
-    const el = document.getElementById("countdown");
-    if (el) el.textContent = String(countdown);
-    if (countdown <= 0){
-      clearInterval(interval);
-      const btn = modalFoot.querySelector("button");
-      if (btn) btn.disabled = false;
-    }
-  }, 1000);
-
-  const obs = new MutationObserver(() => {
-    if (overlay.classList.contains("hidden")){
-      obs.disconnect();
-      clearInterval(interval);
-
-      instruction.textContent = lvl.instruction;
-      buildClickableMessage(lvl.raw);
-    }
-  });
-  obs.observe(overlay, { attributes:true, attributeFilter:["class"] });
-}
-
-nextLevelBtn.addEventListener("click", async () => {
-  // salva HTML corrigido desse nível para mostrar no final
-  const lvl = levels[levelIndex];
-  correctedHTMLByLevel[levelIndex] = getCorrectedMessageHTML(lvl.raw, lvl.corrections);
-
-  // registra estatística por setor (apenas agregado)
-  await updateSectorStats({
-    sector: getUserSector(),
-    levelName: lvl.name,
-    wrong: wrongAttempts
-  });
-
-  levelIndex += 1;
-  if (levelIndex < levels.length){
-    startLevel();
-  } else {
-    showFinal();
-  }
-});
 
 function getUserName(){
   return (userNameEl.value || localStorage.getItem("mission_name") || "").trim();
@@ -524,19 +463,103 @@ startBtn.addEventListener("click", () => {
   showOnly(screenGame);
   levelIndex = 0;
   correctedHTMLByLevel.length = 0;
+
   startLevel();
 });
 
-function showFinal(){
-  // garante que o último nível também ficou salvo
-  const last = levels.length - 1;
-  if (!correctedHTMLByLevel[last]){
-    const lvl = levels[last];
-    correctedHTMLByLevel[last] = getCorrectedMessageHTML(lvl.raw, lvl.corrections);
-  }
+function startLevel(){
+  const lvl = levels[levelIndex];
 
+  resetLevelState();
+  headerTitle.textContent = `Revisão da Mensagem de Natal — ${lvl.name}`;
+  levelLabel.textContent = lvl.name;
+
+  currentText = lvl.raw;
+  currentRules = lvl.rules;
+
+  totalFixEl.textContent = String(currentRules.length);
+
+  instruction.textContent = "";
+  messageArea.classList.remove("show");
+  messageArea.innerHTML = "";
+
+  // intro com countdown 3s
+  let countdown = 3;
+  let interval;
+
+  openModal({
+    title: `🎅 ${lvl.name}`,
+    bodyHTML: `
+      <p style="white-space:pre-line">${lvl.intro}</p>
+      <p style="margin-top:12px" class="muted">
+        Você poderá avançar em <strong><span id="countdown">${countdown}</span></strong> segundos…
+      </p>
+    `,
+    buttons: [{ label: "Avançar", disabled: true, onClick: closeModal }]
+  });
+
+  interval = setInterval(() => {
+    countdown -= 1;
+    const el = document.getElementById("countdown");
+    if (el) el.textContent = String(countdown);
+    if (countdown <= 0){
+      clearInterval(interval);
+      const btn = modalFoot.querySelector("button");
+      if (btn) btn.disabled = false;
+    }
+  }, 1000);
+
+  const obs = new MutationObserver(() => {
+    if (overlay.classList.contains("hidden")){
+      obs.disconnect();
+      clearInterval(interval);
+
+      instruction.textContent = lvl.instruction;
+      buildClickableMessage(currentText);
+    }
+  });
+  obs.observe(overlay, { attributes:true, attributeFilter:["class"] });
+}
+
+nextLevelBtn.addEventListener("click", async () => {
+  // salva HTML corrigido desse nível (destaca correções do nível)
+  correctedHTMLByLevel[levelIndex] = highlightLevelCorrections(levels[levelIndex], currentText);
+
+  // grava agregado por setor (opcional)
+  await updateSectorStats({
+    sector: getUserSector(),
+    wrong: wrongAttempts
+  });
+
+  levelIndex += 1;
+  if (levelIndex < levels.length){
+    startLevel();
+  } else {
+    showFinal();
+  }
+});
+
+function highlightLevelCorrections(levelDef, correctedText){
+  // destacamos as formas corretas (rule.correct), mas com cuidado: só destacar as “correções” mesmo.
+  // Aqui fazemos uma estratégia simples: percorre as rules e marca a ocorrência do "correct".
+  let html = correctedText;
+  for (const rule of levelDef.rules){
+    const safe = rule.correct.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const re = new RegExp(safe, "g");
+    html = html.replace(re, `@@${rule.correct}@@`);
+  }
+  html = html.replaceAll(/@@(.*?)@@/g, `<span class="final-highlight">$1</span>`);
+  return html;
+}
+
+function showFinal(){
   const name = getUserName();
-  finalCongrats.textContent = `Parabéns, ${name}! Você ajudou o editor-chefe a publicar no prazo!`;
+
+  finalCongrats.textContent =
+    `Parabéns, ${name}! Você ajudou o editor-chefe a publicar a mensagem de Natal no prazo!`;
+
+  finalRecado.textContent =
+    `Recado editorial: uma boa revisão e editoração — com atenção à ortografia, pontuação, concordância, colocação pronominal e diagramação — evita ruídos e valoriza a experiência do leitor.`;
 
   finalBox1.innerHTML = `<p style="margin:0">${correctedHTMLByLevel[0] ?? ""}</p>`;
   finalBox2.innerHTML = `<p style="margin:0">${correctedHTMLByLevel[1] ?? ""}</p>`;
@@ -550,29 +573,25 @@ restartBtn.addEventListener("click", () => {
   showOnly(screenForm);
 });
 
-finalRankingBtn.addEventListener("click", () => openRankingModal());
-rankingBtn.addEventListener("click", () => openRankingModal());
-
 /** =========================
- *  Ranking (agregado por setor) - Firestore
- *  =========================
- *  Coleção: sectorStats
- *  Documento por setor: { count, totalWrong, levelsDone }
- */
-async function updateSectorStats({ sector, levelName, wrong }){
+ *  Ranking (agregado por setor) - Firestore (opcional)
+ *  ========================= */
+rankingBtn.addEventListener("click", () => openRankingModal());
+finalRankingBtn.addEventListener("click", () => openRankingModal());
+
+async function updateSectorStats({ sector, wrong }){
   if (!db) return;
   if (!sector) return;
+
   const ref = doc(db, "sectorStats", sector);
 
   await runTransaction(db, async (tx) => {
     const snap = await tx.get(ref);
-    const data = snap.exists() ? snap.data() : { count: 0, totalWrong: 0, levelsDone: 0 };
+    const data = snap.exists() ? snap.data() : { count: 0, totalWrong: 0 };
 
-    // cada "nível concluído" conta +1 em levelsDone, e +1 em count (participação por nível)
     const next = {
       count: (data.count || 0) + 1,
       totalWrong: (data.totalWrong || 0) + (wrong || 0),
-      levelsDone: (data.levelsDone || 0) + 1,
       updatedAt: serverTimestamp()
     };
     tx.set(ref, next, { merge: true });
@@ -580,64 +599,62 @@ async function updateSectorStats({ sector, levelName, wrong }){
 }
 
 async function openRankingModal(){
-    if (!db){
+  if (!db){
     openModal({
       title: "🏆 Ranking",
       bodyHTML: `<p>O ranking ainda não está disponível porque o Firebase não foi configurado.</p>
-                <p class="muted">Assim que você colar o <strong>firebaseConfig</strong> no arquivo <code>js/main.js</code>, o ranking passa a funcionar.</p>`,
+                <p class="muted">Quando você colar o <strong>firebaseConfig</strong> no <code>js/main.js</code>, ele passa a funcionar.</p>`,
       buttons: [{ label: "Entendi", onClick: closeModal }]
     });
     return;
   }
-  // carrega stats por setor (simples: tenta pegar docs dos setores do select)
+
   const sectors = SECTORS.filter(s => s !== "Selecione…");
   const rows = [];
 
   for (const s of sectors){
     const ref = doc(db, "sectorStats", s);
     const snap = await getDoc(ref);
-    const d = snap.exists() ? snap.data() : { count: 0, totalWrong: 0, levelsDone: 0 };
+    const d = snap.exists() ? snap.data() : { count: 0, totalWrong: 0 };
     const avgWrong = d.count ? (d.totalWrong / d.count) : 0;
     rows.push({ sector: s, count: d.count || 0, avgWrong });
   }
 
   rows.sort((a,b) => a.avgWrong - b.avgWrong || b.count - a.count);
 
-  const table = `
-    <div style="overflow:auto">
-      <table style="width:100%; border-collapse:collapse">
-        <thead>
-          <tr>
-            <th style="text-align:left; padding:8px; border-bottom:1px solid rgba(255,255,255,.12)">Setor</th>
-            <th style="text-align:right; padding:8px; border-bottom:1px solid rgba(255,255,255,.12)">Participações</th>
-            <th style="text-align:right; padding:8px; border-bottom:1px solid rgba(255,255,255,.12)">Média de erros</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${rows.map(r => `
-            <tr>
-              <td style="padding:8px; border-bottom:1px solid rgba(255,255,255,.08)">${r.sector}</td>
-              <td style="padding:8px; text-align:right; border-bottom:1px solid rgba(255,255,255,.08)">${r.count}</td>
-              <td style="padding:8px; text-align:right; border-bottom:1px solid rgba(255,255,255,.08)">${r.avgWrong.toFixed(2)}</td>
-            </tr>
-          `).join("")}
-        </tbody>
-      </table>
-    </div>
-    <p style="margin:12px 0 0" class="muted">
-      Ranking exibido por setor (sem nomes), conforme diretrizes da LGPD.
-    </p>
-  `;
-
   openModal({
     title: "🏆 Ranking por setor",
-    bodyHTML: table,
-    buttons: [{ label: "Fechar", onClick: closeModal }]
+    bodyHTML: `
+      <div style="overflow:auto">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Setor</th>
+              <th class="num">Participações</th>
+              <th class="num">Média de erros</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rows.map(r => `
+              <tr>
+                <td>${r.sector}</td>
+                <td class="num">${r.count}</td>
+                <td class="num">${r.avgWrong.toFixed(2)}</td>
+              </tr>
+            `).join("")}
+          </tbody>
+        </table>
+      </div>
+      <p class="muted" style="margin:12px 0 0">
+        Ranking exibido por setor (sem nomes), conforme diretrizes da LGPD.
+      </p>
+    `,
+    buttons: [{ label:"Fechar", onClick: closeModal }]
   });
 }
 
 /** =========================
- *  Personalização (modal)
+ *  Personalização (ao vivo!)
  *  ========================= */
 customizeBtn.addEventListener("click", () => openCustomizeModal());
 openCustomizeInline.addEventListener("click", () => openCustomizeModal());
@@ -648,17 +665,19 @@ function openCustomizeModal(){
   openModal({
     title: "⚙️ Personalizar página",
     bodyHTML: `
-      <p class="muted">Escolha efeitos e cores para deixar a página com a sua cara.</p>
+      <p class="muted">As alterações são aplicadas imediatamente (ao vivo).</p>
 
       <div style="display:grid; gap:10px; margin-top:12px">
         <label style="display:flex; gap:10px; align-items:center">
           <input type="checkbox" id="optSnow" ${saved.snow ? "checked" : ""}/>
           <span>Neve</span>
         </label>
+
         <label style="display:flex; gap:10px; align-items:center">
           <input type="checkbox" id="optLights" ${saved.lights ? "checked" : ""}/>
           <span>Pisca-pisca</span>
         </label>
+
         <label style="display:flex; gap:10px; align-items:center">
           <input type="checkbox" id="optReindeer" ${saved.reindeer ? "checked" : ""}/>
           <span>Renas voando</span>
@@ -667,36 +686,46 @@ function openCustomizeModal(){
         <label style="display:grid; gap:6px">
           <span class="muted">Tema</span>
           <select class="input" id="optTheme">
-            <option value="classic">Clássico</option>
-            <option value="cool">Gelo</option>
-            <option value="warm">Quentinho</option>
+            <option value="classic">Clássico (vivo)</option>
+            <option value="cool">Gelo (vivo)</option>
+            <option value="warm">Quentinho (vivo)</option>
+            <option value="neon">Neon</option>
+            <option value="candy">Candy</option>
+            <option value="midnight">Noite estrelada</option>
           </select>
         </label>
       </div>
     `,
-    buttons: [
-      {
-        label: "Aplicar",
-        onClick: () => {
-          const snow = document.getElementById("optSnow")?.checked;
-          const lights = document.getElementById("optLights")?.checked;
-          const reindeer = document.getElementById("optReindeer")?.checked;
-          const theme = document.getElementById("optTheme")?.value || "classic";
-
-          applyTheme({ snow, lights, reindeer, theme });
-          saveTheme({ snow, lights, reindeer, theme });
-
-          closeModal();
-        }
-      },
-      { label: "Fechar", onClick: closeModal, variant: "ghost" }
-    ]
+    buttons: [{ label:"Fechar", onClick: closeModal }]
   });
 
-  // set select após render
+  // set select e bind “ao vivo”
   setTimeout(() => {
-    const sel = document.getElementById("optTheme");
-    if (sel) sel.value = saved.theme || "classic";
+    const optSnow = document.getElementById("optSnow");
+    const optLights = document.getElementById("optLights");
+    const optReindeer = document.getElementById("optReindeer");
+    const optTheme = document.getElementById("optTheme");
+
+    if (!optTheme) return;
+
+    optTheme.value = saved.theme || "classic";
+
+    const applyNow = () => {
+      const snow = !!optSnow?.checked;
+      const lights = !!optLights?.checked;
+      const reindeer = !!optReindeer?.checked;
+      const theme = optTheme.value || "classic";
+      applyTheme({ snow, lights, reindeer, theme });
+      saveTheme({ snow, lights, reindeer, theme });
+    };
+
+    optSnow?.addEventListener("change", applyNow);
+    optLights?.addEventListener("change", applyNow);
+    optReindeer?.addEventListener("change", applyNow);
+    optTheme.addEventListener("change", applyNow);
+
+    // aplica uma vez ao abrir (garante consistência)
+    applyNow();
   }, 0);
 }
 
@@ -715,21 +744,34 @@ function applyTheme({ snow, lights, reindeer, theme }){
     reindeerLayer.innerHTML = "";
   }
 
-  // cores
+  // cores (bem vivas)
   const root = document.documentElement.style;
-if (theme === "classic"){
-  root.setProperty("--accentA", "rgba(255, 50, 50, .34)");
-  root.setProperty("--accentB", "rgba(0, 170, 255, .28)");
-  root.setProperty("--accentC", "rgba(255, 210, 60, .22)");
-} else if (theme === "cool"){
-  root.setProperty("--accentA", "rgba(120, 230, 255, .30)");
-  root.setProperty("--accentB", "rgba(0, 140, 255, .30)");
-  root.setProperty("--accentC", "rgba(160, 255, 230, .20)");
-} else {
-  root.setProperty("--accentA", "rgba(255, 120, 60, .30)");
-  root.setProperty("--accentB", "rgba(255, 70, 150, .26)");
-  root.setProperty("--accentC", "rgba(255, 220, 80, .24)");
-}
+
+  if (theme === "classic"){
+    root.setProperty("--accentA", "rgba(255, 60, 60, .34)");
+    root.setProperty("--accentB", "rgba(0, 170, 255, .28)");
+    root.setProperty("--accentC", "rgba(255, 210, 60, .22)");
+  } else if (theme === "cool"){
+    root.setProperty("--accentA", "rgba(120, 230, 255, .30)");
+    root.setProperty("--accentB", "rgba(0, 140, 255, .30)");
+    root.setProperty("--accentC", "rgba(160, 255, 230, .20)");
+  } else if (theme === "warm"){
+    root.setProperty("--accentA", "rgba(255, 120, 60, .30)");
+    root.setProperty("--accentB", "rgba(255, 70, 150, .26)");
+    root.setProperty("--accentC", "rgba(255, 220, 80, .24)");
+  } else if (theme === "neon"){
+    root.setProperty("--accentA", "rgba(0, 255, 180, .26)");
+    root.setProperty("--accentB", "rgba(255, 0, 200, .22)");
+    root.setProperty("--accentC", "rgba(255, 230, 0, .18)");
+  } else if (theme === "candy"){
+    root.setProperty("--accentA", "rgba(255, 105, 180, .26)");
+    root.setProperty("--accentB", "rgba(120, 190, 255, .22)");
+    root.setProperty("--accentC", "rgba(170, 255, 200, .18)");
+  } else { // midnight
+    root.setProperty("--accentA", "rgba(180, 120, 255, .18)");
+    root.setProperty("--accentB", "rgba(80, 160, 255, .18)");
+    root.setProperty("--accentC", "rgba(255, 210, 120, .12)");
+  }
 }
 
 function spawnReindeer(){
@@ -739,11 +781,13 @@ function spawnReindeer(){
     const d = document.createElement("div");
     d.className = "reindeer";
     d.textContent = "🦌";
-    d.style.fontSize = `${22 + Math.random()*14}px`;
     const y = Math.floor(Math.random() * 70) + 5;
     d.style.setProperty("--y", `${y}vh`);
-    d.style.animationDelay = `${i * 1.2}s`;
-    d.style.animationDuration = `${9 + Math.random()*6}s`;
+    d.style.left = `${-10 - Math.random()*20}vw`;
+    d.style.top = "0";
+    d.style.fontSize = `${22 + Math.random()*14}px`;
+    d.style.animationDelay = `${i * 0.9}s`;
+    d.style.animationDuration = `${7.5 + Math.random()*5}s`;
     reindeerLayer.appendChild(d);
   }
 }
@@ -770,7 +814,7 @@ function loadTheme(){
   let w, h, dpr;
 
   const flakes = [];
-  const FLAKES = 140;
+  const FLAKES = 150;
 
   function resize(){
     dpr = Math.max(1, window.devicePixelRatio || 1);
@@ -787,10 +831,10 @@ function loadTheme(){
     return {
       x: rand(0, w),
       y: rand(-h, 0),
-      r: rand(1.2, 3.6),
-      vy: rand(0.6, 1.9),
-      vx: rand(-0.4, 0.6),
-      sway: rand(0.002, 0.01),
+      r: rand(1.2, 3.8),
+      vy: rand(0.7, 2.2),
+      vx: rand(-0.5, 0.7),
+      sway: rand(0.002, 0.012),
       phase: rand(0, Math.PI * 2)
     };
   }
@@ -811,7 +855,7 @@ function loadTheme(){
 
       ctx.beginPath();
       ctx.arc(f.x, f.y, f.r, 0, Math.PI * 2);
-      ctx.fillStyle = "rgba(255,255,255,0.85)";
+      ctx.fillStyle = "rgba(255,255,255,0.88)";
       ctx.fill();
     }
     requestAnimationFrame(tick);
@@ -828,11 +872,10 @@ populateSectors();
 // aplica tema salvo
 applyTheme(loadTheme());
 
-// Loading fake: 1.4s e vai pro form
+// Loading fake: 1.2s e vai pro form
 showOnly(screenLoading);
 setTimeout(() => {
   showOnly(screenForm);
-  // preencher nome/setor do último uso
   userNameEl.value = localStorage.getItem("mission_name") || "";
   userSectorEl.value = localStorage.getItem("mission_sector") || "";
-}, 1400);
+}, 1200);

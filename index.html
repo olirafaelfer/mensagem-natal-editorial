@@ -17,7 +17,7 @@
   <!-- Efeitos -->
   <canvas id="snow"></canvas>
   <div id="lights" class="lights hidden" aria-hidden="true"></div>
-  <div id="reindeerLayer" class="reindeer-layer" aria-hidden="true"></div>
+  <div id="reindeerLayer" class="reindeer-layer hidden" aria-hidden="true"></div>
 
   <main class="app">
     <header class="topbar">
@@ -35,7 +35,7 @@
     <!-- 1) Loading fake -->
     <section class="card" id="screenLoading">
       <div class="card-inner center">
-        <img class="logo-pulse" src="img/logo-natal.png" alt="Logo natalina" />
+        <img class="logo-pulse" src="img/logo-natal.png" alt="Logo natalina da empresa" />
         <h2 class="loading-title">Preparando sua missão…</h2>
         <p class="muted">Carregando o conteúdo especial de Natal ❄️</p>
       </div>
@@ -46,7 +46,7 @@
       <div class="card-inner">
         <h2 class="h2">Antes de começar</h2>
         <p class="muted">
-          Informe seu nome e selecione seu setor para registrar seu desempenho por setor.
+          Informe seu nome e selecione seu setor para registrar o desempenho <strong>apenas por setor</strong>.
         </p>
 
         <div class="form-grid">
@@ -64,8 +64,9 @@
         <div class="lgpd-box">
           <p class="lgpd-title">LGPD</p>
           <p class="muted" style="margin:6px 0 0">
-            Seguimos as diretrizes da LGPD e não faremos compartilhamento das informações pessoais. O ranking exibe apenas resultados agregados por setor.
-           <button type="button" class="linklike" id="lgpdMoreBtn">Saiba mais</button>
+            Seguimos as diretrizes da LGPD e não faremos compartilhamento de informações pessoais.
+            O ranking exibe apenas resultados agregados por setor.
+            <button type="button" class="linklike" id="lgpdMoreBtn">Saiba mais</button>
           </p>
         </div>
 
@@ -85,7 +86,6 @@
         </div>
 
         <p class="lead" id="instruction"></p>
-
         <article class="message" id="messageArea" aria-label="Mensagem para revisar"></article>
 
         <div class="hintbar">
@@ -114,6 +114,8 @@
         <div class="final-box" id="finalBox2"></div>
         <div class="final-box" id="finalBox3"></div>
 
+        <div class="final-note" id="finalNote"></div>
+<hr>
         <div class="credits">
           <p class="credits-title"><strong>Com carinho:</strong></p>
           <p class="credits-names">
@@ -133,7 +135,7 @@
             Welder Lancieri Marchini
           </p>
         </div>
-
+<hr>
         <div class="actions center-actions">
           <button class="btn" id="finalRankingBtn">Ver ranking</button>
           <button class="btn ghost" id="restartBtn">Recomeçar</button>
@@ -154,7 +156,6 @@
     </div>
   </div>
 
-  <!-- Firebase + app -->
   <script type="module" src="js/main.js"></script>
 </body>
 </html>
