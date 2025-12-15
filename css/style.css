@@ -10,7 +10,7 @@
   --muted: rgba(255,255,255,.70);
   --muted2: rgba(255,255,255,.55);
 
-  --cardBg: rgba(255,255,255,.06);   /* sutil */
+  --cardBg: rgba(255,255,255,.06);   /* mais sutil */
   --stroke: rgba(255,255,255,.12);
 
   --shadow: 0 14px 40px rgba(0,0,0,.35);
@@ -26,10 +26,11 @@ body{
   margin: 0;
   font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
   color: var(--text);
-  background: var(--bg);
+  background: var(--bg);         /* ✅ sem degradê */
   overflow-x: hidden;
-  overflow-y: auto;
+  overflow-y: auto;              /* ✅ scroll ativo */
 
+  /* “intensidade” ainda funciona, mas bem mais sutil */
   filter: saturate(calc(1.02 * var(--intensity)))
           contrast(calc(1.01 * var(--intensity)));
 }
@@ -49,6 +50,7 @@ hr{
   margin: 16px 0;
 }
 
+/* button "link" */
 .linklike{
   border: 0;
   background: transparent;
@@ -69,7 +71,7 @@ hr{
   inset: 0;
   z-index: 0;
   pointer-events: none;
-  opacity: .22;
+  opacity: .22; /* ✅ mais sutil */
 }
 
 #reindeerLayer{
@@ -77,7 +79,7 @@ hr{
   inset: 0;
   z-index: 1;
   pointer-events: none;
-  opacity: .22;
+  opacity: .22; /* ✅ mais sutil */
 }
 
 .reindeer{
@@ -103,13 +105,19 @@ hr{
    ========================= */
 .app{
   position: relative;
-  z-index: 5; /* conteúdo acima dos efeitos */
+  z-index: 5;              /* ✅ conteúdo acima dos efeitos */
   min-height: 100vh;
   display: flex;
   flex-direction: column;
 }
 
-/* Topbar e Cards centralizados dentro da largura padrão */
+/* ✅ se você adicionou <div class="container"> no HTML */
+.container{
+  width: min(var(--container), calc(100% - 32px));
+  margin: 18px auto 40px;
+}
+
+/* fallback se NÃO tiver container */
 .app > .topbar,
 .app > .card{
   width: min(var(--container), calc(100% - 32px));
@@ -118,7 +126,7 @@ hr{
 }
 
 /* =========================
-   Topbar (não fixa)
+   Topbar (não fixa!)
    ========================= */
 .topbar{
   display: grid;
@@ -126,10 +134,9 @@ hr{
   align-items: center;
   gap: 12px;
 
-  padding: 14px 16px; /* garante “respiro” lateral mesmo sem .container */
-  margin-top: 18px;   /* separa do topo */
+  padding: 14px 0;          /* container já tem padding lateral */
   border-bottom: 1px solid rgba(255,255,255,.10);
-  background: transparent;
+  background: transparent;  /* ✅ sem “vidro” pesado */
 }
 
 .brand{
@@ -194,7 +201,7 @@ hr{
   border-radius: var(--radius);
   box-shadow: var(--shadow);
   overflow: hidden;
-  backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px); /* sutil */
 }
 
 .card-inner{ padding: 18px; }
@@ -391,6 +398,7 @@ select.input option{
 
 /* =========================
    Message area + tokens
+   (ajuda no “espaço grande”)
    ========================= */
 .message{
   margin-top: 12px;
@@ -403,9 +411,16 @@ select.input option{
   line-height: 1.55;
   letter-spacing: 0;
   word-spacing: 0;
-
   white-space: pre-wrap;
   overflow-wrap: anywhere;
+}
+
+/* evita “buracos” em algumas engines */
+.message, .message *{
+  letter-spacing: 0;
+  word-spacing: 0;
+  font-kerning: normal;
+  text-rendering: optimizeLegibility;
 }
 
 .message.show{ animation: fadeIn .22s ease-out; }
@@ -414,15 +429,20 @@ select.input option{
   to{ opacity: 1; transform: translateY(0); }
 }
 
-/* ✅ “aperta” tokens (pontuação também é token) */
 .token{
   display: inline;
-  padding: 1px 2px;  /* era maior: isso causava “pontuação distante” */
+  padding: 2px 3px;
   margin: 0;
-  border-radius: 6px;
+  border-radius: 8px;
   cursor: pointer;
   transition: background .15s ease, transform .06s ease, color .15s ease;
+
+  /* ✅ impede que o browser crie “espaço fantasma” */
+  letter-spacing: 0;
+  word-spacing: 0;
+  white-space: pre; /* mantém exatamente o conteúdo do span */
 }
+
 .token:hover{ background: rgba(255,255,255,.10); }
 
 .token.corrected{
@@ -434,6 +454,12 @@ select.input option{
 .token.error{
   background: rgba(255,23,68,.16);
   border: 1px solid rgba(255,23,68,.22);
+}
+
+/* pontuação clicável (quando for erro) */
+.token.punct{
+  padding: 0 1px;
+  border-radius: 6px;
 }
 
 /* =========================
@@ -702,6 +728,7 @@ select.input option{
   text-shadow: 0 10px 25px rgba(0,0,0,.45);
   animation: scoreUp 900ms ease-out forwards;
 }
+
 .score-float.plus{ color: #00e676; }
 .score-float.minus{ color: #ff1744; }
 
@@ -721,40 +748,24 @@ select.input option{
 
 @media (max-width: 740px){
   .stat-grid{ grid-template-columns: 1fr; max-width: 420px; }
-  .message{ font-size: 15.5px; line-height: 1.45; }
-  .topbar{ padding: 12px 12px; }
-  .app > .topbar,
-  .app > .card{
-    width: calc(100% - 24px);
+  .message{
+    font-size: 15.5px;
+    line-height: 1.45;
+    word-spacing: 0;
+    letter-spacing: 0;
+  }
+  .container{ width: calc(100% - 24px); margin: 14px auto 34px; }
+  .card{ margin: 14px auto; }
+  .topbar{ padding: 12px 0; }
+
+  .token{
+    display: inline;
+    padding: 0 1px; /* menos “gordura” no mobile */
+    margin: 0;
   }
 }
 
 /* Fallback para navegadores sem color-mix */
 @supports not (color: color-mix(in srgb, red 50%, white)) {
   a{ color: #ff8a80; }
-}
-/* =========================
-   PATCH 4 — Espaçamento correto no mobile
-   ========================= */
-@media (max-width: 740px){
-  .message{
-    font-size: 15.5px;
-    line-height: 1.45;
-    letter-spacing: 0;
-    word-spacing: 0;
-  }
-
-  /* tokens nunca criam “respiro” extra */
-  .token{
-    display: inline;
-    padding: 0 1px;
-    margin: 0;
-    vertical-align: baseline;
-  }
-
-  /* pontuação colada na palavra */
-  .token.punct{
-    padding: 0;
-    margin: 0;
-  }
 }
