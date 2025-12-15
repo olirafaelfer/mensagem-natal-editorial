@@ -4,64 +4,124 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Missão Editorial de Natal 🎄</title>
-    <link rel="icon" href="data:image/svg+xml,
+
+  <!-- favicon imediato -->
+  <link rel="icon" href="data:image/svg+xml,
   <svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'>
     <text y='0.9em' font-size='90'>🎄</text>
   </svg>">
+
   <link rel="stylesheet" href="css/style.css" />
 </head>
 <body>
-  <!-- Neve -->
+  <!-- Efeitos -->
   <canvas id="snow"></canvas>
+  <div id="lights" class="lights hidden" aria-hidden="true"></div>
+  <div id="reindeerLayer" class="reindeer-layer" aria-hidden="true"></div>
 
   <main class="app">
     <header class="topbar">
       <div class="brand">
-        <span class="badge">🎅 Missão do editor-chefe</span>
-        <h1>Revisão da mensagem de Natal</h1>
+        <span class="badge">🎅 Missão do Editor-Chefe</span>
+        <h1 id="headerTitle">Revisão da Mensagem de Natal</h1>
       </div>
 
-      <div class="status">
-        <div class="pill">Correções: <strong id="progressCount">0</strong>/3</div>
-        <div class="pill muted">Erros: <strong id="wrongCount">0</strong>/3</div>
+      <div class="top-actions">
+        <button class="icon-btn" id="customizeBtn" title="Personalizar">⚙️</button>
+        <button class="icon-btn" id="rankingBtn" title="Ranking">🏆</button>
       </div>
     </header>
 
-    <!-- Página 1 -->
-    <section class="card" id="page1">
+    <!-- 1) Loading fake -->
+    <section class="card" id="screenLoading">
+      <div class="card-inner center">
+        <img class="logo-pulse" src="img/logo-natal.png" alt="Logo natalina" />
+        <h2 class="loading-title">Preparando sua missão…</h2>
+        <p class="muted">Carregando o conteúdo especial de Natal ❄️</p>
+      </div>
+    </section>
+
+    <!-- 2) Form -->
+    <section class="card hidden" id="screenForm">
       <div class="card-inner">
+        <h2 class="h2">Antes de começar</h2>
+        <p class="muted">
+          Informe seu nome e selecione seu setor para registrar seu desempenho por setor.
+        </p>
+
+        <div class="form-grid">
+          <label class="field">
+            <span>Nome</span>
+            <input class="input" id="userName" placeholder="Ex.: Rafael" maxlength="60" />
+          </label>
+
+          <label class="field">
+            <span>Setor</span>
+            <select class="input" id="userSector"></select>
+          </label>
+        </div>
+
+        <div class="lgpd-box">
+          <p class="lgpd-title">LGPD</p>
+          <p class="muted" style="margin:6px 0 0">
+            Seguimos as diretrizes da LGPD e não faremos compartilhamento das informações pessoais. O ranking exibe apenas resultados agregados por setor.
+            <a class="link" href="lgpd.html" target="_blank" rel="noopener">Saiba mais</a>
+          </p>
+        </div>
+
+        <div class="actions">
+          <button class="btn" id="startBtn">Iniciar missão</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3) Atividades (3 níveis) -->
+    <section class="card hidden" id="screenGame">
+      <div class="card-inner">
+        <div class="status-row">
+          <div class="pill">Nível: <strong id="levelLabel">Fácil</strong></div>
+          <div class="pill">Correções: <strong id="progressCount">0</strong>/<span id="totalFix">3</span></div>
+          <div class="pill muted">Erros: <strong id="wrongCount">0</strong></div>
+        </div>
+
         <p class="lead" id="instruction"></p>
 
         <article class="message" id="messageArea" aria-label="Mensagem para revisar"></article>
 
-<div class="actions" id="autoWrap">
-<button id="autoBtn" class="btn ghost is-disabled" aria-disabled="true" title="Disponível após 3 erros">
-  Prefiro usar o corretor automático!
-</button>
-</div>
+        <div class="hintbar">
+          💡 Dica: você pode <button class="linklike" id="openCustomizeInline">personalizar a página</button> a qualquer momento.
+        </div>
+
+        <div class="actions">
+          <button id="autoBtn" class="btn ghost is-disabled" aria-disabled="true" title="Disponível após 3 erros">
+            Prefiro usar o corretor automático!
+          </button>
+          <button id="nextLevelBtn" class="btn" disabled>Próximo nível</button>
+        </div>
       </div>
     </section>
 
-    <!-- Página 2 (final) -->
-    <section class="card hidden" id="page2">
+    <!-- 4) Final -->
+    <section class="card hidden" id="screenFinal">
       <div class="card-inner center">
         <h2 class="final-title">🎄</h2>
 
-        <p class="final-text">
-          “Graças ao seu trabalho editorial impecável, esta mensagem de Natal será publicado no prazo!”
-        </p>
+        <p class="final-text" id="finalCongrats"></p>
 
-        <p class="final-sub">Veja a mensagem que você acabou de corrigir:</p>
+        <p class="final-sub">Veja as mensagens que você acabou de corrigir:</p>
 
-        <div class="final-box" id="finalBox"></div>
-<hr>
+        <div class="final-box" id="finalBox1"></div>
+        <div class="final-box" id="finalBox2"></div>
+        <div class="final-box" id="finalBox3"></div>
+
         <div class="credits">
           <p class="credits-title"><strong>Com carinho:</strong></p>
           <p class="credits-names">
             Aline dos Santos Carneiro<br>
             Amanda Firme<br>
             Anna Catharina Miranda<br>
-            Bianca Gribel<br>
+            Bianca Gribel<br><br>
+
             Edrian Josué Pasini<br>
             Eric Parrot<br>
             Leonardo A.R.T. dos Santos<br>
@@ -70,31 +130,33 @@
             Rafael de Oliveira<br>
             Samuel Rezende<br>
             Verônica M. Guedes<br>
-            Vitória Firmino<br>
+            Vitória Firmino<br><br>
+
             Welder Lancieri Marchini
           </p>
         </div>
-<hr>
-        <button class="btn" id="restartBtn">Recomeçar</button>
+
+        <div class="actions center-actions">
+          <button class="btn" id="finalRankingBtn">Ver ranking</button>
+          <button class="btn ghost" id="restartBtn">Recomeçar</button>
+        </div>
       </div>
     </section>
   </main>
 
-  <!-- Modal -->
+  <!-- Modal genérico -->
   <div class="overlay hidden" id="overlay" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
     <div class="modal">
       <div class="modal-head">
         <h3 id="modalTitle">Mensagem</h3>
         <button class="icon-btn" id="closeModal" aria-label="Fechar">✕</button>
       </div>
-
       <div class="modal-body" id="modalBody"></div>
-
       <div class="modal-foot" id="modalFoot"></div>
     </div>
   </div>
 
-  <script src="js/main.js"></script>
+  <!-- Firebase + app -->
+  <script type="module" src="js/main.js"></script>
 </body>
 </html>
-
