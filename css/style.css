@@ -740,3 +740,7 @@ select.input option{
 @supports not (color: color-mix(in srgb, red 50%, white)) {
   a{ color: #ff8a80; }
 }
+.token.punct{
+  padding: 0 1px;
+  border-radius: 6px;
+}

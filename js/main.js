@@ -3,8 +3,10 @@
 // Firebase
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js";
 import {
-  getFirestore, doc, getDoc, runTransaction, serverTimestamp
+  getFirestore, doc, getDoc, runTransaction, serverTimestamp,
+  collection, getDocs
 } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
+
 
 /* firebaseConfig */
 const firebaseConfig = {
@@ -73,11 +75,19 @@ Ele escreveu tão rápido que acabou deixando três errinhos para trás.`,
 Aos que estão em guerra, peço a paz; aos que não a encontram, que Deus acalme seus corações inquietos; aos que nada disso sirva, ofereço um caloroso abraço, o maior conforto da alma.
 Pensadores cientificistas pensam que o tempo é só um passar, que datas e símbolos são itens meramente psicológicos, que a linearidade intrínseca ao mensurável e durável tempo é uma prisão (ou mesmo um castigo). Chamam este tempo "chronos" e negam que é o "kairós", que é aquele tempo espiritual, profundo, com significado. Aquele tempo em que paramos para respirar e, sim, sentimos que algo está ali presente. Não enxergo um tempo tão "kairós" quanto o Natal e, o mais incrível, isso independe de crenças ou religiões. É época de partilhar, festejar, refletir; é oportunidade para planejar, remodelar e desconstruir.
 Recomece quantas vezes precisar, pois, enquanto estivermos no "kairós", não seremos reféns do "chronos".`,
-    rules: [
-      { id:"d1", label:"Colocação pronominal", wrong:/No Natal,\s*se deve pensar/g, correct:"No Natal, deve-se pensar" },
-      { id:"d2", label:"Colocação pronominal", wrong:/aos filhos,\s*os ame/gi, correct:"aos filhos, ame-os" },
-      { id:"d3", label:"Pontuação", wrong:/(?<=\batitudes),/g, correct:"" },
-    ]
+rules: [
+  { id:"d1", label:"Colocação pronominal", wrong:/No Natal,\s*se deve pensar/g, correct:"No Natal, deve-se pensar" },
+  { id:"d2", label:"Colocação pronominal", wrong:/aos filhos,\s*os ame/gi, correct:"aos filhos, ame-os" },
+
+  // vírgulas indevidas (sujeito + verbo / termos essenciais)
+  { id:"d3", label:"Pontuação", wrong:/(?<=\batitudes),/g, correct:"" },
+  { id:"d4", label:"Pontuação", wrong:/o amor,\s*em todas/gi, correct:"o amor em todas" },
+  { id:"d5", label:"Pontuação", wrong:/quanto o Natal\s*e,/gi, correct:"quanto o Natal e" },
+
+  // melhoria pontual (mais “editorial” e objetiva)
+  { id:"d6", label:"Pontuação", wrong:/ofereço um caloroso abraço,\s*o maior conforto da alma/gi, correct:"ofereço um caloroso abraço: o maior conforto da alma" },
+]
+
   }
 ];
 
@@ -374,10 +384,17 @@ function tokenize(seg){
 function appendPlain(frag, seg){
   const tokens = tokenize(seg);
   for (const t of tokens){
+    // espaços e quebras como texto puro
     if (t.t === "s"){
       frag.appendChild(document.createTextNode(t.v));
       continue;
     }
+    // ✅ pontuação normal como texto puro (sem espaçamento artificial)
+    if (t.t === "p"){
+      frag.appendChild(document.createTextNode(t.v));
+      continue;
+    }
+
     const span = document.createElement("span");
     span.className = "token";
     span.textContent = t.v;
@@ -394,6 +411,12 @@ function appendCorrected(frag, seg){
       frag.appendChild(document.createTextNode(t.v));
       continue;
     }
+    // ✅ pontuação corrigida também como texto puro (fica “colada” na palavra)
+    if (t.t === "p"){
+      frag.appendChild(document.createTextNode(t.v));
+      continue;
+    }
+
     const span = document.createElement("span");
     span.className = "token corrected";
     span.textContent = t.v;
@@ -402,6 +425,7 @@ function appendCorrected(frag, seg){
     frag.appendChild(span);
   }
 }
+
 
 function renderMessage(){
   if (!messageArea) return;
@@ -461,7 +485,7 @@ function renderMessage(){
     }
 
     const span = document.createElement("span");
-    span.className = "token";
+    span.className = "token"+ (",.;:!?".includes(best.text) ? " punct" : "");
     span.textContent = best.text;
     span.dataset.kind = "error";
     span.dataset.ruleid = bestRule.id;
@@ -997,10 +1021,24 @@ async function openRankingModal(){
     const sectors = SECTORS.filter(s => s !== "Selecione…");
     const rows = [];
 
+    // ✅ tenta carregar tudo em 1 request
+    let map = new Map();
+    try {
+      const snapAll = await getDocs(collection(db, "sectorStats"));
+      snapAll.forEach(d => map.set(d.id, d.data()));
+    } catch {
+      // fallback: mantém map vazio e faz getDoc setor a setor
+    }
+
     for (const s of sectors){
-      const ref = doc(db, "sectorStats", s);
-      const snap = await getDoc(ref);
-      const d = snap.exists() ? snap.data() : null;
+      let d = map.get(s);
+
+      // fallback se não conseguiu listar tudo
+      if (!d){
+        const ref = doc(db, "sectorStats", s);
+        const snap = await getDoc(ref);
+        d = snap.exists() ? snap.data() : null;
+      }
 
       const missions = d?.missions || 0;
       const avg = (num) => missions ? (num / missions) : 0;
