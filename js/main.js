@@ -6,7 +6,7 @@ import {
   getFirestore, doc, getDoc, runTransaction, serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
 
-/* COLE AQUI O SEU firebaseConfig (o seu já está funcionando) */
+/* firebaseConfig */
 const firebaseConfig = {
   apiKey: "AIzaSyD_-M7m1R2-FKzOHg356vb_IN7bPb6hqJM",
   authDomain: "missao-natal-ranking.firebaseapp.com",
@@ -131,8 +131,6 @@ const messageArea = document.getElementById("messageArea");
 
 const hintBtn = document.getElementById("hintBtn");
 const nextLevelBtn = document.getElementById("nextLevelBtn");
-
-// ✅ ID correto do HTML:
 const autoFixBtn = document.getElementById("autoFixBtn");
 
 const finalCongrats = document.getElementById("finalCongrats");
@@ -151,17 +149,15 @@ const lgpdMoreBtn = document.getElementById("lgpdMoreBtn");
 
 const reindeerLayer = document.getElementById("reindeerLayer");
 
-// review
 const reviewBtn1 = document.getElementById("reviewBtn1");
 const reviewBtn2 = document.getElementById("reviewBtn2");
 const reviewBtn3 = document.getElementById("reviewBtn3");
 const reviewBtn = document.getElementById("reviewBtn");
 
-// ranking opt-in/out (tela inicial)
 const optRankingEl = document.getElementById("optRanking");
 
 /** =========================
- * Modal
+ * Modal (abre na posição do scroll)
  * ========================= */
 const overlay = document.getElementById("overlay");
 const modalTitle = document.getElementById("modalTitle");
@@ -174,75 +170,80 @@ document.addEventListener("keydown", (e) => {
   if (e.key === "Escape" && overlay && !overlay.classList.contains("hidden")) closeModal();
 });
 
-let __scrollY = 0;
-
 function openModal({ title, bodyHTML, buttons=[] }){
   if (!overlay) return;
 
-  // 🔒 trava o fundo exatamente onde o usuário está
-  const scrollY = window.scrollY;
-  document.body.style.position = "fixed";
-  document.body.style.top = `-${scrollY}px`;
-  document.body.dataset.scrollY = scrollY;
+  // ✅ overlay acompanha a tela atual (sem travar scroll)
+  const y = window.scrollY || 0;
+  overlay.style.position = "absolute";
+  overlay.style.top = `${y}px`;
+  overlay.style.left = "0";
+  overlay.style.right = "0";
+  overlay.style.height = `${window.innerHeight}px`;
 
-  modalTitle.textContent = title;
-  modalBody.innerHTML = bodyHTML;
-  modalFoot.innerHTML = "";
+  if (modalTitle) modalTitle.textContent = title || "";
+  if (modalBody) modalBody.innerHTML = bodyHTML || "";
+  if (modalFoot) modalFoot.innerHTML = "";
 
   for (const btn of buttons){
     const b = document.createElement("button");
     b.className = "btn" + (btn.variant ? ` ${btn.variant}` : "");
     b.textContent = btn.label;
+    b.disabled = !!btn.disabled;
     b.addEventListener("click", btn.onClick);
-    modalFoot.appendChild(b);
+    modalFoot?.appendChild(b);
   }
 
   overlay.classList.remove("hidden");
   requestAnimationFrame(() => overlay.classList.add("show"));
 }
 
-
 function closeModal(){
   if (!overlay) return;
-
   overlay.classList.remove("show");
-  setTimeout(() => overlay.classList.add("hidden"), 180);
-
-  // 🔓 restaura scroll exatamente onde estava
-  const scrollY = Number(document.body.dataset.scrollY || 0);
-  document.body.style.position = "";
-  document.body.style.top = "";
-  window.scrollTo(0, scrollY);
+  setTimeout(() => {
+    overlay.classList.add("hidden");
+    overlay.style.top = "";
+    overlay.style.height = "";
+    overlay.style.position = "";
+  }, 180);
 }
 
-function showScoreFloat(value, anchorEl = null) {
-  const float = document.createElement("div");
-  float.className = "score-float";
-  float.textContent = value > 0 ? `+${value}` : `${value}`;
+/** =========================
+ * Score float (sem duplicação / sem transition)
+ * ========================= */
+function showScoreFloat(delta, anchorEl = null){
+  const el = document.createElement("div");
+  el.className = "score-float " + (delta >= 0 ? "plus" : "minus");
+  el.textContent = delta >= 0 ? `+${delta}` : `${delta}`;
 
-  // posição: centro da tela ou perto do elemento clicado
-  if (anchorEl) {
-    const rect = anchorEl.getBoundingClientRect();
-    float.style.left = `${rect.left + rect.width / 2}px`;
-    float.style.top = `${rect.top}px`;
+  let x = window.innerWidth * 0.5;
+  let y = window.innerHeight * 0.45;
+
+  if (anchorEl){
+    const r = anchorEl.getBoundingClientRect();
+    x = r.left + r.width / 2;
+    y = r.top;
   } else {
-    float.style.left = "50%";
-    float.style.top = "45%";
-    float.style.transform = "translateX(-50%)";
+    // tenta “puxar” pro HUD (placar) se existir
+    const hud = document.getElementById("scoreCount");
+    if (hud){
+      const r = hud.getBoundingClientRect();
+      x = r.left + r.width / 2;
+      y = r.top;
+    }
   }
 
-  document.body.appendChild(float);
+  el.style.left = `${x}px`;
+  el.style.top = `${y}px`;
 
-  requestAnimationFrame(() => float.classList.add("show"));
-
-  setTimeout(() => {
-    float.classList.remove("show");
-    float.addEventListener("transitionend", () => float.remove(), { once: true });
-  }, 1200);
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 950);
 }
 
-
-
+/** =========================
+ * Utils
+ * ========================= */
 function escapeHtml(s){
   return String(s)
     .replaceAll("&","&amp;")
@@ -264,6 +265,7 @@ function ensureGlobal(re){
   const flags = re.flags.includes("g") ? re.flags : (re.flags + "g");
   return new RegExp(re.source, flags);
 }
+
 /** =========================
  * Estado
  * ========================= */
@@ -278,17 +280,12 @@ let wrongCount = 0;
 let correctCount = 0;
 let hintsUsed = 0;
 
-// por tarefa
 const taskScore = [0,0,0];
 const taskCorrect = [0,0,0];
 const taskWrong = [0,0,0];
 
-// texto final do usuário por nível
 const currentTextByLevel = ["", "", ""];
-
-// marcações verdes do trecho já corrigido
 const correctedSegmentsByRule = new Map();
-
 /** =========================
  * Review (final)
  * ========================= */
@@ -328,15 +325,16 @@ reviewBtn?.addEventListener("click", () => openReviewModal(levelIndex));
 function updateHUD(){
   const total = currentRules.length;
   const done = fixedRuleIds.size;
-  remainingCount.textContent = String(total - done);
-  totalFixEl.textContent = String(total);
 
-  wrongCountEl.textContent = String(wrongCount);
-  scoreCountEl.textContent = String(score);
+  if (remainingCount) remainingCount.textContent = String(total - done);
+  if (totalFixEl) totalFixEl.textContent = String(total);
+
+  if (wrongCountEl) wrongCountEl.textContent = String(wrongCount);
+  if (scoreCountEl) scoreCountEl.textContent = String(score);
 
   const isDone = done >= total;
-  nextLevelBtn.classList.toggle("btn-disabled", !isDone);
-  nextLevelBtn.setAttribute("aria-disabled", String(!isDone));
+  nextLevelBtn?.classList.toggle("btn-disabled", !isDone);
+  nextLevelBtn?.setAttribute("aria-disabled", String(!isDone));
 }
 
 /** =========================
@@ -482,29 +480,29 @@ function renderMessage(){
 /** =========================
  * Interação / correção
  * ========================= */
-function addScore(delta){
+function addScore(delta, anchorEl=null){
   score += delta;
   taskScore[levelIndex] += delta;
-  showScoreFloat(delta); // 🎯 aqui
+  showScoreFloat(delta, anchorEl);
 }
 
-function registerWrong(){
+function registerWrong(anchorEl=null){
   wrongCount += 1;
   taskWrong[levelIndex] += 1;
-  addScore(SCORE_RULES.wrong);
+  addScore(SCORE_RULES.wrong, anchorEl);
 }
 
-function registerCorrect(){
+function registerCorrect(anchorEl=null){
   correctCount += 1;
   taskCorrect[levelIndex] += 1;
-  addScore(SCORE_RULES.correct);
+  addScore(SCORE_RULES.correct, anchorEl);
 }
 
-function registerAutoCorrect(){
+function registerAutoCorrect(anchorEl=null){
   correctCount += 1;
   taskCorrect[levelIndex] += 1;
   autoUsed += 1;
-  addScore(SCORE_RULES.auto);
+  addScore(SCORE_RULES.auto, anchorEl);
 }
 
 function onLockedTextClick(){
@@ -524,7 +522,7 @@ function onPlainClick(span){
   if (span.dataset.misclick !== "1"){
     span.dataset.misclick = "1";
     span.classList.add("error");
-    registerWrong();
+    registerWrong(span);
     updateHUD();
   }
 
@@ -558,7 +556,7 @@ function confirmCommaRemoval(errSpan, rule){
 
   applyReplacementAt(start, len, "");
   fixedRuleIds.add(rule.id);
-  registerCorrect();
+  registerCorrect(errSpan);
 
   renderMessage();
   finalizeIfDone();
@@ -573,7 +571,7 @@ function confirmTyped(errSpan, rule){
     : normalize(typed) === normalize(expected);
 
   if (!ok){
-    registerWrong();
+    registerWrong(errSpan);
     updateHUD();
 
     openModal({
@@ -590,11 +588,9 @@ function confirmTyped(errSpan, rule){
   applyReplacementAt(start, len, expected);
   fixedRuleIds.add(rule.id);
 
-  if (expected !== ""){
-    markCorrected(rule.id, start, expected);
-  }
+  if (expected !== "") markCorrected(rule.id, start, expected);
 
-  registerCorrect();
+  registerCorrect(errSpan);
   closeModal();
   renderMessage();
   finalizeIfDone();
@@ -647,8 +643,8 @@ function finalizeIfDone(){
   if (done){
     levelLocked = true;
     renderMessage();
-    nextLevelBtn.classList.remove("btn-disabled");
-    nextLevelBtn.setAttribute("aria-disabled", "false");
+    nextLevelBtn?.classList.remove("btn-disabled");
+    nextLevelBtn?.setAttribute("aria-disabled", "false");
   }
 }
 
@@ -686,12 +682,11 @@ function autoFixOne(){
   fixedRuleIds.add(rule.id);
   if (expected !== "") markCorrected(rule.id, start, expected);
 
-  registerAutoCorrect();
+  registerAutoCorrect(autoFixBtn);
   renderMessage();
   finalizeIfDone();
 }
 
-// ✅ listener no botão CERTO (autoFixBtn)
 autoFixBtn?.addEventListener("click", () => {
   if (levelLocked){
     onLockedTextClick();
@@ -710,7 +705,6 @@ autoFixBtn?.addEventListener("click", () => {
     ]
   });
 });
-
 /** =========================
  * Próximo nível / Finalizar
  * ========================= */
@@ -742,7 +736,7 @@ nextLevelBtn?.addEventListener("click", async () => {
 });
 
 async function skipLevel(){
-  addScore(SCORE_RULES.skip);
+  addScore(SCORE_RULES.skip, nextLevelBtn);
   currentTextByLevel[levelIndex] = currentText;
   await goNext();
 }
@@ -792,7 +786,7 @@ hintBtn?.addEventListener("click", () => {
   }
 
   hintsUsed += 1;
-  addScore(SCORE_RULES.hint);
+  addScore(SCORE_RULES.hint, hintBtn);
 
   const pick = remaining[Math.floor(Math.random() * remaining.length)];
   const msg = pick.correct === ""
@@ -823,7 +817,6 @@ function buildFinalColoredHTML(levelDef, userText){
   for (const rule of levelDef.rules){
     const c = String(rule.correct ?? "");
     if (!c) continue;
-
     const safe = c.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     const reCorrect = new RegExp(safe, "g");
     html = html.replace(reCorrect, (m) => `<span class="final-correct">${escapeHtml(m)}</span>`);
@@ -875,6 +868,7 @@ function showFinal(){
 }
 
 restartBtn?.addEventListener("click", () => showOnly(screenForm));
+
 /** =========================
  * Início / nível
  * ========================= */
@@ -1058,7 +1052,6 @@ async function openRankingModal(){
             </tbody>
           </table>
         </div>
-
         <p class="muted" style="margin-top:12px">
           Ranking agregado por setor (sem nomes), conforme LGPD.
         </p>
@@ -1083,39 +1076,27 @@ async function openRankingModal(){
 }
 
 /** =========================
- * Personalização
+ * Personalização (apenas paleta + intensidade + neve/renas)
  * ========================= */
 customizeBtn?.addEventListener("click", openCustomizeModal);
 openCustomizeInline?.addEventListener("click", openCustomizeModal);
 
 const THEME_PRESETS = {
-  classic: { name:"Clássico", accent:"#e53935", bgA:"#0b1020", bgB:"#1a2d5a" },
-  candy:   { name:"Candy Cane", accent:"#ff2e63", bgA:"#240024", bgB:"#001a33" },
-  neon:    { name:"Neon Noel", accent:"#00ffd5", bgA:"#001016", bgB:"#06223a" },
-  aurora:  { name:"Aurora", accent:"#7c4dff", bgA:"#001b2e", bgB:"#0b3d2e" },
-  gold:    { name:"Dourado", accent:"#ffcc00", bgA:"#1a1200", bgB:"#3b2a00" },
+  classic: { name:"Clássico", accent:"#e53935", bg:"#0b1020" },
+  candy:   { name:"Candy Cane", accent:"#ff2e63", bg:"#140a12" },
+  neon:    { name:"Neon Noel", accent:"#00ffd5", bg:"#001016" },
+  aurora:  { name:"Aurora", accent:"#7c4dff", bg:"#071022" },
+  gold:    { name:"Dourado", accent:"#ffcc00", bg:"#140f02" },
 };
 
 function saveTheme(obj){ localStorage.setItem("mission_theme", JSON.stringify(obj)); }
 function loadTheme(){
   try {
     return JSON.parse(localStorage.getItem("mission_theme")||"null") || {
-      snow:true, reindeer:true,
-      preset:"classic", intensity: 1
+      snow:true, reindeer:true, preset:"classic", intensity: 1
     };
   } catch {
-    return { snow:true, lights:false, reindeer:true, preset:"classic", intensity: 1 };
-  }
-}
-
-function ensureLightsBulbs(){
-  if (!lightsEl) return;
-  if (lightsEl.querySelector(".bulb")) return;
-  const bulbs = 18;
-  for (let i=0;i<bulbs;i++){
-    const b = document.createElement("span");
-    b.className = "bulb";
-    lightsEl.appendChild(b);
+    return { snow:true, reindeer:true, preset:"classic", intensity: 1 };
   }
 }
 
@@ -1155,14 +1136,14 @@ function openCustomizeModal(){
 
       <div style="display:grid; gap:10px">
         <div>
-          <b>Tema de cores</b>
-          <div class="muted" style="margin:2px 0 8px">Escolha um visual mais vivo.</div>
+          <b>Paleta</b>
+          <div class="muted" style="margin:2px 0 8px">Escolha uma cor principal.</div>
           <select class="input" id="optPreset">${presetOptions}</select>
         </div>
 
         <div>
           <b>Intensidade</b>
-          <div class="muted" style="margin:2px 0 8px">Quanto mais alto, mais chamativo.</div>
+          <div class="muted" style="margin:2px 0 8px">Quanto mais alto, mais vivo.</div>
           <input id="optIntensity" type="range" min="0.8" max="1.6" step="0.05" value="${saved.intensity ?? 1}" style="width:100%"/>
         </div>
       </div>
@@ -1179,7 +1160,6 @@ function openCustomizeModal(){
     const applyNow = () => {
       const cfg = {
         snow: !!optSnow?.checked,
-        lights: !!optLights?.checked,
         reindeer: !!optReindeer?.checked,
         preset: optPreset?.value || "classic",
         intensity: Number(optIntensity?.value || 1),
@@ -1203,13 +1183,11 @@ function applyTheme({ snow, reindeer, preset="classic", intensity=1 }){
   const p = THEME_PRESETS[preset] || THEME_PRESETS.classic;
   const root = document.documentElement;
   root.style.setProperty("--accent", p.accent);
-  root.style.setProperty("--bgA", p.bgA);
-  root.style.setProperty("--bgB", p.bgB);
+  root.style.setProperty("--bg", p.bg);
   root.style.setProperty("--intensity", String(intensity));
 
   const snowCanvas = document.getElementById("snow");
   if (snowCanvas) snowCanvas.style.display = snow ? "block" : "none";
-
 
   if (reindeer){
     reindeerLayer?.classList.remove("hidden");
@@ -1227,11 +1205,13 @@ function startReindeer(){
   if (reindeerTimer) clearInterval(reindeerTimer);
   reindeerTimer = setInterval(spawnReindeerWave, 3200);
 }
+
 function stopReindeer(){
   if (reindeerTimer) clearInterval(reindeerTimer);
   reindeerTimer = null;
   if (reindeerLayer) reindeerLayer.innerHTML = "";
 }
+
 function spawnReindeerWave(){
   if (!reindeerLayer) return;
   const emojis = ["🦌","🦌","🦌","🛷","🦌"];
@@ -1339,6 +1319,26 @@ function showOnly(screen){
     el.classList.toggle("hidden", el !== screen);
   }
 }
+
+/** =========================
+ * LGPD modal (se existir botão)
+ * ========================= */
+lgpdMoreBtn?.addEventListener("click", () => {
+  openModal({
+    title: "LGPD — Informações sobre tratamento de dados",
+    bodyHTML: `
+      <p class="muted">Esta dinâmica é recreativa e foi criada para destacar a importância da revisão editorial.</p>
+      <h3 style="margin:14px 0 6px">Quais dados são coletados?</h3>
+      <ul style="margin:0; padding-left:18px; color:rgba(255,255,255,.74); line-height:1.6">
+        <li><strong>Nome</strong>: usado apenas para exibir a mensagem de parabéns no final.</li>
+        <li><strong>Setor</strong>: usado para consolidar o ranking de forma <strong>agregada por setor</strong>.</li>
+      </ul>
+      <h3 style="margin:14px 0 6px">Compartilhamento</h3>
+      <p class="muted">Não há compartilhamento de informações pessoais no ranking. O ranking mostra apenas números por setor.</p>
+    `,
+    buttons: [{ label: "Fechar", onClick: closeModal }]
+  });
+});
 
 // Boot
 populateSectors();

@@ -6,191 +6,194 @@
   <meta name="theme-color" content="#0b1020" />
   <title>Missão Editorial de Natal 🎄</title>
 
-  <!-- ✅ favicon data-url (SVG url-encoded) -->
   <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A//www.w3.org/2000/svg%27%20viewBox%3D%270%200%20100%20100%27%3E%3Ctext%20y%3D%270.9em%27%20font-size%3D%2790%27%3E%F0%9F%8E%84%3C/text%3E%3C/svg%3E">
 
   <link rel="stylesheet" href="css/style.css" />
 </head>
 
 <body>
-  <canvas id="snow"></canvas>
+  <!-- fundos (fixos via CSS) -->
+  <canvas id="snow" aria-hidden="true"></canvas>
   <div id="reindeerLayer" class="reindeer-layer hidden" aria-hidden="true"></div>
 
   <main class="app">
-    <header class="topbar">
-      <div class="brand">
-        <span class="badge">🎅 Missão do Editor-Chefe</span>
-        <h1 id="headerTitle">Revisão da Mensagem de Natal</h1>
-      </div>
+    <!-- wrapper central para layout consistente -->
+    <div class="container">
 
-      <div class="top-actions">
-        <button class="icon-btn" id="customizeBtn" title="Personalizar" type="button">⚙️</button>
-        <button class="icon-btn" id="rankingBtn" title="Ranking" type="button">🏆</button>
-      </div>
-    </header>
-
-    <!-- Loading fake -->
-    <section class="card" id="screenLoading">
-      <div class="card-inner center">
-        <img class="logo-pulse" src="img/logo-natal.png" alt="Logo natalina" />
-        <h2 class="loading-title">Preparando sua missão…</h2>
-        <p class="muted">Carregando o conteúdo especial de Natal ❄️</p>
-      </div>
-    </section>
-
-    <!-- Form -->
-    <section class="card hidden" id="screenForm">
-      <div class="card-inner">
-        <h2 class="h2">Antes de começar</h2>
-        <p class="muted">
-          Informe seu nome e selecione seu setor para registrar o desempenho <strong>por setor</strong>.
-        </p>
-
-        <div class="form-grid">
-          <label class="field">
-            <span>Nome</span>
-            <input class="input" id="userName" placeholder="Ex.: Rafael" maxlength="60" />
-          </label>
-
-          <label class="field">
-            <span>Setor</span>
-            <select class="input" id="userSector"></select>
-          </label>
+      <header class="topbar">
+        <div class="brand">
+          <span class="badge">🎅 Missão do Editor-Chefe</span>
+          <h1 id="headerTitle">Revisão da Mensagem de Natal</h1>
         </div>
 
-        <!-- ✅ Switch: participar do ranking -->
-        <div class="toggle-row" style="margin-top:10px">
-          <div class="toggle-text">
-            <b>Participar do ranking</b>
-            <small class="muted">Se desligado, seu resultado não entra nas estatísticas.</small>
-          </div>
-
-          <label class="switch" aria-label="Participar do ranking">
-            <input type="checkbox" id="optRanking" checked>
-            <span class="slider"></span>
-          </label>
+        <div class="top-actions">
+          <button class="icon-btn" id="customizeBtn" title="Personalizar" type="button">⚙️</button>
+          <button class="icon-btn" id="rankingBtn" title="Ranking" type="button">🏆</button>
         </div>
+      </header>
 
-        <div class="lgpd-box">
-          <p class="lgpd-title">Observação</p>
-          <p class="muted" style="margin:6px 0 0">
-            Os erros e correções serão apresentados ao final da atividade. <br>
-            Não se preocupe com seu desempenho: esta atividade busca interatividade e curiosidades sobre o trabalho editorial!
+      <!-- Loading fake -->
+      <section class="card" id="screenLoading">
+        <div class="card-inner center">
+          <img class="logo-pulse" src="img/logo-natal.png" alt="Logo natalina" />
+          <h2 class="loading-title">Preparando sua missão…</h2>
+          <p class="muted">Carregando o conteúdo especial de Natal ❄️</p>
+        </div>
+      </section>
+
+      <!-- Form -->
+      <section class="card hidden" id="screenForm">
+        <div class="card-inner">
+          <h2 class="h2">Antes de começar</h2>
+          <p class="muted">
+            Informe seu nome e selecione seu setor para registrar o desempenho <strong>por setor</strong>.
           </p>
-        </div>
 
-        <div class="lgpd-box">
-          <p class="lgpd-title">LGPD</p>
-          <p class="muted" style="margin:6px 0 0">
-            Seguimos as diretrizes da LGPD e não faremos compartilhamento de informações pessoais.
-            O ranking exibe apenas resultados <strong>agregados por setor</strong>.
-            <button type="button" class="linklike" id="lgpdMoreBtn">Saiba mais</button>
-          </p>
-        </div>
+          <div class="form-grid">
+            <label class="field">
+              <span>Nome</span>
+              <input class="input" id="userName" placeholder="Ex.: Rafael" maxlength="60" />
+            </label>
 
-        <div class="actions">
-          <button class="btn" id="startBtn" type="button">Iniciar missão</button>
-        </div>
-      </div>
-    </section>
-
-    <!-- Game -->
-    <section class="card hidden" id="screenGame">
-      <div class="card-inner">
-        <div class="status-row">
-          <div class="pill">Nível: <strong id="levelLabel">Fácil</strong></div>
-          <div class="pill">Correções a serem feitas: <strong id="remainingCount">0</strong>/<span id="totalFix">0</span></div>
-          <div class="pill pill-danger">Erros: <strong id="wrongCount">0</strong></div>
-          <div class="pill">Pontos: <strong id="scoreCount">0</strong></div>
-        </div>
-
-        <p class="lead" id="instruction"></p>
-        <article class="message" id="messageArea" aria-label="Mensagem para revisar"></article>
-
-        <div class="hintbar">
-          💡 Dica: você pode <button class="linklike" id="openCustomizeInline" type="button">personalizar a página</button> a qualquer momento.
-        </div>
-
-        <div class="actions">
-          <button id="hintBtn" class="btn ghost" type="button">Me dê uma cola!</button>
-          <!-- ✅ ID correto confirmado por você -->
-          <button id="autoFixBtn" class="btn ghost" type="button">Corrigir automaticamente</button>
-          <button id="nextLevelBtn" class="btn btn-disabled" aria-disabled="true" type="button">Próximo nível</button>
-        </div>
-      </div>
-    </section>
-
-    <!-- Final -->
-    <section class="card hidden" id="screenFinal">
-      <div class="card-inner center">
-        <h2 class="final-title">🎄</h2>
-
-        <p class="final-text" id="finalCongrats"></p>
-        <div class="stat-grid" id="finalStatGrid"></div>
-
-        <p class="final-sub" id="finalStats"></p>
-        <p class="final-sub" id="finalRecado"></p>
-
-        <br>
-        <div class="epigraph" id="epigraphBox"></div>
-        <br>
-
-        <p class="final-sub">Veja as mensagens que você acabou de corrigir:</p>
-
-        <div class="final-activity">
-          <div class="final-activity-head">
-            <strong>Atividade 1 — Fácil</strong>
-            <button class="btn mini ghost" id="reviewBtn1" type="button">Correções e justificativas</button>
+            <label class="field">
+              <span>Setor</span>
+              <select class="input" id="userSector"></select>
+            </label>
           </div>
-          <div class="final-box" id="finalBox1"></div>
-        </div>
 
-        <div class="final-activity">
-          <div class="final-activity-head">
-            <strong>Atividade 2 — Médio</strong>
-            <button class="btn mini ghost" id="reviewBtn2" type="button">Correções e justificativas</button>
+          <div class="toggle-row" style="margin-top:10px">
+            <div class="toggle-text">
+              <b>Participar do ranking</b>
+              <small class="muted">Se desligado, seu resultado não entra nas estatísticas.</small>
+            </div>
+
+            <label class="switch" aria-label="Participar do ranking">
+              <input type="checkbox" id="optRanking" checked>
+              <span class="slider"></span>
+            </label>
           </div>
-          <div class="final-box" id="finalBox2"></div>
-        </div>
 
-        <div class="final-activity">
-          <div class="final-activity-head">
-            <strong>Atividade 3 — Difícil</strong>
-            <button class="btn mini ghost" id="reviewBtn3" type="button">Correções e justificativas</button>
+          <div class="lgpd-box">
+            <p class="lgpd-title">Observação</p>
+            <p class="muted" style="margin:6px 0 0">
+              Os erros e correções serão apresentados ao final da atividade. <br>
+              Não se preocupe com seu desempenho: esta atividade busca interatividade e curiosidades sobre o trabalho editorial!
+            </p>
           </div>
-          <div class="final-box" id="finalBox3"></div>
+
+          <div class="lgpd-box">
+            <p class="lgpd-title">LGPD</p>
+            <p class="muted" style="margin:6px 0 0">
+              Seguimos as diretrizes da LGPD e não faremos compartilhamento de informações pessoais.
+              O ranking exibe apenas resultados <strong>agregados por setor</strong>.
+              <button type="button" class="linklike" id="lgpdMoreBtn">Saiba mais</button>
+            </p>
+          </div>
+
+          <div class="actions">
+            <button class="btn" id="startBtn" type="button">Iniciar missão</button>
+          </div>
         </div>
+      </section>
 
-        <hr>
+      <!-- Game -->
+      <section class="card hidden" id="screenGame">
+        <div class="card-inner">
+          <div class="status-row">
+            <div class="pill">Nível: <strong id="levelLabel">Fácil</strong></div>
+            <div class="pill">Correções a serem feitas: <strong id="remainingCount">0</strong>/<span id="totalFix">0</span></div>
+            <div class="pill pill-danger">Erros: <strong id="wrongCount">0</strong></div>
+            <div class="pill">Pontos: <strong id="scoreCount">0</strong></div>
+          </div>
 
-        <div class="credits">
-          <p class="credits-title"><strong>Com carinho:</strong></p>
-          <p class="credits-names">
-            Aline dos Santos Carneiro<br>
-            Amanda Firme<br>
-            Anna Catharina Miranda<br>
-            Bianca Gribel<br>
-            Edrian Josué Pasini<br>
-            Eric Parrot<br>
-            Leonardo A.R.T. dos Santos<br>
-            Marilac Loraine Oleniki<br>
-            Mirela de Oliveira<br>
-            Rafael de Oliveira<br>
-            Samuel Rezende<br>
-            Verônica M. Guedes<br>
-            Vitória Firmino<br>
-            Welder Lancieri Marchini
-          </p>
+          <p class="lead" id="instruction"></p>
+          <article class="message" id="messageArea" aria-label="Mensagem para revisar"></article>
+
+          <div class="hintbar">
+            💡 Dica: você pode <button class="linklike" id="openCustomizeInline" type="button">personalizar a página</button> a qualquer momento.
+          </div>
+
+          <div class="actions">
+            <button id="hintBtn" class="btn ghost" type="button">Me dê uma cola!</button>
+            <button id="autoFixBtn" class="btn ghost" type="button">Corrigir automaticamente</button>
+            <button id="nextLevelBtn" class="btn btn-disabled" aria-disabled="true" type="button">Próximo nível</button>
+          </div>
         </div>
+      </section>
 
-        <hr>
+      <!-- Final -->
+      <section class="card hidden" id="screenFinal">
+        <div class="card-inner center">
+          <h2 class="final-title">🎄</h2>
 
-        <div class="actions center-actions">
-          <button class="btn" id="finalRankingBtn" type="button">Ver ranking</button>
-          <button class="btn ghost" id="restartBtn" type="button">Recomeçar</button>
+          <p class="final-text" id="finalCongrats"></p>
+          <div class="stat-grid" id="finalStatGrid"></div>
+
+          <p class="final-sub" id="finalStats"></p>
+          <p class="final-sub" id="finalRecado"></p>
+
+          <br>
+          <div class="epigraph" id="epigraphBox"></div>
+          <br>
+
+          <p class="final-sub">Veja as mensagens que você acabou de corrigir:</p>
+
+          <div class="final-activity">
+            <div class="final-activity-head">
+              <strong>Atividade 1 — Fácil</strong>
+              <button class="btn mini ghost" id="reviewBtn1" type="button">Correções e justificativas</button>
+            </div>
+            <div class="final-box" id="finalBox1"></div>
+          </div>
+
+          <div class="final-activity">
+            <div class="final-activity-head">
+              <strong>Atividade 2 — Médio</strong>
+              <button class="btn mini ghost" id="reviewBtn2" type="button">Correções e justificativas</button>
+            </div>
+            <div class="final-box" id="finalBox2"></div>
+          </div>
+
+          <div class="final-activity">
+            <div class="final-activity-head">
+              <strong>Atividade 3 — Difícil</strong>
+              <button class="btn mini ghost" id="reviewBtn3" type="button">Correções e justificativas</button>
+            </div>
+            <div class="final-box" id="finalBox3"></div>
+          </div>
+
+          <hr>
+
+          <div class="credits">
+            <p class="credits-title"><strong>Com carinho:</strong></p>
+            <p class="credits-names">
+              Aline dos Santos Carneiro<br>
+              Amanda Firme<br>
+              Anna Catharina Miranda<br>
+              Bianca Gribel<br>
+              Edrian Josué Pasini<br>
+              Eric Parrot<br>
+              Leonardo A.R.T. dos Santos<br>
+              Marilac Loraine Oleniki<br>
+              Mirela de Oliveira<br>
+              Rafael de Oliveira<br>
+              Samuel Rezende<br>
+              Verônica M. Guedes<br>
+              Vitória Firmino<br>
+              Welder Lancieri Marchini
+            </p>
+          </div>
+
+          <hr>
+
+          <div class="actions center-actions">
+            <button class="btn" id="finalRankingBtn" type="button">Ver ranking</button>
+            <button class="btn ghost" id="restartBtn" type="button">Recomeçar</button>
+          </div>
         </div>
-      </div>
-    </section>
+      </section>
+
+    </div>
   </main>
 
   <!-- Modal -->
