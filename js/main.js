@@ -941,17 +941,6 @@ function disableRudolphFollow(){
   window.addEventListener("resize", ()=>{ resize(); refill(); });
   resize(); refill(); tick();
 })();
-
-/** Boot */
-function populateSectors(){
-  userSectorEl.innerHTML = "";
-  for (const s of SECTORS){
-    const opt = document.createElement("option");
-    opt.value = s === "Selecione…" ? "" : s;
-    opt.textContent = s;
-    userSectorEl.appendChild(opt);
-  }
-}
 populateSectors();
 
 applyTheme(loadTheme());
@@ -962,3 +951,4 @@ setTimeout(() => {
   userNameEl.value = localStorage.getItem("mission_name") || "";
   userSectorEl.value = localStorage.getItem("mission_sector") || "";
 }, 1100);
+
