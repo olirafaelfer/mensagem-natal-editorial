@@ -1,14 +1,10 @@
 // js/main.js (module)
 
-// Firebase (opcional; não quebra se não configurar)
+// Firebase opcional (ranking não quebra se não configurar)
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js";
-import {
-  getFirestore, doc, getDoc, runTransaction, serverTimestamp
-} from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
+import { getFirestore, doc, getDoc, runTransaction, serverTimestamp } from
+  "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
 
-/** =========================
- *  Firebase config (cole aqui quando for configurar)
- *  ========================= */
 const firebaseConfig = {
   // apiKey: "...",
   // authDomain: "...",
@@ -17,24 +13,20 @@ const firebaseConfig = {
 };
 
 let db = null;
-function hasFirebaseConfig(cfg){
-  return !!(cfg && cfg.apiKey && cfg.projectId && cfg.appId);
-}
+function hasFirebaseConfig(cfg){ return !!(cfg && cfg.apiKey && cfg.projectId && cfg.appId); }
 try{
   if (hasFirebaseConfig(firebaseConfig)){
     const app = initializeApp(firebaseConfig);
     db = getFirestore(app);
   } else {
-    console.warn("[Modo local] Firebase não configurado. Ranking ficará indisponível.");
+    console.warn("[Modo local] Firebase não configurado. Ranking indisponível.");
   }
-} catch (e){
-  console.warn("[Modo local] Falha ao inicializar Firebase. Ranking ficará indisponível.", e);
+} catch(e){
+  console.warn("[Modo local] Firebase falhou. Ranking indisponível.", e);
   db = null;
 }
 
-/** =========================
- *  Setores (substitua aqui com sua lista real)
- *  ========================= */
+/** Setores (substitua depois com sua lista real) */
 const SECTORS = [
   "Selecione…",
   "Financeiro",
@@ -44,58 +36,61 @@ const SECTORS = [
   "Comercial"
 ];
 
-/** =========================
- *  Níveis (ÚLTIMOS que você testou)
- *  - Médio: vírgulas crassas + concordância
- *  - Difícil: colocação pronominal + vírgula indevida + “os ame”
- *  ========================= */
+/**
+ * Motor novo:
+ * - Cada erro vira um “trecho” clicável (errchunk) com start/len
+ * - Vírgulas podem ser o próprio erro (regex que casa só a vírgula)
+ * - Colocação pronominal seleciona trecho inteiro (“No Natal, se deve pensar”)
+ */
 const levels = [
   {
     name: "Fácil",
     intro: `O Papai Noel, editor-chefe, pediu sua ajuda para revisar a Mensagem de Natal.
 Ele escreveu tão rápido que acabou deixando três errinhos para trás.`,
-    instruction: `Os erros podem envolver acentuação, ortografia, gramática e outros detalhes editoriais. Clique nas palavras incorretas para ajudar o Papai Noel nesta importante missão!`,
+    instruction: `Os erros podem envolver acentuação, ortografia, gramática e outros detalhes editoriais. Clique nos trechos incorretos para corrigir!`,
     raw: `Mais do que presentes e refeissões caprichadas, o Natal é a época de lembrar o valor de um abraço apertado e de um sorriso sincero! Que para voces, meus amigos, seja uma época xeia de carinho e amor, preenchida pelo que realmente importa nessa vida!`,
-    // regras de correção (regex)
     rules: [
-      { id:"f1", type:"word", trigger:"refeissões", wrong:/\brefeissões\b/g, correct:"refeições" },
-      { id:"f2", type:"word", trigger:"voces",     wrong:/\bvoces\b/g,     correct:"vocês" },
-      { id:"f3", type:"word", trigger:"xeia",      wrong:/\bxeia\b/g,      correct:"cheia" }
+      { id:"f1", label:"Ortografia",  wrong:/\brefeissões\b/g, correct:"refeições" },
+      { id:"f2", label:"Acentuação", wrong:/\bvoces\b/g,      correct:"vocês" },
+      { id:"f3", label:"Ortografia", wrong:/\bxeia\b/g,       correct:"cheia" },
     ]
   },
   {
     name: "Médio",
-    intro: `Agora o desafio aumenta. Aqui aparecem erros editoriais objetivos: vírgulas mal colocadas e concordância.`,
-    instruction: `Atenção: os erros podem envolver pontuação, concordância, acentuação e ortografia. Clique nos pontos problemáticos e corrija.`,
+    intro: `Nível médio: aqui aparecem erros editoriais objetivos, especialmente vírgulas mal colocadas e concordância.`,
+    instruction: `Atenção: os erros podem envolver pontuação (inclusive vírgulas indevidas), concordância, acentuação e ortografia.`,
     raw: `O Natal, é um momento especial para celebrar a união e a esperança. As mensagens, que circulam nessa época, precisam transmitir carinho e acolhimento, mas muitas vezes, acabam sendo escritas de forma apressada. Os textos natalinos, exige atenção aos detalhes, para que a mensagem chegue clara ao leitor.`,
     rules: [
-      { id:"m1", type:"word", trigger:"Natal",      wrong:/\bNatal,\b/g,      correct:"Natal" },
-      { id:"m2", type:"word", trigger:"mensagens",  wrong:/\bmensagens,\b/g,  correct:"mensagens" },
-      { id:"m3", type:"word", trigger:"vezes",      wrong:/\bvezes,\b/g,      correct:"vezes" },
-      { id:"m4", type:"word", trigger:"natalinos",  wrong:/\bnatalinos,\b/g,  correct:"natalinos" },
-      { id:"m5", type:"word", trigger:"exige",      wrong:/\bexige\b/g,       correct:"exigem" }
+      // vírgulas indevidas — aqui você consegue clicar NA VÍRGULA
+      { id:"m1", label:"Pontuação",  wrong:/(?<=\bNatal),/g,        correct:"" },
+      { id:"m2", label:"Pontuação",  wrong:/(?<=\bmensagens),/g,    correct:"" },
+      { id:"m3", label:"Pontuação",  wrong:/(?<=\bvezes),/g,        correct:"" },
+      { id:"m4", label:"Pontuação",  wrong:/(?<=\bnatalinos),/g,    correct:"" },
+
+      // concordância
+      { id:"m5", label:"Concordância", wrong:/\bexige\b/g, correct:"exigem" },
     ]
   },
   {
     name: "Difícil",
-    intro: `Nível difícil: além de ortografia e pontuação, entram escolhas editoriais como colocação pronominal e paralelismo.`,
-    instruction: `Os erros podem envolver pontuação, gramática e colocação pronominal. Leia com atenção e corrija com precisão.`,
+    intro: `Nível difícil: desafios reais de edição — colocação pronominal, pontuação e paralelismo.`,
+    instruction: `Erros podem envolver pontuação, gramática e colocação pronominal. Clique no trecho inteiro que precisa ser reescrito.`,
     raw: `No Natal, se deve pensar no amor ao próximo e na importância da empatia. Aos pais, respeite-os; aos filhos, os ame; aos necessitados, ajude-os. Essas atitudes, reforçam os valores natalinos e mostram como a revisão textual é essencial para evitar ruídos na comunicação.`,
     rules: [
-      // colocação pronominal: "No Natal, se deve pensar" -> "No Natal, deve-se pensar"
-      { id:"d1", type:"phrase", trigger:"se", wrong:/No Natal,\s*se deve pensar/g, correct:"No Natal, deve-se pensar" },
+      // colocação pronominal (trecho inteiro clicável)
+      { id:"d1", label:"Colocação pronominal", wrong:/No Natal,\s*se deve pensar/g, correct:"No Natal, deve-se pensar" },
 
-      // após vírgula: "aos filhos, os ame" -> "aos filhos, ame-os"
-      { id:"d2", type:"phrase", trigger:"os", wrong:/aos filhos,\s*os ame/gi, correct:"aos filhos, ame-os" },
+      // paralelismo/colocação pronominal (trecho clicável)
+      { id:"d2", label:"Colocação pronominal", wrong:/aos filhos,\s*os ame/gi, correct:"aos filhos, ame-os" },
 
-      // vírgula separando sujeito do verbo: "Essas atitudes, reforçam" -> "Essas atitudes reforçam"
-      { id:"d3", type:"word", trigger:"atitudes", wrong:/\b(atitudes),\b/g, correct:"$1" }
+      // vírgula separando sujeito do verbo (clicar na vírgula)
+      { id:"d3", label:"Pontuação", wrong:/(?<=\batitudes),/g, correct:"" },
     ]
   }
 ];
 
 /** =========================
- *  Elementos / telas
+ *  Elementos
  *  ========================= */
 const screenLoading = document.getElementById("screenLoading");
 const screenForm = document.getElementById("screenForm");
@@ -133,9 +128,10 @@ const lgpdMoreBtn = document.getElementById("lgpdMoreBtn");
 
 const lightsEl = document.getElementById("lights");
 const reindeerLayer = document.getElementById("reindeerLayer");
+const rudolph = document.getElementById("rudolph");
 
 /** =========================
- *  Modal genérico
+ *  Modal
  *  ========================= */
 const overlay = document.getElementById("overlay");
 const modalTitle = document.getElementById("modalTitle");
@@ -167,9 +163,7 @@ function closeModal(){
   setTimeout(() => overlay.classList.add("hidden"), 180);
 }
 
-/** =========================
- *  LGPD modal (funciona no Opera)
- *  ========================= */
+/** LGPD em popup */
 lgpdMoreBtn.addEventListener("click", () => {
   openModal({
     title: "LGPD — Informações sobre tratamento de dados",
@@ -179,7 +173,7 @@ lgpdMoreBtn.addEventListener("click", () => {
       </p>
 
       <h3 style="margin:14px 0 6px">Quais dados são coletados?</h3>
-      <ul style="margin:0; padding-left:18px; color:rgba(255,255,255,.72); line-height:1.6">
+      <ul style="margin:0; padding-left:18px; color:rgba(255,255,255,.74); line-height:1.6">
         <li><strong>Nome</strong>: usado apenas para exibir a mensagem de parabéns no final.</li>
         <li><strong>Setor</strong>: usado para consolidar o ranking de forma <strong>agregada por setor</strong>.</li>
       </ul>
@@ -206,9 +200,9 @@ let fixedRuleIds = new Set();
 let wrongAttempts = 0;
 let allowAuto = false;
 
-let currentText = "";           // texto “vivo” do nível (vai sendo corrigido)
-let currentRules = [];          // regras do nível
-const correctedHTMLByLevel = []; // para mostrar no final
+let currentText = "";
+let currentRules = [];
+const correctedHTMLByLevel = [];
 
 function normalize(str){
   return (str || "")
@@ -248,101 +242,159 @@ function resetLevelState(){
 }
 
 /** =========================
- *  Tokenização clicável (preserva pontuação como texto)
+ *  Render: erros como trechos clicáveis
  *  ========================= */
-function buildClickableMessage(text){
-  const tokens = text.split(/(\s+)/);
-  const frag = document.createDocumentFragment();
+function ensureGlobal(re){
+  const flags = re.flags.includes("g") ? re.flags : (re.flags + "g");
+  return new RegExp(re.source, flags);
+}
 
-  tokens.forEach(tok => {
-    if (/^\s+$/.test(tok)) {
-      frag.appendChild(document.createTextNode(tok));
-      return;
+function findNextMatch(text, pos, rule){
+  const re = ensureGlobal(rule.wrong);
+  re.lastIndex = pos;
+  const m = re.exec(text);
+  if (!m) return null;
+  return { index: m.index, text: m[0], len: m[0].length };
+}
+
+function tokenizePlainSegment(segText){
+  // mantém palavras e pontuações em spans clicáveis
+  // separa por espaços mas também “quebra” pontuação básica
+  const out = [];
+  let buf = "";
+
+  const pushBuf = () => { if (buf){ out.push({type:"word", val:buf}); buf=""; } };
+
+  for (let i=0;i<segText.length;i++){
+    const ch = segText[i];
+
+    if (ch === " " || ch === "\n" || ch === "\t"){
+      pushBuf();
+      out.push({type:"ws", val:ch});
+      continue;
     }
 
-    // separa pontuação “grudada”, mas mantém a palavra limpa clicável
-    const m = tok.match(/^([“"(']*)(.+?)([”"')!?,.:;]*)$/);
-    if (!m){
-      frag.appendChild(document.createTextNode(tok));
-      return;
+    // pontuação clicável
+    if (",.;:!?".includes(ch)){
+      pushBuf();
+      out.push({type:"punct", val:ch});
+      continue;
     }
 
-    const [, pre, core, post] = m;
+    buf += ch;
+  }
+  pushBuf();
+  return out;
+}
 
-    if (pre) frag.appendChild(document.createTextNode(pre));
-
-    const span = document.createElement("span");
-    span.className = "word";
-    span.dataset.word = core; // sem pontuação final
-    span.textContent = core;
-    span.addEventListener("click", () => onWordClick(span));
-    frag.appendChild(span);
-
-    if (post) frag.appendChild(document.createTextNode(post));
-  });
-
+function renderMessage(){
+  messageArea.classList.remove("show");
   messageArea.innerHTML = "";
+
+  const frag = document.createDocumentFragment();
+  const text = currentText;
+  let pos = 0;
+
+  while (pos < text.length){
+    // acha o próximo erro não corrigido
+    let best = null;
+    let bestRule = null;
+
+    for (const rule of currentRules){
+      if (fixedRuleIds.has(rule.id)) continue;
+      const m = findNextMatch(text, pos, rule);
+      if (!m) continue;
+      if (!best || m.index < best.index){
+        best = m;
+        bestRule = rule;
+      }
+    }
+
+    if (!best){
+      // resto é texto normal
+      appendPlain(frag, text.slice(pos));
+      break;
+    }
+
+    // texto normal antes do erro
+    if (best.index > pos){
+      appendPlain(frag, text.slice(pos, best.index));
+    }
+
+    // erro: trecho clicável
+    const errSpan = document.createElement("span");
+    errSpan.className = "errchunk";
+    errSpan.textContent = best.text;
+    errSpan.dataset.ruleid = bestRule.id;
+    errSpan.dataset.start = String(best.index);
+    errSpan.dataset.len = String(best.len);
+    errSpan.addEventListener("click", () => onErrorChunkClick(errSpan, bestRule));
+    frag.appendChild(errSpan);
+
+    pos = best.index + best.len;
+  }
+
   messageArea.appendChild(frag);
   requestAnimationFrame(() => messageArea.classList.add("show"));
 }
 
-function markWordCorrected(span){
-  span.classList.remove("error");
-  span.classList.add("corrected");
-  span.dataset.fixed = "1";
+function appendPlain(frag, plainText){
+  const tokens = tokenizePlainSegment(plainText);
+  for (const t of tokens){
+    if (t.type === "ws"){
+      frag.appendChild(document.createTextNode(t.val));
+      continue;
+    }
+
+    const span = document.createElement("span");
+    span.textContent = t.val;
+    span.className = (t.type === "punct") ? "punct" : "word";
+    span.addEventListener("click", () => onPlainTokenClick(span));
+    frag.appendChild(span);
+  }
 }
 
-function onWordClick(span){
-  const clicked = span.dataset.word || "";
-
-  // 1) procurar regra “ativa” cujo trigger combine
-  const rule = currentRules.find(r =>
-    !fixedRuleIds.has(r.id) &&
-    normalize(r.trigger) === normalize(clicked)
-  );
-
-  // se não é erro “alvo”, conta como erro e marca vermelho (1x por palavra)
-  if (!rule){
-    if (span.dataset.misclick !== "1"){
-      span.dataset.misclick = "1";
-      wrongAttempts += 1;
-      updateCounters();
-      unlockAutoIfNeeded();
-      span.classList.add("error");
-    }
-    openModal({
-      title: "Revisão",
-      bodyHTML: `<p><strong>Hmmm...</strong> A palavra que você clicou já está correta...</p>`,
-      buttons: [{ label: "Entendi", onClick: closeModal }]
-    });
-    return;
+function onPlainTokenClick(span){
+  // clicou em algo que NÃO é erro: conta como erro e marca vermelho
+  if (span.dataset.misclick !== "1"){
+    span.dataset.misclick = "1";
+    wrongAttempts += 1;
+    updateCounters();
+    unlockAutoIfNeeded();
+    span.classList.add("error");
   }
 
-  // já corrigiu esse “ponto” (regra)
-  if (fixedRuleIds.has(rule.id)){
-    openModal({
-      title: "Tudo certo!",
-      bodyHTML: `<p>Essa correção já foi feita. ✅</p>`,
-      buttons: [{ label: "Fechar", onClick: closeModal }]
-    });
-    return;
-  }
-
-  // pedir a correção
   openModal({
-    title: "Corrigir",
+    title: "Revisão",
+    bodyHTML: `<p><strong>Hmmm...</strong> O trecho que você clicou já está correto...</p>`,
+    buttons: [{ label: "Entendi", onClick: closeModal }]
+  });
+}
+
+function onErrorChunkClick(errSpan, rule){
+  const wrongText = errSpan.textContent || "";
+  const expected = rule.correct;
+
+  const hint =
+    expected === ""
+      ? `<p class="muted" style="margin:10px 0 0">Dica: deixe em branco para <strong>remover</strong> este sinal.</p>`
+      : `<p class="muted" style="margin:10px 0 0">Erros podem envolver acentuação, ortografia, gramática, pontuação e colocação pronominal.</p>`;
+
+  openModal({
+    title: `Corrigir (${rule.label})`,
     bodyHTML: `
-      <p>Você clicou em: <strong>${clicked}</strong></p>
-      <p>Digite a forma correta:</p>
-      <input class="input" id="fixInput" type="text" autocomplete="off" placeholder="Digite aqui..." />
-      <p class="muted" style="margin:10px 0 0">
-        Lembrete: os erros podem envolver acentuação, ortografia, pontuação, concordância, colocação pronominal etc.
-      </p>
+      <p>Trecho selecionado:</p>
+      <p style="margin:8px 0 0"><strong>${escapeHtml(wrongText)}</strong></p>
+
+      <p style="margin:12px 0 6px">Digite a forma correta:</p>
+      <input class="input" id="fixInput" type="text" autocomplete="off" placeholder="${expected === "" ? "Deixe em branco para remover" : "Digite aqui..."}" />
+
+      ${hint}
     `,
     buttons: [
       {
         label: "Confirmar correção",
-        onClick: () => confirmRule(rule, span)
+        onClick: () => confirmCorrection(errSpan, rule)
       }
     ]
   });
@@ -350,39 +402,44 @@ function onWordClick(span){
   setTimeout(() => document.getElementById("fixInput")?.focus(), 30);
 }
 
-function confirmRule(rule, span){
+function confirmCorrection(errSpan, rule){
   const typed = document.getElementById("fixInput")?.value ?? "";
   const expected = rule.correct;
 
-  const ok = normalize(typed) === normalize(expected);
+  let ok = false;
+  if (expected === ""){
+    ok = typed.trim() === "" || normalize(typed) === normalize("remover");
+  } else {
+    ok = normalize(typed) === normalize(expected);
+  }
 
-  if (ok){
-    // aplica regra ao texto inteiro
-    currentText = currentText.replace(rule.wrong, rule.correct);
-
-    fixedRuleIds.add(rule.id);
+  if (!ok){
+    wrongAttempts += 1;
     updateCounters();
-    markWordCorrected(span);
+    unlockAutoIfNeeded();
 
-    // reconstruir mensagem para refletir mudanças (principalmente em frases)
-    buildClickableMessage(currentText);
-
-    closeModal();
-    checkLevelDone();
+    openModal({
+      title: "Ops!",
+      bodyHTML: `<p>Ops, você errou. O correto seria <strong>${escapeHtml(expected === "" ? "(remover)" : expected)}</strong>.</p>`,
+      buttons: [{ label: "Ok", onClick: closeModal }]
+    });
     return;
   }
 
-  // erro
-  wrongAttempts += 1;
-  updateCounters();
-  unlockAutoIfNeeded();
-  span.classList.add("error");
+  // aplica no texto por posição (só aquele trecho)
+  const start = Number(errSpan.dataset.start);
+  const len = Number(errSpan.dataset.len);
 
-  openModal({
-    title: "Ops!",
-    bodyHTML: `<p>Ops, você errou. O correto seria <strong>${expected}</strong>.</p>`,
-    buttons: [{ label: "Ok", onClick: closeModal }]
-  });
+  currentText = currentText.slice(0, start) + expected + currentText.slice(start + len);
+
+  fixedRuleIds.add(rule.id);
+  updateCounters();
+
+  // re-render para mostrar a correção
+  renderMessage();
+
+  closeModal();
+  checkLevelDone();
 }
 
 function checkLevelDone(){
@@ -390,6 +447,15 @@ function checkLevelDone(){
   if (fixedRuleIds.size >= total){
     nextLevelBtn.disabled = false;
   }
+}
+
+function escapeHtml(s){
+  return String(s)
+    .replaceAll("&","&amp;")
+    .replaceAll("<","&lt;")
+    .replaceAll(">","&gt;")
+    .replaceAll('"',"&quot;")
+    .replaceAll("'","&#039;");
 }
 
 /** =========================
@@ -405,16 +471,21 @@ autoBtn.addEventListener("click", () => {
     return;
   }
 
-  // aplica todas as regras restantes
+  // aplica as correções restantes “em lote”
   for (const rule of currentRules){
-    if (!fixedRuleIds.has(rule.id)){
-      currentText = currentText.replace(rule.wrong, rule.correct);
-      fixedRuleIds.add(rule.id);
+    if (fixedRuleIds.has(rule.id)) continue;
+
+    // aplica a primeira ocorrência do erro (suficiente porque cada regra é única aqui)
+    const re = ensureGlobal(rule.wrong);
+    const m = re.exec(currentText);
+    if (m){
+      currentText = currentText.slice(0, m.index) + rule.correct + currentText.slice(m.index + m[0].length);
     }
+    fixedRuleIds.add(rule.id);
   }
 
   updateCounters();
-  buildClickableMessage(currentText);
+  renderMessage();
   nextLevelBtn.disabled = false;
 
   openModal({
@@ -471,6 +542,7 @@ function startLevel(){
   const lvl = levels[levelIndex];
 
   resetLevelState();
+
   headerTitle.textContent = `Revisão da Mensagem de Natal — ${lvl.name}`;
   levelLabel.textContent = lvl.name;
 
@@ -480,8 +552,6 @@ function startLevel(){
   totalFixEl.textContent = String(currentRules.length);
 
   instruction.textContent = "";
-  messageArea.classList.remove("show");
-  messageArea.innerHTML = "";
 
   // intro com countdown 3s
   let countdown = 3;
@@ -515,21 +585,18 @@ function startLevel(){
       clearInterval(interval);
 
       instruction.textContent = lvl.instruction;
-      buildClickableMessage(currentText);
+      renderMessage();
     }
   });
   obs.observe(overlay, { attributes:true, attributeFilter:["class"] });
 }
 
 nextLevelBtn.addEventListener("click", async () => {
-  // salva HTML corrigido desse nível (destaca correções do nível)
-  correctedHTMLByLevel[levelIndex] = highlightLevelCorrections(levels[levelIndex], currentText);
+  // guardar versão corrigida com destaque das correções deste nível
+  correctedHTMLByLevel[levelIndex] = highlightCorrections(levels[levelIndex], currentText);
 
-  // grava agregado por setor (opcional)
-  await updateSectorStats({
-    sector: getUserSector(),
-    wrong: wrongAttempts
-  });
+  // ranking agregado (opcional)
+  await updateSectorStats({ sector: getUserSector(), wrong: wrongAttempts });
 
   levelIndex += 1;
   if (levelIndex < levels.length){
@@ -539,14 +606,13 @@ nextLevelBtn.addEventListener("click", async () => {
   }
 });
 
-function highlightLevelCorrections(levelDef, correctedText){
-  // destacamos as formas corretas (rule.correct), mas com cuidado: só destacar as “correções” mesmo.
-  // Aqui fazemos uma estratégia simples: percorre as rules e marca a ocorrência do "correct".
+function highlightCorrections(levelDef, correctedText){
   let html = correctedText;
   for (const rule of levelDef.rules){
-    const safe = rule.correct.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    const re = new RegExp(safe, "g");
-    html = html.replace(re, `@@${rule.correct}@@`);
+    const c = String(rule.correct);
+    if (!c) continue; // remoções não destacamos
+    const safe = c.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    html = html.replace(new RegExp(safe, "g"), `@@${c}@@`);
   }
   html = html.replaceAll(/@@(.*?)@@/g, `<span class="final-highlight">$1</span>`);
   return html;
@@ -559,7 +625,7 @@ function showFinal(){
     `Parabéns, ${name}! Você ajudou o editor-chefe a publicar a mensagem de Natal no prazo!`;
 
   finalRecado.textContent =
-    `Recado editorial: uma boa revisão e editoração — com atenção à ortografia, pontuação, concordância, colocação pronominal e diagramação — evita ruídos e valoriza a experiência do leitor.`;
+    `Recado editorial: revisão, editoração, diagramação e preparação textual — com atenção à ortografia, pontuação, concordância e colocação pronominal — fazem toda a diferença para a clareza e a qualidade do texto.`;
 
   finalBox1.innerHTML = `<p style="margin:0">${correctedHTMLByLevel[0] ?? ""}</p>`;
   finalBox2.innerHTML = `<p style="margin:0">${correctedHTMLByLevel[1] ?? ""}</p>`;
@@ -569,12 +635,10 @@ function showFinal(){
   showOnly(screenFinal);
 }
 
-restartBtn.addEventListener("click", () => {
-  showOnly(screenForm);
-});
+restartBtn.addEventListener("click", () => showOnly(screenForm));
 
 /** =========================
- *  Ranking (agregado por setor) - Firestore (opcional)
+ *  Ranking (opcional)
  *  ========================= */
 rankingBtn.addEventListener("click", () => openRankingModal());
 finalRankingBtn.addEventListener("click", () => openRankingModal());
@@ -584,17 +648,14 @@ async function updateSectorStats({ sector, wrong }){
   if (!sector) return;
 
   const ref = doc(db, "sectorStats", sector);
-
   await runTransaction(db, async (tx) => {
     const snap = await tx.get(ref);
     const data = snap.exists() ? snap.data() : { count: 0, totalWrong: 0 };
-
-    const next = {
+    tx.set(ref, {
       count: (data.count || 0) + 1,
       totalWrong: (data.totalWrong || 0) + (wrong || 0),
       updatedAt: serverTimestamp()
-    };
-    tx.set(ref, next, { merge: true });
+    }, { merge:true });
   });
 }
 
@@ -602,8 +663,7 @@ async function openRankingModal(){
   if (!db){
     openModal({
       title: "🏆 Ranking",
-      bodyHTML: `<p>O ranking ainda não está disponível porque o Firebase não foi configurado.</p>
-                <p class="muted">Quando você colar o <strong>firebaseConfig</strong> no <code>js/main.js</code>, ele passa a funcionar.</p>`,
+      bodyHTML: `<p>O ranking ainda não está disponível porque o Firebase não foi configurado.</p>`,
       buttons: [{ label: "Entendi", onClick: closeModal }]
     });
     return;
@@ -611,53 +671,58 @@ async function openRankingModal(){
 
   const sectors = SECTORS.filter(s => s !== "Selecione…");
   const rows = [];
-
   for (const s of sectors){
     const ref = doc(db, "sectorStats", s);
     const snap = await getDoc(ref);
     const d = snap.exists() ? snap.data() : { count: 0, totalWrong: 0 };
-    const avgWrong = d.count ? (d.totalWrong / d.count) : 0;
-    rows.push({ sector: s, count: d.count || 0, avgWrong });
+    rows.push({
+      sector: s,
+      count: d.count || 0,
+      avgWrong: d.count ? (d.totalWrong / d.count) : 0
+    });
   }
-
   rows.sort((a,b) => a.avgWrong - b.avgWrong || b.count - a.count);
 
   openModal({
     title: "🏆 Ranking por setor",
     bodyHTML: `
       <div style="overflow:auto">
-        <table class="table">
+        <table style="width:100%; border-collapse:collapse">
           <thead>
             <tr>
-              <th>Setor</th>
-              <th class="num">Participações</th>
-              <th class="num">Média de erros</th>
+              <th style="text-align:left; padding:8px; border-bottom:1px solid rgba(255,255,255,.12)">Setor</th>
+              <th style="text-align:right; padding:8px; border-bottom:1px solid rgba(255,255,255,.12)">Participações</th>
+              <th style="text-align:right; padding:8px; border-bottom:1px solid rgba(255,255,255,.12)">Média de erros</th>
             </tr>
           </thead>
           <tbody>
             ${rows.map(r => `
               <tr>
-                <td>${r.sector}</td>
-                <td class="num">${r.count}</td>
-                <td class="num">${r.avgWrong.toFixed(2)}</td>
+                <td style="padding:8px; border-bottom:1px solid rgba(255,255,255,.08)">${r.sector}</td>
+                <td style="padding:8px; text-align:right; border-bottom:1px solid rgba(255,255,255,.08)">${r.count}</td>
+                <td style="padding:8px; text-align:right; border-bottom:1px solid rgba(255,255,255,.08)">${r.avgWrong.toFixed(2)}</td>
               </tr>
             `).join("")}
           </tbody>
         </table>
       </div>
-      <p class="muted" style="margin:12px 0 0">
-        Ranking exibido por setor (sem nomes), conforme diretrizes da LGPD.
-      </p>
+      <p class="muted" style="margin:12px 0 0">Ranking exibido por setor (sem nomes), conforme LGPD.</p>
     `,
     buttons: [{ label:"Fechar", onClick: closeModal }]
   });
 }
 
 /** =========================
- *  Personalização (ao vivo!)
+ *  Personalização (ao vivo, chamativa)
  *  ========================= */
-customizeBtn.addEventListener("click", () => openCustomizeModal());
-openCustomizeInline.addEventListener("click", () => openCustomizeModal());
+customizeBtn.addEventListener("click", openCustomizeModal);
+openCustomizeInline.addEventListener("click", openCustomizeModal);
+
+function saveTheme(obj){ localStorage.setItem("mission_theme", JSON.stringify(obj)); }
+function loadTheme(){
+  try { return JSON.parse(localStorage.getItem("mission_theme")||"null") || { snow:true, lights:false, reindeer:false, theme:"neon" }; }
+  catch { return { snow:true, lights:false, reindeer:false, theme:"neon" }; }
+}
 
 function openCustomizeModal(){
   const saved = loadTheme();
@@ -668,30 +733,19 @@ function openCustomizeModal(){
       <p class="muted">As alterações são aplicadas imediatamente (ao vivo).</p>
 
       <div style="display:grid; gap:10px; margin-top:12px">
-        <label style="display:flex; gap:10px; align-items:center">
-          <input type="checkbox" id="optSnow" ${saved.snow ? "checked" : ""}/>
-          <span>Neve</span>
-        </label>
-
-        <label style="display:flex; gap:10px; align-items:center">
-          <input type="checkbox" id="optLights" ${saved.lights ? "checked" : ""}/>
-          <span>Pisca-pisca</span>
-        </label>
-
-        <label style="display:flex; gap:10px; align-items:center">
-          <input type="checkbox" id="optReindeer" ${saved.reindeer ? "checked" : ""}/>
-          <span>Renas voando</span>
-        </label>
+        ${toggleHTML("optSnow", "Neve", "Clima clássico de Natal", saved.snow)}
+        ${toggleHTML("optLights", "Pisca-pisca", "Mais brilho e energia", saved.lights)}
+        ${toggleHTML("optReindeer", "Renas interativas", "Rudolph segue o mouse", saved.reindeer)}
 
         <label style="display:grid; gap:6px">
-          <span class="muted">Tema</span>
+          <span class="muted">Tema chamativo</span>
           <select class="input" id="optTheme">
-            <option value="classic">Clássico (vivo)</option>
-            <option value="cool">Gelo (vivo)</option>
-            <option value="warm">Quentinho (vivo)</option>
-            <option value="neon">Neon</option>
-            <option value="candy">Candy</option>
-            <option value="midnight">Noite estrelada</option>
+            <option value="neon">Neon (bem vibrante)</option>
+            <option value="candy">Candy (pastel vivo)</option>
+            <option value="aurora">Aurora (verde/azul forte)</option>
+            <option value="inferno">Vermelho intenso</option>
+            <option value="ocean">Azul elétrico</option>
+            <option value="classic">Clássico</option>
           </select>
         </label>
       </div>
@@ -699,110 +753,143 @@ function openCustomizeModal(){
     buttons: [{ label:"Fechar", onClick: closeModal }]
   });
 
-  // set select e bind “ao vivo”
   setTimeout(() => {
     const optSnow = document.getElementById("optSnow");
     const optLights = document.getElementById("optLights");
     const optReindeer = document.getElementById("optReindeer");
     const optTheme = document.getElementById("optTheme");
-
-    if (!optTheme) return;
-
-    optTheme.value = saved.theme || "classic";
+    optTheme.value = saved.theme || "neon";
 
     const applyNow = () => {
-      const snow = !!optSnow?.checked;
-      const lights = !!optLights?.checked;
-      const reindeer = !!optReindeer?.checked;
-      const theme = optTheme.value || "classic";
+      const snow = !!optSnow.checked;
+      const lights = !!optLights.checked;
+      const reindeer = !!optReindeer.checked;
+      const theme = optTheme.value || "neon";
       applyTheme({ snow, lights, reindeer, theme });
       saveTheme({ snow, lights, reindeer, theme });
     };
 
-    optSnow?.addEventListener("change", applyNow);
-    optLights?.addEventListener("change", applyNow);
-    optReindeer?.addEventListener("change", applyNow);
+    optSnow.addEventListener("change", applyNow);
+    optLights.addEventListener("change", applyNow);
+    optReindeer.addEventListener("change", applyNow);
     optTheme.addEventListener("change", applyNow);
 
-    // aplica uma vez ao abrir (garante consistência)
     applyNow();
   }, 0);
 }
 
+function toggleHTML(id, title, subtitle, checked){
+  return `
+    <div class="toggle-row">
+      <div class="label">
+        <b>${title}</b>
+        <small>${subtitle}</small>
+      </div>
+      <label class="switch">
+        <input type="checkbox" id="${id}" ${checked ? "checked":""}/>
+        <span class="slider"></span>
+      </label>
+    </div>
+  `;
+}
+
+let mouseHandler = null;
+
 function applyTheme({ snow, lights, reindeer, theme }){
   // neve
-  const snowCanvas = document.getElementById("snow");
-  snowCanvas.style.display = snow ? "block" : "none";
+  document.getElementById("snow").style.display = snow ? "block" : "none";
 
   // pisca-pisca
   lightsEl.classList.toggle("hidden", !lights);
 
-  // renas
+  // renas (interativas)
   if (reindeer){
     spawnReindeer();
+    rudolph.classList.remove("hidden");
+    enableRudolphFollow();
   } else {
     reindeerLayer.innerHTML = "";
+    rudolph.classList.add("hidden");
+    disableRudolphFollow();
   }
 
-  // cores (bem vivas)
+  // TEMAS: bem chamativos mesmo
   const root = document.documentElement.style;
-
-  if (theme === "classic"){
-    root.setProperty("--accentA", "rgba(255, 60, 60, .34)");
-    root.setProperty("--accentB", "rgba(0, 170, 255, .28)");
-    root.setProperty("--accentC", "rgba(255, 210, 60, .22)");
-  } else if (theme === "cool"){
-    root.setProperty("--accentA", "rgba(120, 230, 255, .30)");
-    root.setProperty("--accentB", "rgba(0, 140, 255, .30)");
-    root.setProperty("--accentC", "rgba(160, 255, 230, .20)");
-  } else if (theme === "warm"){
-    root.setProperty("--accentA", "rgba(255, 120, 60, .30)");
-    root.setProperty("--accentB", "rgba(255, 70, 150, .26)");
-    root.setProperty("--accentC", "rgba(255, 220, 80, .24)");
-  } else if (theme === "neon"){
-    root.setProperty("--accentA", "rgba(0, 255, 180, .26)");
-    root.setProperty("--accentB", "rgba(255, 0, 200, .22)");
-    root.setProperty("--accentC", "rgba(255, 230, 0, .18)");
+  if (theme === "neon"){
+    root.setProperty("--bgA", "rgba(0, 255, 180, .42)");
+    root.setProperty("--bgB", "rgba(255, 0, 220, .40)");
+    root.setProperty("--bgC", "rgba(255, 230, 0, .28)");
+    root.setProperty("--bgBaseTop", "#030013");
+    root.setProperty("--bgBaseMid", "#070018");
+    root.setProperty("--bgBaseBot", "#020014");
   } else if (theme === "candy"){
-    root.setProperty("--accentA", "rgba(255, 105, 180, .26)");
-    root.setProperty("--accentB", "rgba(120, 190, 255, .22)");
-    root.setProperty("--accentC", "rgba(170, 255, 200, .18)");
-  } else { // midnight
-    root.setProperty("--accentA", "rgba(180, 120, 255, .18)");
-    root.setProperty("--accentB", "rgba(80, 160, 255, .18)");
-    root.setProperty("--accentC", "rgba(255, 210, 120, .12)");
+    root.setProperty("--bgA", "rgba(255, 105, 180, .40)");
+    root.setProperty("--bgB", "rgba(120, 190, 255, .36)");
+    root.setProperty("--bgC", "rgba(170, 255, 200, .28)");
+    root.setProperty("--bgBaseTop", "#08051a");
+    root.setProperty("--bgBaseMid", "#0a0620");
+    root.setProperty("--bgBaseBot", "#060514");
+  } else if (theme === "aurora"){
+    root.setProperty("--bgA", "rgba(0, 255, 140, .42)");
+    root.setProperty("--bgB", "rgba(0, 150, 255, .36)");
+    root.setProperty("--bgC", "rgba(180, 255, 120, .26)");
+    root.setProperty("--bgBaseTop", "#010c10");
+    root.setProperty("--bgBaseMid", "#03121a");
+    root.setProperty("--bgBaseBot", "#01070b");
+  } else if (theme === "inferno"){
+    root.setProperty("--bgA", "rgba(255, 30, 30, .52)");
+    root.setProperty("--bgB", "rgba(255, 120, 0, .36)");
+    root.setProperty("--bgC", "rgba(255, 220, 60, .22)");
+    root.setProperty("--bgBaseTop", "#120101");
+    root.setProperty("--bgBaseMid", "#1a0303");
+    root.setProperty("--bgBaseBot", "#0b0101");
+  } else if (theme === "ocean"){
+    root.setProperty("--bgA", "rgba(0, 200, 255, .46)");
+    root.setProperty("--bgB", "rgba(0, 80, 255, .40)");
+    root.setProperty("--bgC", "rgba(0, 255, 200, .24)");
+    root.setProperty("--bgBaseTop", "#010612");
+    root.setProperty("--bgBaseMid", "#020a1a");
+    root.setProperty("--bgBaseBot", "#01040c");
+  } else { // classic
+    root.setProperty("--bgA", "rgba(255, 60, 60, .42)");
+    root.setProperty("--bgB", "rgba(0, 170, 255, .34)");
+    root.setProperty("--bgC", "rgba(255, 210, 60, .30)");
+    root.setProperty("--bgBaseTop", "#050611");
+    root.setProperty("--bgBaseMid", "#05091a");
+    root.setProperty("--bgBaseBot", "#04050f");
   }
 }
 
 function spawnReindeer(){
   reindeerLayer.innerHTML = "";
-  const count = 10;
+  const count = 12;
+  const emojis = ["🦌","🛷","🦌","🦌","🦌"];
   for (let i=0; i<count; i++){
     const d = document.createElement("div");
     d.className = "reindeer";
-    d.textContent = "🦌";
-    const y = Math.floor(Math.random() * 70) + 5;
-    d.style.setProperty("--y", `${y}vh`);
-    d.style.left = `${-10 - Math.random()*20}vw`;
-    d.style.top = "0";
-    d.style.fontSize = `${22 + Math.random()*14}px`;
-    d.style.animationDelay = `${i * 0.9}s`;
-    d.style.animationDuration = `${7.5 + Math.random()*5}s`;
+    d.textContent = emojis[i % emojis.length];
+    d.style.setProperty("--y", `${Math.floor(Math.random()*70)+5}vh`);
+    d.style.left = "0px";
+    d.style.top = "0px";
+    d.style.fontSize = `${22 + Math.random()*18}px`;
+    d.style.animationDelay = `${i * 0.55}s`;
+    d.style.animationDuration = `${6.5 + Math.random()*5.5}s`;
     reindeerLayer.appendChild(d);
   }
 }
 
-function saveTheme(obj){
-  localStorage.setItem("mission_theme", JSON.stringify(obj));
+function enableRudolphFollow(){
+  if (mouseHandler) return;
+  mouseHandler = (e) => {
+    rudolph.style.left = `${e.clientX}px`;
+    rudolph.style.top = `${e.clientY}px`;
+  };
+  window.addEventListener("mousemove", mouseHandler);
 }
-function loadTheme(){
-  try {
-    return JSON.parse(localStorage.getItem("mission_theme") || "null") || {
-      snow: true, lights: false, reindeer: false, theme: "classic"
-    };
-  } catch {
-    return { snow: true, lights: false, reindeer: false, theme: "classic" };
-  }
+function disableRudolphFollow(){
+  if (!mouseHandler) return;
+  window.removeEventListener("mousemove", mouseHandler);
+  mouseHandler = null;
 }
 
 /** =========================
@@ -814,7 +901,7 @@ function loadTheme(){
   let w, h, dpr;
 
   const flakes = [];
-  const FLAKES = 150;
+  const FLAKES = 160;
 
   function resize(){
     dpr = Math.max(1, window.devicePixelRatio || 1);
@@ -826,56 +913,52 @@ function loadTheme(){
     canvas.style.height = h + "px";
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   }
-  function rand(min, max){ return Math.random() * (max - min) + min; }
+  const rand = (min,max)=>Math.random()*(max-min)+min;
   function makeFlake(){
-    return {
-      x: rand(0, w),
-      y: rand(-h, 0),
-      r: rand(1.2, 3.8),
-      vy: rand(0.7, 2.2),
-      vx: rand(-0.5, 0.7),
-      sway: rand(0.002, 0.012),
-      phase: rand(0, Math.PI * 2)
-    };
+    return { x: rand(0,w), y: rand(-h,0), r: rand(1.2,4.0), vy: rand(0.7,2.4), vx: rand(-0.6,0.8), sway: rand(0.002,0.014), phase: rand(0, Math.PI*2) };
   }
   function refill(){
     flakes.length = 0;
     for (let i=0;i<FLAKES;i++) flakes.push(makeFlake());
   }
   function tick(){
-    ctx.clearRect(0, 0, w, h);
+    ctx.clearRect(0,0,w,h);
     for (const f of flakes){
-      f.phase += f.sway * 60;
-      f.x += f.vx + Math.sin(f.phase) * 0.35;
+      f.phase += f.sway*60;
+      f.x += f.vx + Math.sin(f.phase)*0.4;
       f.y += f.vy;
-
-      if (f.y > h + 10){ f.y = rand(-40, -10); f.x = rand(0, w); }
-      if (f.x < -10) f.x = w + 10;
-      if (f.x > w + 10) f.x = -10;
+      if (f.y > h+10){ f.y = rand(-40,-10); f.x = rand(0,w); }
+      if (f.x < -10) f.x = w+10;
+      if (f.x > w+10) f.x = -10;
 
       ctx.beginPath();
-      ctx.arc(f.x, f.y, f.r, 0, Math.PI * 2);
-      ctx.fillStyle = "rgba(255,255,255,0.88)";
+      ctx.arc(f.x,f.y,f.r,0,Math.PI*2);
+      ctx.fillStyle = "rgba(255,255,255,0.90)";
       ctx.fill();
     }
     requestAnimationFrame(tick);
   }
-  window.addEventListener("resize", () => { resize(); refill(); });
+  window.addEventListener("resize", ()=>{ resize(); refill(); });
   resize(); refill(); tick();
 })();
 
-/** =========================
- *  Boot
- *  ========================= */
+/** Boot */
+function populateSectors(){
+  userSectorEl.innerHTML = "";
+  for (const s of SECTORS){
+    const opt = document.createElement("option");
+    opt.value = s === "Selecione…" ? "" : s;
+    opt.textContent = s;
+    userSectorEl.appendChild(opt);
+  }
+}
 populateSectors();
 
-// aplica tema salvo
 applyTheme(loadTheme());
 
-// Loading fake: 1.2s e vai pro form
 showOnly(screenLoading);
 setTimeout(() => {
   showOnly(screenForm);
   userNameEl.value = localStorage.getItem("mission_name") || "";
   userSectorEl.value = localStorage.getItem("mission_sector") || "";
-}, 1200);
+}, 1100);
