@@ -126,6 +126,15 @@ hr{
   margin-right: auto;
 }
 
+/* ✅ AJUSTE: melhora a leitura no desktop sem mexer na estrutura.
+   Mantém o layout parecido com o mobile, mas sem “apertar” demais */
+@media (min-width: 980px){
+  .app > .topbar,
+  .app > .card{
+    width: min(860px, calc(100% - 32px));
+  }
+}
+
 /* =========================
    Topbar (não fixa!)
    ========================= */
@@ -576,12 +585,22 @@ select.input option{
    Modal / Overlay
    ========================= */
 #overlay{
+  /* ✅ AJUSTE PRINCIPAL:
+     fixed garante que o modal apareça NO VIEWPORT (onde o usuário estiver),
+     e não “preso” no topo do documento */
   position: fixed;
   inset: 0;
   z-index: 999;
+
   display: grid;
   place-items: center;
-  padding: 18px;
+
+  /* ✅ AJUSTE: padding + safe area (iPhone/Android) */
+  padding: calc(18px + env(safe-area-inset-top))
+           calc(18px + env(safe-area-inset-right))
+           calc(18px + env(safe-area-inset-bottom))
+           calc(18px + env(safe-area-inset-left));
+
   background: rgba(0,0,0,.55);
   opacity: 0;
   pointer-events: none;
@@ -601,6 +620,11 @@ select.input option{
   overflow: hidden;
   transform: translateY(10px) scale(.99);
   transition: transform 180ms ease;
+
+  /* ✅ AJUSTE: evita “grudar no topo” e melhora no mobile */
+  max-height: calc(100vh - 36px);
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
 }
 #overlay.show .modal{ transform: translateY(0) scale(1); }
 
@@ -833,6 +857,12 @@ select.input option{
     display: inline;
     padding: 0 1px;
     margin: 0;
+  }
+
+  /* ✅ AJUSTE: modal confortável no mobile */
+  .modal{
+    width: min(720px, 100%);
+    max-height: calc(100vh - 28px);
   }
 }
 

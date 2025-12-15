@@ -1103,10 +1103,11 @@ async function renderIndividualRanking(){
   if (!panel) return;
 
   try {
+    // ✅ AJUSTE PROPOSTO: remove o 2º orderBy para evitar exigir índice composto.
+    // (A ordenação em empates pode variar, mas elimina o erro "The query requires an index".)
     const q = query(
       collection(db, "individualRanking"),
       orderBy("score", "desc"),
-      orderBy("createdAt", "asc"),
       limit(50)
     );
 
@@ -1164,7 +1165,7 @@ async function renderIndividualRanking(){
     panel.innerHTML = `
       <p>Não foi possível carregar o ranking individual.</p>
       <p class="muted"><code>${escapeHtml(err?.message || String(err))}</code></p>
-      <p class="muted">Se aparecer erro de índice, crie o índice sugerido pelo Firebase Console.</p>
+      <p class="muted">Se aparecer “Missing or insufficient permissions”, é regra do Firestore (não é índice).</p>
     `;
   }
 }
