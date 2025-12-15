@@ -7,7 +7,6 @@ import {
   collection, getDocs
 } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
 
-
 /* firebaseConfig */
 const firebaseConfig = {
   apiKey: "AIzaSyD_-M7m1R2-FKzOHg356vb_IN7bPb6hqJM",
@@ -41,6 +40,9 @@ const SCORE_RULES = {
 };
 let autoUsed = 0;
 
+/** =========================
+ * Conteúdo / níveis
+ * ========================= */
 const levels = [
   {
     name: "Fácil",
@@ -60,11 +62,11 @@ Ele escreveu tão rápido que acabou deixando três errinhos para trás.`,
     instruction: `Atenção: os erros podem envolver pontuação (inclusive vírgulas indevidas), concordância, acentuação e ortografia.`,
     raw: `O Natal, é um momento especial para celebrar a união e a esperança. As mensagens, que circulam nessa época, precisam transmitir carinho e acolhimento, mas muitas vezes, acabam sendo escritas de forma apressada. Os textos natalinos, exige atenção aos detalhes, para que a mensagem chegue clara ao leitor.`,
     rules: [
-      { id:"m1", label:"Pontuação",  wrong:/(?<=\bNatal),/g,        correct:"" },
-      { id:"m2", label:"Pontuação",  wrong:/(?<=\bmensagens),/g,    correct:"" },
-      { id:"m3", label:"Pontuação",  wrong:/(?<=\bvezes),/g,        correct:"" },
-      { id:"m4", label:"Pontuação",  wrong:/(?<=\bnatalinos),/g,    correct:"" },
-      { id:"m5", label:"Concordância", wrong:/\bexige\b/g, correct:"exigem" },
+      { id:"m1", label:"Pontuação",     wrong:/(?<=\bNatal),/g,        correct:"" },
+      { id:"m2", label:"Pontuação",     wrong:/(?<=\bmensagens),/g,    correct:"" },
+      { id:"m3", label:"Pontuação",     wrong:/(?<=\bvezes),/g,        correct:"" },
+      { id:"m4", label:"Pontuação",     wrong:/(?<=\bnatalinos),/g,    correct:"" },
+      { id:"m5", label:"Concordância",  wrong:/\bexige\b/g,            correct:"exigem" },
     ]
   },
   {
@@ -75,19 +77,20 @@ Ele escreveu tão rápido que acabou deixando três errinhos para trás.`,
 Aos que estão em guerra, peço a paz; aos que não a encontram, que Deus acalme seus corações inquietos; aos que nada disso sirva, ofereço um caloroso abraço, o maior conforto da alma.
 Pensadores cientificistas pensam que o tempo é só um passar, que datas e símbolos são itens meramente psicológicos, que a linearidade intrínseca ao mensurável e durável tempo é uma prisão (ou mesmo um castigo). Chamam este tempo "chronos" e negam que é o "kairós", que é aquele tempo espiritual, profundo, com significado. Aquele tempo em que paramos para respirar e, sim, sentimos que algo está ali presente. Não enxergo um tempo tão "kairós" quanto o Natal e, o mais incrível, isso independe de crenças ou religiões. É época de partilhar, festejar, refletir; é oportunidade para planejar, remodelar e desconstruir.
 Recomece quantas vezes precisar, pois, enquanto estivermos no "kairós", não seremos reféns do "chronos".`,
-rules: [
-  { id:"d1", label:"Colocação pronominal", wrong:/No Natal,\s*se deve pensar/g, correct:"No Natal, deve-se pensar" },
-  { id:"d2", label:"Colocação pronominal", wrong:/aos filhos,\s*os ame/gi, correct:"aos filhos, ame-os" },
+    rules: [
+      { id:"d1", label:"Colocação pronominal", wrong:/No Natal,\s*se deve pensar/g, correct:"No Natal, deve-se pensar" },
+      { id:"d2", label:"Colocação pronominal", wrong:/aos filhos,\s*os ame/gi,      correct:"aos filhos, ame-os" },
 
-  // vírgulas indevidas (sujeito + verbo / termos essenciais)
-  { id:"d3", label:"Pontuação", wrong:/(?<=\batitudes),/g, correct:"" },
-  { id:"d4", label:"Pontuação", wrong:/o amor,\s*em todas/gi, correct:"o amor em todas" },
-  { id:"d5", label:"Pontuação", wrong:/quanto o Natal\s*e,/gi, correct:"quanto o Natal e" },
+      // vírgulas indevidas / termos essenciais
+      { id:"d3", label:"Pontuação", wrong:/(?<=\batitudes),/g,          correct:"" },
+      { id:"d4", label:"Pontuação", wrong:/o amor,\s*em todas/gi,        correct:"o amor em todas" },
+      { id:"d5", label:"Pontuação", wrong:/quanto o Natal\s*e,/gi,       correct:"quanto o Natal e" },
 
-  // melhoria pontual (mais “editorial” e objetiva)
-  { id:"d6", label:"Pontuação", wrong:/ofereço um caloroso abraço,\s*o maior conforto da alma/gi, correct:"ofereço um caloroso abraço: o maior conforto da alma" },
-]
-
+      // ajuste editorial objetivo
+      { id:"d6", label:"Pontuação", wrong:/ofereço um caloroso abraço,\s*o maior conforto da alma/gi,
+        correct:"ofereço um caloroso abraço: o maior conforto da alma"
+      },
+    ]
   }
 ];
 
@@ -104,15 +107,21 @@ const explanations = [
     title: "Atividade 2 — Nível Médio",
     items: [
       { wrong: "O Natal, é um momento", correct: "O Natal é um momento", reason: "Vírgula indevida separando sujeito e predicado." },
-      { wrong: "Os textos natalinos, exige", correct: "Os textos natalinos exigem", reason: "Erro de concordância verbal: sujeito plural exige verbo no plural." }
+      { wrong: "As mensagens, que circulam", correct: "As mensagens que circulam", reason: "Vírgula indevida separando sujeito e oração adjetiva restritiva." },
+      { wrong: "muitas vezes, acabam", correct: "muitas vezes acabam", reason: "Vírgula indevida separando advérbio e verbo." },
+      { wrong: "Os textos natalinos, exige", correct: "Os textos natalinos exigem", reason: "Concordância verbal: sujeito plural exige verbo no plural." },
+      { wrong: "detalhes, para que", correct: "detalhes para que", reason: "Vírgula indevida separando termo essencial da oração." }
     ]
   },
   {
     title: "Atividade 3 — Nível Difícil",
     items: [
-      { wrong: "No Natal, se deve pensar", correct: "No Natal, deve-se pensar", reason: "Colocação pronominal: a forma adequada é 'deve-se'." },
+      { wrong: "No Natal, se deve pensar", correct: "No Natal, deve-se pensar", reason: "Colocação pronominal: forma adequada é 'deve-se'." },
       { wrong: "aos filhos, os ame", correct: "aos filhos, ame-os", reason: "Colocação pronominal: forma recomendada 'ame-os'." },
-      { wrong: "Essas atitudes, reforçam", correct: "Essas atitudes reforçam", reason: "Vírgula indevida entre sujeito e predicado." }
+      { wrong: "Essas atitudes, reforçam", correct: "Essas atitudes reforçam", reason: "Vírgula indevida entre sujeito e predicado." },
+      { wrong: "o amor, em todas", correct: "o amor em todas", reason: "Vírgula indevida entre termo essencial e complemento." },
+      { wrong: "quanto o Natal e,", correct: "quanto o Natal e", reason: "Vírgula indevida quebrando a fluidez do período." },
+      { wrong: "um caloroso abraço, o maior conforto", correct: "um caloroso abraço: o maior conforto", reason: "Dois termos em aposição: melhor usar dois-pontos para clareza." }
     ]
   }
 ];
@@ -162,12 +171,12 @@ const reindeerLayer = document.getElementById("reindeerLayer");
 const reviewBtn1 = document.getElementById("reviewBtn1");
 const reviewBtn2 = document.getElementById("reviewBtn2");
 const reviewBtn3 = document.getElementById("reviewBtn3");
-const reviewBtn = document.getElementById("reviewBtn");
+const reviewBtn = document.getElementById("reviewBtn"); // pode não existir
 
 const optRankingEl = document.getElementById("optRanking");
 
 /** =========================
- * Modal (abre na posição do scroll)
+ * Modal
  * ========================= */
 const overlay = document.getElementById("overlay");
 const modalTitle = document.getElementById("modalTitle");
@@ -182,14 +191,6 @@ document.addEventListener("keydown", (e) => {
 
 function openModal({ title, bodyHTML, buttons=[] }){
   if (!overlay) return;
-
-  // ✅ overlay acompanha a tela atual (sem travar scroll)
-  const y = window.scrollY || 0;
-  overlay.style.position = "absolute";
-  overlay.style.top = `${y}px`;
-  overlay.style.left = "0";
-  overlay.style.right = "0";
-  overlay.style.height = `${window.innerHeight}px`;
 
   if (modalTitle) modalTitle.textContent = title || "";
   if (modalBody) modalBody.innerHTML = bodyHTML || "";
@@ -211,16 +212,11 @@ function openModal({ title, bodyHTML, buttons=[] }){
 function closeModal(){
   if (!overlay) return;
   overlay.classList.remove("show");
-  setTimeout(() => {
-    overlay.classList.add("hidden");
-    overlay.style.top = "";
-    overlay.style.height = "";
-    overlay.style.position = "";
-  }, 180);
+  setTimeout(() => overlay.classList.add("hidden"), 180);
 }
 
 /** =========================
- * Score float (sem duplicação / sem transition)
+ * Score float (uma única versão)
  * ========================= */
 function showScoreFloat(delta, anchorEl = null){
   const el = document.createElement("div");
@@ -235,7 +231,6 @@ function showScoreFloat(delta, anchorEl = null){
     x = r.left + r.width / 2;
     y = r.top;
   } else {
-    // tenta “puxar” pro HUD (placar) se existir
     const hud = document.getElementById("scoreCount");
     if (hud){
       const r = hud.getBoundingClientRect();
@@ -290,12 +285,17 @@ let wrongCount = 0;
 let correctCount = 0;
 let hintsUsed = 0;
 
+// por tarefa
 const taskScore = [0,0,0];
 const taskCorrect = [0,0,0];
 const taskWrong = [0,0,0];
 
+// texto final do usuário por nível
 const currentTextByLevel = ["", "", ""];
+
+// marcações do trecho já corrigido
 const correctedSegmentsByRule = new Map();
+
 /** =========================
  * Review (final)
  * ========================= */
@@ -365,41 +365,48 @@ function tokenize(seg){
 
   for (let i=0;i<seg.length;i++){
     const ch = seg[i];
+
     if (ch === " " || ch === "\n" || ch === "\t"){
       flush();
       out.push({t:"s", v:ch});
       continue;
     }
-if (",.;:!?".includes(ch)){
-  flush();
-  out.push({ t:"p", v: ch }); // sem espaços extras
-  continue;
-}
+
+    if (",.;:!?".includes(ch)){
+      flush();
+      out.push({ t:"p", v: ch });
+      continue;
+    }
+
     buf += ch;
   }
   flush();
   return out;
 }
 
+/**
+ * ⚠️ IMPORTANTE:
+ * - Pontuação normal (t.t === "p") vira TextNode (sem span) pra NÃO criar espaço estranho.
+ * - Só erros viram span clicável (no renderMessage).
+ */
 function appendPlain(frag, seg){
   const tokens = tokenize(seg);
+
   for (const t of tokens){
-    // espaços e quebras como texto puro
     if (t.t === "s"){
       frag.appendChild(document.createTextNode(t.v));
       continue;
     }
-    // ✅ pontuação normal como texto puro (sem espaçamento artificial)
     if (t.t === "p"){
       frag.appendChild(document.createTextNode(t.v));
       continue;
     }
 
     const span = document.createElement("span");
-    span.className = "token" + (",.;:!?".includes(best.text) ? " punct" : "");
-   span.textContent = best.text;
+    span.className = "token";
+    span.textContent = t.v;
     span.dataset.kind = "plain";
-    span.style.display = "inline"; // 🔥 correção mobile
+    span.style.display = "inline";
     span.addEventListener("click", () => onPlainClick(span));
     frag.appendChild(span);
   }
@@ -407,12 +414,12 @@ function appendPlain(frag, seg){
 
 function appendCorrected(frag, seg){
   const tokens = tokenize(seg);
+
   for (const t of tokens){
     if (t.t === "s"){
       frag.appendChild(document.createTextNode(t.v));
       continue;
     }
-    // ✅ pontuação corrigida também como texto puro (fica “colada” na palavra)
     if (t.t === "p"){
       frag.appendChild(document.createTextNode(t.v));
       continue;
@@ -422,14 +429,15 @@ function appendCorrected(frag, seg){
     span.className = "token corrected";
     span.textContent = t.v;
     span.dataset.kind = "corrected";
+    span.style.display = "inline";
     span.addEventListener("click", () => onLockedTextClick());
     frag.appendChild(span);
   }
 }
 
-
 function renderMessage(){
   if (!messageArea) return;
+
   messageArea.classList.remove("show");
   messageArea.innerHTML = "";
 
@@ -464,6 +472,7 @@ function renderMessage(){
 
     let best = null;
     let bestRule = null;
+
     for (const rule of currentRules){
       if (fixedRuleIds.has(rule.id)) continue;
       const m = findNextMatch(text, pos, rule);
@@ -485,13 +494,17 @@ function renderMessage(){
       appendPlain(frag, text.slice(pos, best.index));
     }
 
+    // ✅ Aqui sim existe best/bestRule e é o ÚNICO lugar que usa best.text
     const span = document.createElement("span");
-    span.className = "token"+ (",.;:!?".includes(best.text) ? " punct" : "");
+    span.className = "token" + (",.;:!?".includes(best.text) ? " punct" : "");
     span.textContent = best.text;
+
     span.dataset.kind = "error";
     span.dataset.ruleid = bestRule.id;
     span.dataset.start = String(best.index);
     span.dataset.len = String(best.len);
+    span.style.display = "inline";
+
     span.addEventListener("click", () => onErrorClick(span, bestRule));
     frag.appendChild(span);
 
@@ -503,7 +516,7 @@ function renderMessage(){
 }
 
 /** =========================
- * Interação / correção
+ * Pontuação / ações
  * ========================= */
 function addScore(delta, anchorEl=null){
   score += delta;
@@ -630,6 +643,7 @@ function onErrorClick(errSpan, rule){
   const wrongText = errSpan.textContent || "";
   const expected = rule.correct;
 
+  // caso especial: remoção de vírgula
   if (expected === "" && wrongText === ","){
     openModal({
       title: "Remover vírgula",
@@ -649,7 +663,8 @@ function onErrorClick(errSpan, rule){
       <p style="margin:8px 0 0"><strong>${escapeHtml(wrongText)}</strong></p>
 
       <p style="margin:12px 0 6px">Digite a forma correta:</p>
-      <input class="input" id="fixInput" type="text" autocomplete="off" placeholder="${expected === "" ? "Deixe em branco para remover" : "Digite aqui..."}" />
+      <input class="input" id="fixInput" type="text" autocomplete="off"
+        placeholder="${expected === "" ? "Deixe em branco para remover" : "Digite aqui..."}" />
 
       <p class="muted" style="margin:10px 0 0">Erros podem ser de acentuação, ortografia, gramática, pontuação etc.</p>
     `,
@@ -730,6 +745,7 @@ autoFixBtn?.addEventListener("click", () => {
     ]
   });
 });
+
 /** =========================
  * Próximo nível / Finalizar
  * ========================= */
@@ -1022,19 +1038,18 @@ async function openRankingModal(){
     const sectors = SECTORS.filter(s => s !== "Selecione…");
     const rows = [];
 
-    // ✅ tenta carregar tudo em 1 request
+    // ✅ tenta carregar tudo em 1 request (se regras permitirem listagem)
     let map = new Map();
     try {
       const snapAll = await getDocs(collection(db, "sectorStats"));
       snapAll.forEach(d => map.set(d.id, d.data()));
     } catch {
-      // fallback: mantém map vazio e faz getDoc setor a setor
+      // fallback: map vazio e faz getDoc setor a setor
     }
 
     for (const s of sectors){
       let d = map.get(s);
 
-      // fallback se não conseguiu listar tudo
       if (!d){
         const ref = doc(db, "sectorStats", s);
         const snap = await getDoc(ref);
@@ -1115,17 +1130,17 @@ async function openRankingModal(){
 }
 
 /** =========================
- * Personalização (apenas paleta + intensidade + neve/renas)
+ * Personalização (paleta + intensidade + neve/renas)
  * ========================= */
 customizeBtn?.addEventListener("click", openCustomizeModal);
 openCustomizeInline?.addEventListener("click", openCustomizeModal);
 
 const THEME_PRESETS = {
-  classic: { name:"Clássico", accent:"#e53935", bg:"#0b1020" },
+  classic: { name:"Clássico",   accent:"#e53935", bg:"#0b1020" },
   candy:   { name:"Candy Cane", accent:"#ff2e63", bg:"#140a12" },
-  neon:    { name:"Neon Noel", accent:"#00ffd5", bg:"#001016" },
-  aurora:  { name:"Aurora", accent:"#7c4dff", bg:"#071022" },
-  gold:    { name:"Dourado", accent:"#ffcc00", bg:"#140f02" },
+  neon:    { name:"Neon Noel",  accent:"#00ffd5", bg:"#001016" },
+  aurora:  { name:"Aurora",     accent:"#7c4dff", bg:"#071022" },
+  gold:    { name:"Dourado",    accent:"#ffcc00", bg:"#140f02" },
 };
 
 function saveTheme(obj){ localStorage.setItem("mission_theme", JSON.stringify(obj)); }
@@ -1183,7 +1198,8 @@ function openCustomizeModal(){
         <div>
           <b>Intensidade</b>
           <div class="muted" style="margin:2px 0 8px">Quanto mais alto, mais vivo.</div>
-          <input id="optIntensity" type="range" min="0.8" max="1.6" step="0.05" value="${saved.intensity ?? 1}" style="width:100%"/>
+          <input id="optIntensity" type="range" min="0.8" max="1.6" step="0.05"
+                 value="${saved.intensity ?? 1}" style="width:100%"/>
         </div>
       </div>
     `,

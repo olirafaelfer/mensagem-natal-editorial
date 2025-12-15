@@ -10,7 +10,7 @@
   --muted: rgba(255,255,255,.70);
   --muted2: rgba(255,255,255,.55);
 
-  --cardBg: rgba(255,255,255,.06);   /* mais sutil */
+  --cardBg: rgba(255,255,255,.06);   /* sutil */
   --stroke: rgba(255,255,255,.12);
 
   --shadow: 0 14px 40px rgba(0,0,0,.35);
@@ -26,11 +26,10 @@ body{
   margin: 0;
   font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
   color: var(--text);
-  background: var(--bg);         /* ✅ sem degradê */
+  background: var(--bg);
   overflow-x: hidden;
-  overflow-y: auto;              /* ✅ scroll ativo */
+  overflow-y: auto;
 
-  /* “intensidade” ainda funciona, mas bem mais sutil */
   filter: saturate(calc(1.02 * var(--intensity)))
           contrast(calc(1.01 * var(--intensity)));
 }
@@ -50,7 +49,6 @@ hr{
   margin: 16px 0;
 }
 
-/* button "link" */
 .linklike{
   border: 0;
   background: transparent;
@@ -71,7 +69,7 @@ hr{
   inset: 0;
   z-index: 0;
   pointer-events: none;
-  opacity: .22; /* ✅ mais sutil */
+  opacity: .22;
 }
 
 #reindeerLayer{
@@ -79,7 +77,7 @@ hr{
   inset: 0;
   z-index: 1;
   pointer-events: none;
-  opacity: .22; /* ✅ mais sutil */
+  opacity: .22;
 }
 
 .reindeer{
@@ -105,19 +103,13 @@ hr{
    ========================= */
 .app{
   position: relative;
-  z-index: 5;              /* ✅ conteúdo acima dos efeitos */
+  z-index: 5; /* conteúdo acima dos efeitos */
   min-height: 100vh;
   display: flex;
   flex-direction: column;
 }
 
-/* ✅ se você adicionou <div class="container"> no HTML */
-.container{
-  width: min(var(--container), calc(100% - 32px));
-  margin: 18px auto 40px;
-}
-
-/* fallback se NÃO tiver container */
+/* Topbar e Cards centralizados dentro da largura padrão */
 .app > .topbar,
 .app > .card{
   width: min(var(--container), calc(100% - 32px));
@@ -126,7 +118,7 @@ hr{
 }
 
 /* =========================
-   Topbar (não fixa!)
+   Topbar (não fixa)
    ========================= */
 .topbar{
   display: grid;
@@ -134,9 +126,10 @@ hr{
   align-items: center;
   gap: 12px;
 
-  padding: 14px 0;          /* container já tem padding lateral */
+  padding: 14px 16px; /* garante “respiro” lateral mesmo sem .container */
+  margin-top: 18px;   /* separa do topo */
   border-bottom: 1px solid rgba(255,255,255,.10);
-  background: transparent;  /* ✅ sem “vidro” pesado */
+  background: transparent;
 }
 
 .brand{
@@ -201,7 +194,7 @@ hr{
   border-radius: var(--radius);
   box-shadow: var(--shadow);
   overflow: hidden;
-  backdrop-filter: blur(6px); /* sutil */
+  backdrop-filter: blur(6px);
 }
 
 .card-inner{ padding: 18px; }
@@ -398,7 +391,6 @@ select.input option{
 
 /* =========================
    Message area + tokens
-   (ajuda no “espaço grande”)
    ========================= */
 .message{
   margin-top: 12px;
@@ -408,10 +400,11 @@ select.input option{
   border-radius: 18px;
 
   font-size: 17px;
-  line-height: 1.55;       /* ✅ menor */
-  letter-spacing: 0;       /* ✅ garante */
-  word-spacing: 0;         /* ✅ garante */
-  white-space: pre-wrap;   /* ✅ respeita \n sem “zoar” */
+  line-height: 1.55;
+  letter-spacing: 0;
+  word-spacing: 0;
+
+  white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
 
@@ -421,11 +414,12 @@ select.input option{
   to{ opacity: 1; transform: translateY(0); }
 }
 
+/* ✅ “aperta” tokens (pontuação também é token) */
 .token{
-  display: inline;           /* ✅ não cria “espaço extra” */
-  padding: 2px 3px;
+  display: inline;
+  padding: 1px 2px;  /* era maior: isso causava “pontuação distante” */
   margin: 0;
-  border-radius: 8px;
+  border-radius: 6px;
   cursor: pointer;
   transition: background .15s ease, transform .06s ease, color .15s ease;
 }
@@ -576,7 +570,6 @@ select.input option{
 
 /* =========================
    Modal / Overlay
-   (permite abrir “no lugar” via JS usando scrollY)
    ========================= */
 #overlay{
   position: fixed;
@@ -698,8 +691,7 @@ select.input option{
 }
 
 /* =========================
-   Score float (apenas UMA versão)
-   (o JS vai posicionar perto do HUD)
+   Score float
    ========================= */
 .score-float{
   position: fixed;
@@ -710,7 +702,6 @@ select.input option{
   text-shadow: 0 10px 25px rgba(0,0,0,.45);
   animation: scoreUp 900ms ease-out forwards;
 }
-
 .score-float.plus{ color: #00e676; }
 .score-float.minus{ color: #ff1744; }
 
@@ -730,45 +721,40 @@ select.input option{
 
 @media (max-width: 740px){
   .stat-grid{ grid-template-columns: 1fr; max-width: 420px; }
-  .message{ font-size: 16px; }
-  .container{ width: calc(100% - 24px); margin: 14px auto 34px; }
-  .card{ margin: 14px auto; }
-  .topbar{ padding: 12px 0; }
+  .message{ font-size: 15.5px; line-height: 1.45; }
+  .topbar{ padding: 12px 12px; }
+  .app > .topbar,
+  .app > .card{
+    width: calc(100% - 24px);
+  }
 }
 
 /* Fallback para navegadores sem color-mix */
 @supports not (color: color-mix(in srgb, red 50%, white)) {
   a{ color: #ff8a80; }
 }
-.token.punct{
-  padding: 0 1px;
-  border-radius: 6px;
-}
 /* =========================
-   Correção fina de espaçamento (mobile)
+   PATCH 4 — Espaçamento correto no mobile
    ========================= */
 @media (max-width: 740px){
-
   .message{
-    line-height: 1.45;          /* 🔽 reduz altura da linha */
-    font-size: 15.5px;          /* levemente menor */
-    word-spacing: 0;            /* evita espaçamento artificial */
+    font-size: 15.5px;
+    line-height: 1.45;
+    letter-spacing: 0;
+    word-spacing: 0;
   }
 
+  /* tokens nunca criam “respiro” extra */
   .token{
-    padding: 0 1px;             /* 🔽 remove “folga” lateral */
-    margin: 0;
-    border-radius: 6px;
-  }
-
-  /* pontuação clicável */
-  .token.punct{
-    padding: 0;                 /* 🔥 cola totalmente */
-    margin: 0;
-  }
-
-  /* tokens corrigidos */
-  .token.corrected{
+    display: inline;
     padding: 0 1px;
+    margin: 0;
+    vertical-align: baseline;
+  }
+
+  /* pontuação colada na palavra */
+  .token.punct{
+    padding: 0;
+    margin: 0;
   }
 }
