@@ -797,24 +797,38 @@ let mouseHandler = null;
 
 function applyTheme({ snow, lights, reindeer, theme }){
   // neve
-  document.getElementById("snow").style.display = snow ? "block" : "none";
+  const snowCanvas = document.getElementById("snow");
+  if (snowCanvas) snowCanvas.style.display = snow ? "block" : "none";
 
   // pisca-pisca
-  lightsEl.classList.toggle("hidden", !lights);
+  const lightsElSafe = document.getElementById("lights");
+  if (lightsElSafe) lightsElSafe.classList.toggle("hidden", !lights);
 
-  // renas (interativas)
-  if (reindeer){
-    spawnReindeer();
-    rudolph.classList.remove("hidden");
-    enableRudolphFollow();
-  } else {
-    reindeerLayer.innerHTML = "";
-    rudolph.classList.add("hidden");
-    disableRudolphFollow();
+  // renas
+  const reindeerLayerSafe = document.getElementById("reindeerLayer");
+  if (reindeerLayerSafe){
+    if (reindeer){
+      spawnReindeer();
+    } else {
+      reindeerLayerSafe.innerHTML = "";
+    }
   }
 
-  // TEMAS: bem chamativos mesmo
+  // rudolph interativo
+  const rudolphSafe = document.getElementById("rudolph");
+  if (rudolphSafe){
+    if (reindeer){
+      rudolphSafe.classList.remove("hidden");
+      enableRudolphFollow();
+    } else {
+      rudolphSafe.classList.add("hidden");
+      disableRudolphFollow();
+    }
+  }
+
+  // tema
   const root = document.documentElement.style;
+
   if (theme === "neon"){
     root.setProperty("--bgA", "rgba(0, 255, 180, .42)");
     root.setProperty("--bgB", "rgba(255, 0, 220, .40)");
@@ -859,6 +873,7 @@ function applyTheme({ snow, lights, reindeer, theme }){
     root.setProperty("--bgBaseBot", "#04050f");
   }
 }
+
 
 function spawnReindeer(){
   reindeerLayer.innerHTML = "";
@@ -941,6 +956,9 @@ function disableRudolphFollow(){
   window.addEventListener("resize", ()=>{ resize(); refill(); });
   resize(); refill(); tick();
 })();
+
+/** Boot */
+
 populateSectors();
 
 applyTheme(loadTheme());
@@ -951,4 +969,3 @@ setTimeout(() => {
   userNameEl.value = localStorage.getItem("mission_name") || "";
   userSectorEl.value = localStorage.getItem("mission_sector") || "";
 }, 1100);
-
