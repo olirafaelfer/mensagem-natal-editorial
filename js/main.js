@@ -442,7 +442,19 @@ function renderMessage(){
 function addScore(delta){
   score += delta;
   taskScore[levelIndex] += delta;
+  showScoreFloat(delta);
 }
+
+
+function showScoreFloat(delta){
+  const el = document.createElement("div");
+  el.className = "score-float";
+  el.textContent = (delta > 0 ? `+${delta}` : `${delta}`);
+  el.style.color = delta > 0 ? "rgba(0,230,118,.95)" : "rgba(255,23,68,.95)";
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 950);
+}
+
 
 function registerWrong(){
   wrongCount += 1;
