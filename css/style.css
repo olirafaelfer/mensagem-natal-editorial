@@ -744,3 +744,31 @@ select.input option{
   padding: 0 1px;
   border-radius: 6px;
 }
+/* =========================
+   Correção fina de espaçamento (mobile)
+   ========================= */
+@media (max-width: 740px){
+
+  .message{
+    line-height: 1.45;          /* 🔽 reduz altura da linha */
+    font-size: 15.5px;          /* levemente menor */
+    word-spacing: 0;            /* evita espaçamento artificial */
+  }
+
+  .token{
+    padding: 0 1px;             /* 🔽 remove “folga” lateral */
+    margin: 0;
+    border-radius: 6px;
+  }
+
+  /* pontuação clicável */
+  .token.punct{
+    padding: 0;                 /* 🔥 cola totalmente */
+    margin: 0;
+  }
+
+  /* tokens corrigidos */
+  .token.corrected{
+    padding: 0 1px;
+  }
+}

@@ -370,11 +370,11 @@ function tokenize(seg){
       out.push({t:"s", v:ch});
       continue;
     }
-    if (",.;:!?".includes(ch)){
-      flush();
-      out.push({t:"p", v:ch});
-      continue;
-    }
+if (",.;:!?".includes(ch)){
+  flush();
+  out.push({ t:"p", v: ch }); // sem espaços extras
+  continue;
+}
     buf += ch;
   }
   flush();
@@ -396,9 +396,10 @@ function appendPlain(frag, seg){
     }
 
     const span = document.createElement("span");
-    span.className = "token";
-    span.textContent = t.v;
+    span.className = "token" + (",.;:!?".includes(best.text) ? " punct" : "");
+   span.textContent = best.text;
     span.dataset.kind = "plain";
+    span.style.display = "inline"; // 🔥 correção mobile
     span.addEventListener("click", () => onPlainClick(span));
     frag.appendChild(span);
   }
