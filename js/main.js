@@ -175,8 +175,16 @@ document.addEventListener("keydown", (e) => {
   if (e.key === "Escape" && overlay && !overlay.classList.contains("hidden")) closeModal();
 });
 
+let __scrollY = 0;
+
 function openModal({ title, bodyHTML, buttons=[] }){
   if (!overlay) return;
+
+  // ✅ trava o scroll no mobile (evita “pular” pro topo)
+  __scrollY = window.scrollY || 0;
+  document.body.classList.add("modal-open");
+  document.body.style.top = `-${__scrollY}px`;
+
   if (modalTitle) modalTitle.textContent = title;
   if (modalBody) modalBody.innerHTML = bodyHTML;
   if (modalFoot) modalFoot.innerHTML = "";
@@ -196,9 +204,16 @@ function openModal({ title, bodyHTML, buttons=[] }){
 
 function closeModal(){
   if (!overlay) return;
+
   overlay.classList.remove("show");
   setTimeout(() => overlay.classList.add("hidden"), 180);
+
+  // ✅ destrava o scroll e volta pra posição anterior
+  document.body.classList.remove("modal-open");
+  document.body.style.top = "";
+  window.scrollTo(0, __scrollY);
 }
+
 
 function escapeHtml(s){
   return String(s)
