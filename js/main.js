@@ -73,31 +73,21 @@ Ele escreveu tão rápido que acabou deixando três errinhos para trás.`,
   },
 
   // ✅ ATUALIZADO: Nível Difícil com o TEXTO NOVO
-  {
-    name: "Difícil",
-    intro: `Nível difícil: desafios reais de edição — colocação pronominal, pontuação e gramática.`,
-    instruction: `Erros podem envolver pontuação, gramática, colocação pronominal e ortografia. Clique no trecho inteiro que precisa ser reescrito (incluindo vírgulas indevidas).`,
-    raw: `Se deve pensar no amor ao próximo e na importância da empatia. Essas atitudes reforçam os valores natalinos e mostram que o amor, em todas as suas formas e meios de manifestação, é a peça-chave para uma vida boa, feliz e luz nos tempos de escuridão. 
-Aos que estão em guerra, peço a paz; aos que não a encontram, que Deus acalme seus corações inquietos; aos que nada disso sirva, ofereço um calente abraço, o maior conforto da alma.
-Pensadores cientificistas pensam que o tempo é só um passar, que datas e símbolos são itens meramente psicológicos, que a linearidade intrínseca ao mensurável e durável tempo é uma prisão (ou mesmo um castigo). Chamam este tempo "chronos" e negam que e o "kairós", que é aquele tempo espiritual, profundo, com significado. Aquele tempo em que paramos para respirar e sim, sentimos que algo está ali presente. Não enxergo um tempo tão "kairós" quanto o Natal e, o mais incrível, independe de crenças ou religiões. É época de partilhar, festejar, refletir; é oportunidade para planejar, remodelar e descontruir.
-Recomece quantas vezes precisar, pois enquanto estivermos no "kairós", não seremos reféns do "chronos".`,
-    rules: [
-      // Colocação pronominal: "Se deve..." -> "Deve-se..."
-      { id:"d1", label:"Colocação pronominal", wrong:/\bSe deve pensar\b/g, correct:"Deve-se pensar" },
+{
+  name: "Difícil",
+  intro: `Nível difícil: desafios reais de edição — colocação pronominal, pontuação e paralelismo.`,
+  instruction: `Erros podem envolver pontuação, gramática e colocação pronominal. Clique no trecho inteiro que precisa ser reescrito.`,
+  raw: `No Natal, se deve pensar no amor ao próximo e na importância da empatia. Aos pais, respeite-os; aos filhos, os ame; aos necessitados, ajude-os. Essas atitudes, reforçam os valores natalinos e mostram que o amor, em todas as suas formas e meios de manifestação, é a peça-chave para uma vida boa, feliz e luz nos tempos de escuridão.
+Aos que estão em guerra, peço a paz; aos que não a encontram, que Deus acalme seus corações inquietos; aos que nada disso sirva, ofereço um caloroso abraço, o maior conforto da alma.
+Pensadores cientificistas pensam que o tempo é só um passar, que datas e símbolos são itens meramente psicológicos, que a linearidade intrínseca ao mensurável e durável tempo é uma prisão (ou mesmo um castigo). Chamam este tempo "chronos" e negam que é o "kairós", que é aquele tempo espiritual, profundo, com significado. Aquele tempo em que paramos para respirar e, sim, sentimos que algo está ali presente. Não enxergo um tempo tão "kairós" quanto o Natal e, o mais incrível, isso independe de crenças ou religiões. É época de partilhar, festejar, refletir; é oportunidade para planejar, remodelar e desconstruir.
+Recomece quantas vezes precisar, pois, enquanto estivermos no "kairós", não seremos reféns do "chronos".`,
+  rules: [
+    { id:"d1", label:"Colocação pronominal", wrong:/No Natal,\s*se deve pensar/g, correct:"No Natal, deve-se pensar" },
+    { id:"d2", label:"Colocação pronominal", wrong:/aos filhos,\s*os ame/gi, correct:"aos filhos, ame-os" },
+    { id:"d3", label:"Pontuação", wrong:/(?<=\batitudes),/g, correct:"" }
+  ]
+}
 
-      // Pontuação: vírgula indevida isolando adjunto
-      { id:"d2", label:"Pontuação", wrong:/o amor,\s*em todas/gi, correct:"o amor em todas" },
-
-      // Ortografia/uso: "calente" -> "caloroso"
-      { id:"d3", label:"Ortografia", wrong:/\bcalente\b/gi, correct:"caloroso" },
-
-      // Gramática: "negam que e o" -> "negam que é o"
-      { id:"d4", label:"Gramática", wrong:/negam que e o "kairós"/g, correct:'negam que é o "kairós"' },
-
-      // Ortografia: "descontruir" -> "desconstruir"
-      { id:"d5", label:"Ortografia", wrong:/\bdescontruir\b/gi, correct:"desconstruir" },
-    ]
-  }
 ];
 
 const explanations = [
@@ -832,10 +822,22 @@ async function skipLevel(){
 }
 
 async function finishMission(){
-  await commitAttempt(); // ✅ agora participa mesmo sem concluir tudo (se opt-in)
-  await maybeCommitMissionToSectorStats(); // opcional (agregado)
-  showFinal();
+  try {
+    await commitAttempt();                 // grava tentativa (se opt-in)
+    await maybeCommitMissionToSectorStats(); // opcional
+  } catch (err) {
+    console.error("Falha ao salvar ranking/attempt:", err);
+    // não trava a missão por causa do ranking
+    openModal({
+      title: "Aviso",
+      bodyHTML: `<p>Não foi possível registrar no ranking agora (erro de conexão/permissão). A missão será finalizada normalmente.</p>`,
+      buttons: [{ label:"Ok", onClick: closeModal }]
+    });
+  } finally {
+    showFinal(); // ✅ GARANTE que vai para a última tela
+  }
 }
+
 
 async function goNext(){
   levelIndex += 1;
@@ -843,10 +845,17 @@ async function goNext(){
     startLevel();
     return;
   }
-  await commitAttempt();
-  await maybeCommitMissionToSectorStats();
-  showFinal();
+
+  try {
+    await commitAttempt();
+    await maybeCommitMissionToSectorStats();
+  } catch (err) {
+    console.error("Falha ao salvar ranking/attempt:", err);
+  } finally {
+    showFinal(); // ✅ GARANTE final
+  }
 }
+
 
 /** =========================
  *  Cola
@@ -1123,128 +1132,111 @@ async function maybeCommitMissionToSectorStats(){
 function fmt(n){ return Number(n || 0).toFixed(2); }
 
 async function openRankingModal(){
-  const snap = await getDocs(query(
-    collection(db, "attempts"),
-    orderBy("createdAt", "desc"),
-    limit(250)
-  ));
-  const attempts = snap.docs.map(d => d.data());
+  try {
+    const sectors = SECTORS.filter(s => s !== "Selecione…");
+    const rows = [];
 
-  const sectors = SECTORS.filter(s => s !== "Selecione…");
-  const bySector = new Map();
-  for (const s of sectors) bySector.set(s, []);
+    for (const s of sectors){
+      const ref = doc(db, "sectorStats", s);
+      const snap = await getDoc(ref);
+      const d = snap.exists() ? snap.data() : null;
 
-  for (const a of attempts){
-    if (!a?.sector) continue;
-    if (!bySector.has(a.sector)) bySector.set(a.sector, []);
-    bySector.get(a.sector).push(a);
+      const missions = d?.missions || 0;
+      const avg = (num) => missions ? (num / missions) : 0;
+
+      rows.push({
+        sector: s,
+        missions,
+        avgT1: avg(d?.totalT1 || 0),
+        avgT2: avg(d?.totalT2 || 0),
+        avgT3: avg(d?.totalT3 || 0),
+        avgOverall: avg(d?.totalOverall || 0),
+        avgCorrect: avg(d?.totalCorrect || 0),
+        avgWrong: avg(d?.totalWrong || 0),
+      });
+    }
+
+    // ordena por média geral desc
+    rows.sort((a,b) => b.avgOverall - a.avgOverall || b.missions - a.missions);
+
+    openModal({
+      title: "🏆 Ranking por setor",
+      bodyHTML: `
+        <div style="overflow:auto">
+          <table style="width:100%; border-collapse:collapse">
+            <thead>
+              <tr>
+                <th style="text-align:left; padding:8px; border-bottom:1px solid rgba(255,255,255,.15)">Setor</th>
+                <th style="text-align:right; padding:8px; border-bottom:1px solid rgba(255,255,255,.15)">Missões</th>
+                <th style="text-align:right; padding:8px; border-bottom:1px solid rgba(255,255,255,.15)">Ativ. 1</th>
+                <th style="text-align:right; padding:8px; border-bottom:1px solid rgba(255,255,255,.15)">Ativ. 2</th>
+                <th style="text-align:right; padding:8px; border-bottom:1px solid rgba(255,255,255,.15)">Ativ. 3</th>
+                <th style="text-align:right; padding:8px; border-bottom:1px solid rgba(255,255,255,.15)">Média geral</th>
+                <th style="text-align:right; padding:8px; border-bottom:1px solid rgba(255,255,255,.15)">Acertos</th>
+                <th style="text-align:right; padding:8px; border-bottom:1px solid rgba(255,255,255,.15)">Erros</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${
+                rows.map(r => `
+                  <tr>
+                    <td style="padding:8px; border-bottom:1px solid rgba(255,255,255,.08)">
+                      ${escapeHtml(r.sector)}
+                    </td>
+                    <td style="padding:8px; text-align:right; border-bottom:1px solid rgba(255,255,255,.08)">
+                      ${r.missions}
+                    </td>
+                    <td style="padding:8px; text-align:right; border-bottom:1px solid rgba(255,255,255,.08)">
+                      ${r.avgT1.toFixed(2)}
+                    </td>
+                    <td style="padding:8px; text-align:right; border-bottom:1px solid rgba(255,255,255,.08)">
+                      ${r.avgT2.toFixed(2)}
+                    </td>
+                    <td style="padding:8px; text-align:right; border-bottom:1px solid rgba(255,255,255,.08)">
+                      ${r.avgT3.toFixed(2)}
+                    </td>
+                    <td style="padding:8px; text-align:right; border-bottom:1px solid rgba(255,255,255,.08)">
+                      ${r.avgOverall.toFixed(2)}
+                    </td>
+                    <td style="padding:8px; text-align:right; border-bottom:1px solid rgba(255,255,255,.08)">
+                      ${r.avgCorrect.toFixed(2)}
+                    </td>
+                    <td style="padding:8px; text-align:right; border-bottom:1px solid rgba(255,255,255,.08)">
+                      ${r.avgWrong.toFixed(2)}
+                    </td>
+                  </tr>
+                `).join("")
+              }
+            </tbody>
+          </table>
+        </div>
+
+        <p class="muted" style="margin-top:12px">
+          Ranking agregado por setor (sem nomes), conforme LGPD.
+        </p>
+      `,
+      buttons: [{ label:"Fechar", onClick: closeModal }]
+    });
+
+  } catch (err) {
+    console.error("Ranking falhou:", err);
+    openModal({
+      title: "Ranking indisponível",
+      bodyHTML: `
+        <p>O ranking não pôde ser carregado.</p>
+        <p class="muted" style="margin-top:10px">
+          Possíveis causas: regras do Firestore bloqueando leitura,
+          falta de conexão ou coleção vazia.
+        </p>
+        <p class="muted">
+          <code>${escapeHtml(err?.message || String(err))}</code>
+        </p>
+      `,
+      buttons: [{ label:"Fechar", onClick: closeModal }]
+    });
   }
-
-  // Estatísticas globais
-  const totalAttempts = attempts.length;
-  const sum = (arr, fn) => arr.reduce((acc,x)=>acc + (fn(x)||0), 0);
-
-  const gCorrect = sum(attempts, a=>a.correctOverall);
-  const gWrong = sum(attempts, a=>a.wrongOverall);
-  const gAuto = sum(attempts, a=>a.autoUsed);
-  const gHints = sum(attempts, a=>a.hintsUsed);
-  const gScore = sum(attempts, a=>a.scoreOverall);
-
-  const gDone1 = sum(attempts, a=> (a.taskDone?.[0] ? 1 : 0));
-  const gDone2 = sum(attempts, a=> (a.taskDone?.[1] ? 1 : 0));
-  const gDone3 = sum(attempts, a=> (a.taskDone?.[2] ? 1 : 0));
-
-  // Monta cards por setor
-  const sectorCards = sectors.map(sector => {
-    const list = bySector.get(sector) || [];
-    const n = list.length;
-
-    const avgOverall = n ? sum(list, a=>a.scoreOverall)/n : 0;
-    const avgT1 = n ? sum(list, a=>a.taskScore?.[0])/n : 0;
-    const avgT2 = n ? sum(list, a=>a.taskScore?.[1])/n : 0;
-    const avgT3 = n ? sum(list, a=>a.taskScore?.[2])/n : 0;
-
-    const done1 = sum(list, a=> (a.taskDone?.[0] ? 1 : 0));
-    const done2 = sum(list, a=> (a.taskDone?.[1] ? 1 : 0));
-    const done3 = sum(list, a=> (a.taskDone?.[2] ? 1 : 0));
-
-    // notas individuais (mascaradas) por tarefa
-    const notes = (idx) => {
-      // pega até 10 mais recentes pra não ficar gigante
-      const top = list.slice(0, 10);
-      return top.map(a => {
-        const who = escapeHtml(a.masked || "??***");
-        const sc = Number(a.taskScore?.[idx] || 0);
-        return `<span class="pill">${who} <b>${sc}</b></span>`;
-      }).join(" ");
-    };
-
-    return `
-      <div class="rank-card">
-        <div class="rank-head">
-          <div>
-            <div class="rank-sector">${escapeHtml(sector)}</div>
-            <div class="rank-sub">Participações: <b>${n}</b></div>
-          </div>
-          <div class="rank-badge">${fmt(avgOverall)}</div>
-        </div>
-
-        <div class="rank-grid">
-          <div class="rank-mini">
-            <div class="k">T1 concluídas</div><div class="v">${done1}/${n || 0}</div>
-            <div class="k">Média T1</div><div class="v">${fmt(avgT1)}</div>
-          </div>
-          <div class="rank-mini">
-            <div class="k">T2 concluídas</div><div class="v">${done2}/${n || 0}</div>
-            <div class="k">Média T2</div><div class="v">${fmt(avgT2)}</div>
-          </div>
-          <div class="rank-mini">
-            <div class="k">T3 concluídas</div><div class="v">${done3}/${n || 0}</div>
-            <div class="k">Média T3</div><div class="v">${fmt(avgT3)}</div>
-          </div>
-        </div>
-
-        <details class="rank-details">
-          <summary>Notas individuais (mascaradas) por tarefa</summary>
-          <div class="rank-notes">
-            <div class="rank-notes-row"><b>Tarefa 1:</b> ${notes(0) || "<span class='muted'>Sem dados</span>"}</div>
-            <div class="rank-notes-row"><b>Tarefa 2:</b> ${notes(1) || "<span class='muted'>Sem dados</span>"}</div>
-            <div class="rank-notes-row"><b>Tarefa 3:</b> ${notes(2) || "<span class='muted'>Sem dados</span>"}</div>
-          </div>
-        </details>
-      </div>
-    `;
-  }).join("");
-
-  // Estatísticas globais em “caixinha”
-  const globalStatsHTML = `
-    <div class="rank-stats">
-      <div class="stat-card"><p class="stat-k">Participações</p><p class="stat-v">${totalAttempts}</p></div>
-      <div class="stat-card"><p class="stat-k">Pontuação média</p><p class="stat-v">${totalAttempts ? fmt(gScore/totalAttempts) : "0.00"}</p></div>
-      <div class="stat-card"><p class="stat-k">Acertos (total)</p><p class="stat-v">${gCorrect}</p></div>
-      <div class="stat-card"><p class="stat-k">Erros (total)</p><p class="stat-v">${gWrong}</p></div>
-      <div class="stat-card"><p class="stat-k">Auto (total)</p><p class="stat-v">${gAuto}</p></div>
-      <div class="stat-card"><p class="stat-k">Colas (total)</p><p class="stat-v">${gHints}</p></div>
-      <div class="stat-card"><p class="stat-k">T1 concluída</p><p class="stat-v">${totalAttempts ? fmt((gDone1/totalAttempts)*100) : "0.00"}%</p></div>
-      <div class="stat-card"><p class="stat-k">T2 concluída</p><p class="stat-v">${totalAttempts ? fmt((gDone2/totalAttempts)*100) : "0.00"}%</p></div>
-      <div class="stat-card"><p class="stat-k">T3 concluída</p><p class="stat-v">${totalAttempts ? fmt((gDone3/totalAttempts)*100) : "0.00"}%</p></div>
-    </div>
-  `;
-
-  openModal({
-    title: "🏆 Ranking por setor — participações e médias",
-    bodyHTML: `
-      ${globalStatsHTML}
-      <div class="rank-wrap">
-        ${sectorCards || "<p class='muted'>Sem dados ainda.</p>"}
-      </div>
-      <p class="muted" style="margin:12px 0 0">
-        Ranking por setor e apelidos mascarados (2 letras + ***), conforme LGPD. Se o usuário desmarcar “Participar do ranking”, a tentativa não é registrada.
-      </p>
-    `,
-    buttons: [{ label:"Fechar", onClick: closeModal }]
-  });
 }
+
 
 /** =========================
  *  Personalização + renas
