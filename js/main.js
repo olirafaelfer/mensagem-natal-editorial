@@ -2,8 +2,9 @@
 
 // Firebase
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js";
-import { getFirestore, doc, getDoc, runTransaction, serverTimestamp } from
-  "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
+import {
+  getFirestore, doc, getDoc, runTransaction, serverTimestamp
+} from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
 
 /* COLE AQUI O SEU firebaseConfig (o seu já está funcionando) */
 const firebaseConfig = {
@@ -30,7 +31,7 @@ const SECTORS = [
 
 /** Pontuação */
 const SCORE_RULES = {
-  correct: +5,    // ✅ mudou para 5
+  correct: +5,    // ✅ 5 pontos
   wrong: -3,
   skip: -5,
   hint: -1
@@ -74,76 +75,29 @@ Ele escreveu tão rápido que acabou deixando três errinhos para trás.`,
     ]
   }
 ];
+
 const explanations = [
   {
     title: "Atividade 1 — Nível Fácil",
     items: [
-      {
-        wrong: "refeissões",
-        correct: "refeições",
-        reason: "Erro ortográfico. A forma correta do substantivo é 'refeições'."
-      },
-      {
-        wrong: "voces",
-        correct: "vocês",
-        reason: "Erro de acentuação gráfica. O pronome 'vocês' é acentuado."
-      },
-      {
-        wrong: "xeia",
-        correct: "cheia",
-        reason: "Erro ortográfico. A palavra correta é 'cheia', com dígrafo 'ch'."
-      }
+      { wrong: "refeissões", correct: "refeições", reason: "Erro ortográfico. A forma correta do substantivo é 'refeições'." },
+      { wrong: "voces", correct: "vocês", reason: "Erro de acentuação gráfica. O pronome 'vocês' é acentuado." },
+      { wrong: "xeia", correct: "cheia", reason: "Erro ortográfico. A palavra correta é 'cheia', com dígrafo 'ch'." }
     ]
   },
   {
     title: "Atividade 2 — Nível Médio",
     items: [
-      {
-        wrong: "O Natal, é um momento",
-        correct: "O Natal é um momento",
-        reason: "Vírgula indevida separando sujeito e predicado."
-      },
-      {
-        wrong: "Os textos natalinos, exige",
-        correct: "Os textos natalinos exigem",
-        reason: "Erro de concordância verbal: sujeito plural exige verbo no plural."
-      }
-      // você pode ajustar depois se mudar a atividade 2
+      { wrong: "O Natal, é um momento", correct: "O Natal é um momento", reason: "Vírgula indevida separando sujeito e predicado." },
+      { wrong: "Os textos natalinos, exige", correct: "Os textos natalinos exigem", reason: "Erro de concordância verbal: sujeito plural exige verbo no plural." }
     ]
   },
   {
     title: "Atividade 3 — Nível Difícil",
     items: [
-      {
-        wrong: "Essas atitudes, reforçam",
-        correct: "Essas atitudes reforçam",
-        reason: "Vírgula indevida entre sujeito e predicado."
-      },
-      {
-        wrong: "consiste uma peça-chave",
-        correct: "consiste em uma peça-chave",
-        reason: "Erro de regência verbal. O verbo 'consistir' exige a preposição 'em'."
-      },
-      {
-        wrong: "os ofereço um abraço",
-        correct: "ofereço-lhes um abraço",
-        reason: "Erro de colocação pronominal. A próclise após vírgula não é admitida neste contexto."
-      },
-      {
-        wrong: "elemento meramente psicológicos",
-        correct: "elementos meramente psicológicos",
-        reason: "Erro de concordância nominal entre substantivo e adjetivo."
-      },
-      {
-        wrong: "isso, independe",
-        correct: "isso independe",
-        reason: "Vírgula indevida separando sujeito do predicado."
-      },
-      {
-        wrong: "descontruir",
-        correct: "desconstruir",
-        reason: "Erro ortográfico. A forma correta é 'desconstruir'."
-      }
+      { wrong: "Essas atitudes, reforçam", correct: "Essas atitudes reforçam", reason: "Vírgula indevida entre sujeito e predicado." },
+      { wrong: "No Natal, se deve pensar", correct: "No Natal, deve-se pensar", reason: "Colocação pronominal: não se inicia oração com 'se' nesse caso; a forma correta é 'deve-se'." },
+      { wrong: "aos filhos, os ame", correct: "aos filhos, ame-os", reason: "Colocação pronominal: após vírgula, evita-se próclise sem fator de atração; a forma consagrada é 'ame-os'." }
     ]
   }
 ];
@@ -174,8 +128,8 @@ const hintBtn = document.getElementById("hintBtn");
 const nextLevelBtn = document.getElementById("nextLevelBtn");
 
 const finalCongrats = document.getElementById("finalCongrats");
-const finalStats = document.getElementById("finalStats");
-const finalRecado = document.getElementById("finalRecado");
+const finalStats = document.getElementById("finalStats"); // pode estar no HTML, mas agora usamos stat-grid
+const finalRecado = document.getElementById("finalRecado"); // pode existir; vamos deixar vazio (evita duplicar epígrafe)
 const finalBox1 = document.getElementById("finalBox1");
 const finalBox2 = document.getElementById("finalBox2");
 const finalBox3 = document.getElementById("finalBox3");
@@ -189,34 +143,9 @@ const lgpdMoreBtn = document.getElementById("lgpdMoreBtn");
 
 const lightsEl = document.getElementById("lights");
 const reindeerLayer = document.getElementById("reindeerLayer");
+
+// botão antigo único (se não existir no HTML, não quebra)
 const reviewBtn = document.getElementById("reviewBtn");
-
-reviewBtn.addEventListener("click", () => {
-  let html = "";
-
-  for (const level of explanations){
-    html += `<h3 style="margin:14px 0 6px">${level.title}</h3>`;
-    html += `<ul style="padding-left:18px; line-height:1.6">`;
-
-    for (const item of level.items){
-      html += `
-        <li style="margin-bottom:8px">
-          <strong>Erro:</strong> ${escapeHtml(item.wrong)}<br>
-          <strong>Correção:</strong> ${escapeHtml(item.correct)}<br>
-          <span class="muted">${escapeHtml(item.reason)}</span>
-        </li>
-      `;
-    }
-
-    html += `</ul>`;
-  }
-
-  openModal({
-    title: "Correções e justificativas editoriais",
-    bodyHTML: html,
-    buttons: [{ label:"Fechar", onClick: closeModal }]
-  });
-});
 
 /** =========================
  *  Modal
@@ -225,6 +154,7 @@ const overlay = document.getElementById("overlay");
 const modalTitle = document.getElementById("modalTitle");
 const modalBody = document.getElementById("modalBody");
 const modalFoot = document.getElementById("modalFoot");
+
 document.getElementById("closeModal").addEventListener("click", closeModal);
 overlay.addEventListener("click", (e) => { if (e.target === overlay) closeModal(); });
 document.addEventListener("keydown", (e) => {
@@ -250,6 +180,7 @@ function closeModal(){
   overlay.classList.remove("show");
   setTimeout(() => overlay.classList.add("hidden"), 180);
 }
+
 function escapeHtml(s){
   return String(s)
     .replaceAll("&","&amp;")
@@ -266,7 +197,23 @@ function normalize(str){
     .replace(/\p{Diacritic}/gu, "");
 }
 
-/** LGPD */
+function ensureGlobal(re){
+  const flags = re.flags.includes("g") ? re.flags : (re.flags + "g");
+  return new RegExp(re.source, flags);
+}
+
+function applyAllFixes(levelDef, text){
+  let t = text;
+  for (const rule of levelDef.rules){
+    const re = ensureGlobal(rule.wrong);
+    t = t.replace(re, rule.correct);
+  }
+  return t;
+}
+
+/** =========================
+ *  LGPD
+ *  ========================= */
 lgpdMoreBtn.addEventListener("click", () => {
   openModal({
     title: "LGPD — Informações sobre tratamento de dados",
@@ -291,7 +238,6 @@ let levelIndex = 0;
 let fixedRuleIds = new Set();
 let currentText = "";
 let currentRules = [];
-
 let levelLocked = false;
 
 let score = 0;
@@ -306,8 +252,71 @@ const taskScore = [0,0,0];
 const taskCorrect = [0,0,0];
 const taskWrong = [0,0,0];
 
+// ✅ guarda o texto final do usuário por nível
+const currentTextByLevel = ["", "", ""];
+
 const correctedHTMLByLevel = [];
 const correctedSegmentsByRule = new Map(); // ruleId -> {start, lenNew}
+
+/** =========================
+ *  Review por atividade (botões por box)
+ *  ========================= */
+const reviewBtn1 = document.getElementById("reviewBtn1");
+const reviewBtn2 = document.getElementById("reviewBtn2");
+const reviewBtn3 = document.getElementById("reviewBtn3");
+
+function openReviewModal(levelIdx){
+  const block = explanations[levelIdx];
+  if (!block) return;
+
+  let html = `<h3 style="margin:0 0 10px">${escapeHtml(block.title)}</h3>
+              <ul style="padding-left:18px; line-height:1.6">`;
+
+  for (const item of block.items){
+    html += `
+      <li style="margin-bottom:10px">
+        <strong>Erro:</strong> ${escapeHtml(item.wrong)}<br>
+        <strong>Correção:</strong> ${escapeHtml(item.correct)}<br>
+        <span class="muted">${escapeHtml(item.reason)}</span>
+      </li>
+    `;
+  }
+  html += `</ul>`;
+
+  openModal({
+    title: "Correções e justificativas",
+    bodyHTML: html,
+    buttons: [{ label:"Fechar", onClick: closeModal }]
+  });
+}
+
+reviewBtn1?.addEventListener("click", () => openReviewModal(0));
+reviewBtn2?.addEventListener("click", () => openReviewModal(1));
+reviewBtn3?.addEventListener("click", () => openReviewModal(2));
+
+// botão único antigo (se existir no HTML)
+reviewBtn?.addEventListener("click", () => {
+  let html = "";
+  for (const level of explanations){
+    html += `<h3 style="margin:14px 0 6px">${escapeHtml(level.title)}</h3>`;
+    html += `<ul style="padding-left:18px; line-height:1.6">`;
+    for (const item of level.items){
+      html += `
+        <li style="margin-bottom:8px">
+          <strong>Erro:</strong> ${escapeHtml(item.wrong)}<br>
+          <strong>Correção:</strong> ${escapeHtml(item.correct)}<br>
+          <span class="muted">${escapeHtml(item.reason)}</span>
+        </li>
+      `;
+    }
+    html += `</ul>`;
+  }
+  openModal({
+    title: "Correções e justificativas editoriais",
+    bodyHTML: html,
+    buttons: [{ label:"Fechar", onClick: closeModal }]
+  });
+});
 
 /** =========================
  *  HUD
@@ -328,14 +337,9 @@ function updateHUD(){
 }
 
 /** =========================
- *  Render com marcação verde das correções feitas
- *  (sem destacar erros ao carregar)
+ *  Render (sem destacar erros ao carregar)
+ *  + verde apenas para o que foi corrigido
  *  ========================= */
-function ensureGlobal(re){
-  const flags = re.flags.includes("g") ? re.flags : (re.flags + "g");
-  return new RegExp(re.source, flags);
-}
-
 function findNextMatch(text, pos, rule){
   const re = ensureGlobal(rule.wrong);
   re.lastIndex = pos;
@@ -418,7 +422,6 @@ function renderMessage(){
   const nextCorrected = (p) => correctedSegs.find(s => s.start >= p) || null;
 
   while (pos < text.length){
-    // se nível travado, só renderiza tudo normal/corrigido, mas sem erros clicáveis
     const cseg = nextCorrected(pos);
 
     if (cseg && cseg.start === pos){
@@ -427,7 +430,6 @@ function renderMessage(){
       continue;
     }
 
-    // antes do próximo segmento corrigido, ainda pode ter erros (se não travado)
     const limit = cseg ? cseg.start : text.length;
 
     if (levelLocked){
@@ -532,7 +534,7 @@ function applyReplacementAt(start, len, replacement){
 
   // atualiza posições dos segmentos já corrigidos
   const delta = replacement.length - len;
-  for (const [rid, info] of correctedSegmentsByRule.entries()){
+  for (const info of correctedSegmentsByRule.values()){
     if (info.start > start){
       info.start += delta;
     }
@@ -584,31 +586,19 @@ function onErrorClick(errSpan, rule){
   setTimeout(() => document.getElementById("fixInput")?.focus(), 30);
 }
 
+// ✅ remoção de vírgula (não usa markCorrected)
 function confirmCommaRemoval(errSpan, rule){
   const start = Number(errSpan.dataset.start);
   const len = Number(errSpan.dataset.len);
 
-  // Remove a vírgula do texto
-  const before = currentText.slice(0, start);
-  const after = currentText.slice(start + len);
-  currentText = before + after;
+  applyReplacementAt(start, len, "");
 
-  // Marca a regra como corrigida
   fixedRuleIds.add(rule.id);
-
-  // Pontuação
   registerCorrect();
 
-  // Fecha modal ANTES de re-renderizar
-  closeModal();
-
-  // Re-renderiza o texto
   renderMessage();
-
-  // Verifica se terminou o nível
   finalizeIfDone();
 }
-
 
 function confirmTyped(errSpan, rule){
   const typed = document.getElementById("fixInput")?.value ?? "";
@@ -633,20 +623,16 @@ function confirmTyped(errSpan, rule){
   const start = Number(errSpan.dataset.start);
   const len = Number(errSpan.dataset.len);
 
+  // ✅ aplica UMA vez
   applyReplacementAt(start, len, expected);
   fixedRuleIds.add(rule.id);
 
-// Remover a vírgula do texto sem marcar
-if (expected === "") {
-  // No caso de remoção de pontuação (vírgula), apenas faz a remoção
-  applyReplacementAt(start, len, ""); // Remover a vírgula
-} else {
-  // Para qualquer outro tipo de correção, marca como corrigido
-  markCorrected(rule.id, start, expected);
-}
+  // ✅ só marca verde se houver texto (vírgula não marca)
+  if (expected !== ""){
+    markCorrected(rule.id, start, expected);
+  }
 
   registerCorrect();
-
   closeModal();
   renderMessage();
   finalizeIfDone();
@@ -658,9 +644,8 @@ function finalizeIfDone(){
   const done = fixedRuleIds.size >= currentRules.length;
   if (done){
     levelLocked = true;
-    renderMessage(); // re-render travado (só verde/normal, sem erros clicáveis)
+    renderMessage(); // re-render travado (sem erros clicáveis)
 
-    // botão final/next liberado
     nextLevelBtn.classList.remove("btn-disabled");
     nextLevelBtn.setAttribute("aria-disabled", "false");
   }
@@ -668,7 +653,6 @@ function finalizeIfDone(){
 
 /** =========================
  *  Botão “Próximo nível / Finalizar”
- *  (sem botão de pular separado)
  *  ========================= */
 nextLevelBtn.addEventListener("click", async () => {
   const done = fixedRuleIds.size >= currentRules.length;
@@ -686,36 +670,33 @@ nextLevelBtn.addEventListener("click", async () => {
     return;
   }
 
-  // concluído: salva o texto corrigido
+  // ✅ salva o texto final do usuário deste nível
+  currentTextByLevel[levelIndex] = currentText;
+
+  // salva highlight (opcional)
   correctedHTMLByLevel[levelIndex] = highlightCorrections(levels[levelIndex], currentText);
 
-  // ✅ Se for o último nível, finaliza a missão aqui (mais robusto)
   if (isLast){
     await finishMission();
     return;
   }
 
-  // senão, vai para o próximo nível
   levelIndex += 1;
   startLevel();
 });
 
-
 async function skipLevel(){
-  // perde pontos e invalida ranking da missão
   missionValidForRanking = false;
   addScore(SCORE_RULES.skip);
 
-  // salva “como está”
+  // ✅ salva o texto final do usuário deste nível (mesmo pulando)
+  currentTextByLevel[levelIndex] = currentText;
+
   correctedHTMLByLevel[levelIndex] = highlightCorrections(levels[levelIndex], currentText);
 
   await goNext();
 }
 
-async function finishLevelAndGoNext(madeAllFixes){
-  correctedHTMLByLevel[levelIndex] = highlightCorrections(levels[levelIndex], currentText);
-  await goNext();
-}
 async function finishMission(){
   await maybeCommitMissionToRanking();
   showFinal();
@@ -727,8 +708,6 @@ async function goNext(){
     startLevel();
     return;
   }
-
-  // acabou a missão
   await maybeCommitMissionToRanking();
   showFinal();
 }
@@ -770,7 +749,7 @@ hintBtn.addEventListener("click", () => {
 });
 
 /** =========================
- *  Final / destaque
+ *  Final — destaques (verde/vermelho)
  *  ========================= */
 function highlightCorrections(levelDef, correctedText){
   let html = correctedText;
@@ -783,29 +762,87 @@ function highlightCorrections(levelDef, correctedText){
   return html.replaceAll(/@@(.*?)@@/g, `<span class="final-highlight">$1</span>`);
 }
 
+/**
+ * Monta HTML final (correto em verde, erro remanescente em vermelho).
+ * - Para regras de remoção (correct === ""), marca apenas as vírgulas que ainda batem com a regex da regra.
+ * - Para regras de substituição, marca ocorrências do "wrong" em vermelho.
+ * - Marca ocorrências do "correct" em verde.
+ */
+function buildFinalColoredHTML(levelDef, userText){
+  const text = String(userText ?? "");
+  let html = escapeHtml(text);
+
+  // 1) vermelho: erros ainda presentes
+  for (const rule of levelDef.rules){
+    const reWrong = ensureGlobal(rule.wrong);
+
+    if (rule.correct === ""){
+      // marca apenas as vírgulas/trechos que ainda correspondem ao padrão errado
+      html = html.replace(reWrong, (m) => `<span class="final-wrong">${escapeHtml(m)}</span>`);
+      continue;
+    }
+
+    html = html.replace(reWrong, (m) => `<span class="final-wrong">${escapeHtml(m)}</span>`);
+  }
+
+  // 2) verde: formas corretas presentes
+  for (const rule of levelDef.rules){
+    const c = String(rule.correct ?? "");
+    if (!c) continue;
+
+    const safe = c.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const reCorrect = new RegExp(safe, "g");
+    html = html.replace(reCorrect, (m) => `<span class="final-correct">${escapeHtml(m)}</span>`);
+  }
+
+  return html;
+}
+
+/** =========================
+ *  showFinal()
+ *  ========================= */
 function showFinal(){
   const name = getUserName();
+
+  const finalStatGrid = document.getElementById("finalStatGrid");
+  const epigraphBox = document.getElementById("epigraphBox");
+
+  // epígrafe destacada
+  if (epigraphBox){
+    epigraphBox.innerHTML = `
+      <blockquote>
+        “A luta contra o erro tipográfico tem algo de homérico. Durante a revisão os erros se escondem, fazem-se positivamente invisíveis.
+        Mas, assim que o texto é publicado, tornam-se visibilíssimos, verdadeiros sacis a nos botar a língua em todas as páginas.”
+      </blockquote>
+      <div class="who">Monteiro Lobato</div>
+    `;
+  }
+
+  // evita duplicar epígrafe em outro lugar
+  if (finalRecado) finalRecado.innerHTML = "";
 
   finalCongrats.textContent =
     `Parabéns, ${name}! Você ajudou o editor-chefe a publicar a mensagem de Natal no prazo!`;
 
-  finalStats.textContent =
-    `Pontos: ${score} | Acertos: ${correctCount} | Erros: ${wrongCount} | Colas: ${hintsUsed}` +
-    (missionValidForRanking ? "" : " (missão não contabilizada no ranking)");
+  // cards do resumo
+  if (finalStatGrid){
+    finalStatGrid.innerHTML = `
+      <div class="stat-card"><p class="stat-k">Pontos</p><p class="stat-v">${score}</p></div>
+      <div class="stat-card"><p class="stat-k">Acertos</p><p class="stat-v">${correctCount}</p></div>
+      <div class="stat-card"><p class="stat-k">Erros</p><p class="stat-v">${wrongCount}</p></div>
+      <div class="stat-card"><p class="stat-k">Missão no ranking</p><p class="stat-v">${missionValidForRanking ? "Sim" : "Não"}</p></div>
+    `;
+  } else {
+    // fallback (se não tiver grid)
+    if (finalStats){
+      finalStats.textContent = `Pontos: ${score} | Acertos: ${correctCount} | Erros: ${wrongCount} | Ranking: ${missionValidForRanking ? "Sim" : "Não"}`;
+    }
+  }
 
-  finalRecado.innerHTML = `
-  <blockquote style="margin:16px 0; font-style:italic; color:rgba(255,255,255,.85)">
-    “A luta contra o erro tipográfico tem algo de homérico. Durante a revisão os erros se escondem, fazem-se positivamente invisíveis.
-    Mas, assim que o texto é publicado, tornam-se visibilíssimos, verdadeiros sacis a nos botar a língua em todas as páginas.”
-    <br><br>
-    <strong>Monteiro Lobato</strong>
-  </blockquote>
-`;
-
-
-  finalBox1.innerHTML = `<p style="margin:0">${correctedHTMLByLevel[0] ?? ""}</p>`;
-  finalBox2.innerHTML = `<p style="margin:0">${correctedHTMLByLevel[1] ?? ""}</p>`;
-  finalBox3.innerHTML = `<p style="margin:0">${correctedHTMLByLevel[2] ?? ""}</p>`;
+  // caixas finais por atividade com vermelho/verde usando texto do usuário por nível
+  finalBox1.innerHTML = `<p style="margin:0">${buildFinalColoredHTML(levels[0], currentTextByLevel[0] || levels[0].raw)}</p>`;
+  finalBox2.innerHTML = `<p style="margin:0">${buildFinalColoredHTML(levels[1], currentTextByLevel[1] || levels[1].raw)}</p>`;
+  finalBox3.innerHTML = `<p style="margin:0">${buildFinalColoredHTML(levels[2], currentTextByLevel[2] || levels[2].raw)}</p>`;
 
   headerTitle.textContent = "Missão concluída 🎄";
   showOnly(screenFinal);
@@ -846,6 +883,7 @@ startBtn.addEventListener("click", () => {
   taskWrong[0]=taskWrong[1]=taskWrong[2]=0;
 
   correctedHTMLByLevel.length = 0;
+  currentTextByLevel[0] = currentTextByLevel[1] = currentTextByLevel[2] = "";
 
   openModal({
     title: "Pontuação da missão",
@@ -875,7 +913,6 @@ function startLevel(){
   levelLabel.textContent = lvl.name;
   instruction.textContent = lvl.instruction;
 
-  // texto do botão
   nextLevelBtn.textContent = (levelIndex === levels.length - 1)
     ? "Finalizar tarefa natalina"
     : "Próximo nível";
@@ -883,22 +920,18 @@ function startLevel(){
   updateHUD();
   renderMessage();
 
-openModal({
-  title: `🎅 ${lvl.name}`,
-  bodyHTML: `
-    <p style="white-space:pre-line">${lvl.intro}</p>
-    <p class="muted" style="margin-top:12px">
-      Os erros serão explicados e detalhados ao término da atividade.
-    </p>
-  `,
-  buttons: [{ label:"Entendi", onClick: closeModal }]
-});
-
+  openModal({
+    title: `🎅 ${lvl.name}`,
+    bodyHTML: `
+      <p style="white-space:pre-line">${escapeHtml(lvl.intro)}</p>
+      <p class="muted" style="margin-top:12px">Os erros serão explicados e detalhados ao término da atividade.</p>
+    `,
+    buttons: [{ label:"Entendi", onClick: closeModal }]
+  });
 }
 
 /** =========================
  *  Ranking: 1 participação por missão COMPLETA
- *  + colunas T1/T2/T3/Média geral + acertos/erros
  *  ========================= */
 rankingBtn.addEventListener("click", () => openRankingModal());
 finalRankingBtn.addEventListener("click", () => openRankingModal());
@@ -981,7 +1014,7 @@ async function openRankingModal(){
           <tbody>
             ${rows.map(r => `
               <tr>
-                <td style="padding:8px; border-bottom:1px solid rgba(255,255,255,.08)">${r.sector}</td>
+                <td style="padding:8px; border-bottom:1px solid rgba(255,255,255,.08)">${escapeHtml(r.sector)}</td>
                 <td style="padding:8px; text-align:right; border-bottom:1px solid rgba(255,255,255,.08)">${r.missions}</td>
                 <td style="padding:8px; text-align:right; border-bottom:1px solid rgba(255,255,255,.08)">${r.avgT1.toFixed(2)}</td>
                 <td style="padding:8px; text-align:right; border-bottom:1px solid rgba(255,255,255,.08)">${r.avgT2.toFixed(2)}</td>
@@ -1003,7 +1036,7 @@ async function openRankingModal(){
 }
 
 /** =========================
- *  Personalização + renas (mantido simples)
+ *  Personalização + renas
  *  ========================= */
 customizeBtn.addEventListener("click", openCustomizeModal);
 openCustomizeInline.addEventListener("click", openCustomizeModal);
@@ -1018,8 +1051,8 @@ function toggleHTML(id, title, subtitle, checked){
   return `
     <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; padding:10px; border-radius:14px; border:1px solid rgba(255,255,255,.12); background: rgba(0,0,0,.18)">
       <div style="display:flex; flex-direction:column; gap:2px">
-        <b>${title}</b>
-        <small style="color:rgba(255,255,255,.62)">${subtitle}</small>
+        <b>${escapeHtml(title)}</b>
+        <small style="color:rgba(255,255,255,.62)">${escapeHtml(subtitle)}</small>
       </div>
       <label class="switch" style="position:relative; width:52px; height:30px">
         <input type="checkbox" id="${id}" ${checked ? "checked":""} style="opacity:0;width:0;height:0"/>

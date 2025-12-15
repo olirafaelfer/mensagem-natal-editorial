@@ -181,6 +181,79 @@ body{
   margin: 0 0 6px;
 }
 
+.final-activity{ margin-top: 12px; }
+.final-activity-head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  margin: 6px 2px 8px;
+}
+.btn.mini{
+  padding: 8px 10px;
+  border-radius: 12px;
+  font-size: 13px;
+}
+
+.final-correct{
+  padding: 2px 6px;
+  border-radius: 10px;
+  background: rgba(80, 255, 170, .20);
+  box-shadow: 0 0 0 1px rgba(80, 255, 170, .34) inset;
+  font-weight: 850;
+}
+.final-wrong{
+  padding: 2px 6px;
+  border-radius: 10px;
+  background: rgba(255, 90, 90, .20);
+  box-shadow: 0 0 0 1px rgba(255, 90, 90, .34) inset;
+  font-weight: 850;
+}
+
+.epigraph{
+  margin-top: 16px;
+  max-width: 860px;
+  width:100%;
+  border-radius: 20px;
+  padding: 16px 16px;
+  border: 1px solid rgba(255,255,255,.14);
+  background: rgba(255,255,255,.08);
+  box-shadow: 0 18px 50px rgba(0,0,0,.35);
+}
+.epigraph blockquote{
+  margin:0;
+  font-style: italic;
+  line-height: 1.7;
+  color: rgba(255,255,255,.88);
+}
+.epigraph .who{
+  margin-top: 10px;
+  font-weight: 900;
+  color: rgba(255,255,255,.95);
+}
+
+
+.stat-grid{
+  margin-top: 14px;
+  display:grid;
+  grid-template-columns: repeat(4, minmax(0,1fr));
+  gap:10px;
+  width:100%;
+  max-width: 860px;
+}
+@media (max-width: 900px){
+  .stat-grid{ grid-template-columns: repeat(2, minmax(0,1fr)); }
+}
+.stat-card{
+  border-radius: 18px;
+  border: 1px solid rgba(255,255,255,.12);
+  background: rgba(0,0,0,.18);
+  padding: 12px 12px;
+}
+.stat-k{ color: rgba(255,255,255,.70); font-size: 12px; margin:0; }
+.stat-v{ font-size: 18px; font-weight: 900; margin: 6px 0 0; }
+
+
 .input{
   width:100%;
   padding: 12px 12px;
@@ -196,6 +269,16 @@ body{
 }
 .input::placeholder{ color: rgba(255,255,255,.55); }
 select.input option{ background:#0b1020; color:#fff; }
+
+.notice-box{
+  margin-top: 14px;
+  padding: 12px 12px;
+  border-radius: 16px;
+  border: 1px solid rgba(255,255,255,.12);
+  background: rgba(0,0,0,.22);
+}
+.notice-title{ margin:0; font-weight:850; }
+
 
 .lgpd-box{
   margin-top: 14px;
