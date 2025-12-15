@@ -18,14 +18,14 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-/** Setores (troque depois pela sua lista real) */
+/** Setores*/
 const SECTORS = [
   "Selecione…",
-  "Financeiro",
-  "RH",
-  "TI",
-  "Jurídico",
-  "Comercial"
+  "Produção (CTP, PCP, Offset, Acabamento...)",
+  "Administrativo (CTB, Fin, Adm...)",
+  "Editorial",
+  "Serviços gerais (Manutenção, Xerox, Portaria...)",
+  "Outros..."
 ];
 
 /** Pontuação */
@@ -571,6 +571,7 @@ function finalizeIfDone(){
  *  ========================= */
 nextLevelBtn.addEventListener("click", async () => {
   const done = fixedRuleIds.size >= currentRules.length;
+  const isLast = levelIndex === (levels.length - 1);
 
   if (!done){
     openModal({
@@ -584,8 +585,20 @@ nextLevelBtn.addEventListener("click", async () => {
     return;
   }
 
-  await finishLevelAndGoNext(true);
+  // concluído: salva o texto corrigido
+  correctedHTMLByLevel[levelIndex] = highlightCorrections(levels[levelIndex], currentText);
+
+  // ✅ Se for o último nível, finaliza a missão aqui (mais robusto)
+  if (isLast){
+    await finishMission();
+    return;
+  }
+
+  // senão, vai para o próximo nível
+  levelIndex += 1;
+  startLevel();
 });
+
 
 async function skipLevel(){
   // perde pontos e invalida ranking da missão
@@ -601,6 +614,10 @@ async function skipLevel(){
 async function finishLevelAndGoNext(madeAllFixes){
   correctedHTMLByLevel[levelIndex] = highlightCorrections(levels[levelIndex], currentText);
   await goNext();
+}
+async function finishMission(){
+  await maybeCommitMissionToRanking();
+  showFinal();
 }
 
 async function goNext(){
