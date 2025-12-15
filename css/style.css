@@ -10,7 +10,7 @@
   --muted: rgba(255,255,255,.70);
   --muted2: rgba(255,255,255,.55);
 
-  --cardBg: rgba(255,255,255,.06);   /* sutil */
+  --cardBg: rgba(255,255,255,.06);   /* mais sutil */
   --stroke: rgba(255,255,255,.12);
 
   --shadow: 0 14px 40px rgba(0,0,0,.35);
@@ -26,12 +26,20 @@ body{
   margin: 0;
   font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
   color: var(--text);
-  background: var(--bg);
+  background: var(--bg);         /* ✅ sem degradê */
   overflow-x: hidden;
-  overflow-y: auto;
+  overflow-y: auto;              /* ✅ scroll ativo */
 
+  /* “intensidade” ainda funciona, mas bem mais sutil */
   filter: saturate(calc(1.02 * var(--intensity)))
           contrast(calc(1.01 * var(--intensity)));
+}
+
+/* 🔒 quando modal abre: trava o fundo no lugar correto (mobile-friendly) */
+body.modal-open{
+  position: fixed;
+  width: 100%;
+  overflow: hidden;
 }
 
 /* =========================
@@ -49,6 +57,7 @@ hr{
   margin: 16px 0;
 }
 
+/* button "link" */
 .linklike{
   border: 0;
   background: transparent;
@@ -103,13 +112,13 @@ hr{
    ========================= */
 .app{
   position: relative;
-  z-index: 5; /* conteúdo acima dos efeitos */
+  z-index: 5;
   min-height: 100vh;
   display: flex;
   flex-direction: column;
 }
 
-/* Topbar e Cards centralizados dentro da largura padrão */
+/* fallback se NÃO tiver container */
 .app > .topbar,
 .app > .card{
   width: min(var(--container), calc(100% - 32px));
@@ -118,7 +127,7 @@ hr{
 }
 
 /* =========================
-   Topbar (não fixa)
+   Topbar (não fixa!)
    ========================= */
 .topbar{
   display: grid;
@@ -126,8 +135,7 @@ hr{
   align-items: center;
   gap: 12px;
 
-  padding: 14px 16px; /* garante “respiro” lateral mesmo sem .container */
-  margin-top: 18px;   /* separa do topo */
+  padding: 14px 0;
   border-bottom: 1px solid rgba(255,255,255,.10);
   background: transparent;
 }
@@ -354,7 +362,7 @@ select.input option{
 .actions.center-actions{ justify-content: center; }
 
 /* =========================
-   Game HUD row (.status-row / .pill)
+   Game HUD row
    ========================= */
 .status-row{
   display: flex;
@@ -403,8 +411,7 @@ select.input option{
   line-height: 1.55;
   letter-spacing: 0;
   word-spacing: 0;
-
-  white-space: pre-wrap;
+  white-space: pre-wrap;   /* respeita \n */
   overflow-wrap: anywhere;
 }
 
@@ -414,12 +421,11 @@ select.input option{
   to{ opacity: 1; transform: translateY(0); }
 }
 
-/* ✅ “aperta” tokens (pontuação também é token) */
 .token{
-  display: inline;
-  padding: 1px 2px;  /* era maior: isso causava “pontuação distante” */
+  display: inline;         /* não cria “espaço extra” */
+  padding: 2px 3px;
   margin: 0;
-  border-radius: 6px;
+  border-radius: 8px;
   cursor: pointer;
   transition: background .15s ease, transform .06s ease, color .15s ease;
 }
@@ -434,6 +440,12 @@ select.input option{
 .token.error{
   background: rgba(255,23,68,.16);
   border: 1px solid rgba(255,23,68,.22);
+}
+
+/* pontuação clicável (quando for um erro que é pontuação) */
+.token.punct{
+  padding: 0 1px;
+  border-radius: 6px;
 }
 
 /* =========================
@@ -539,14 +551,6 @@ select.input option{
   padding: 14px 14px;
 }
 
-.final-highlight{
-  background: rgba(229,57,53,.22);
-  border: 1px solid rgba(229,57,53,.22);
-  border-radius: 10px;
-  padding: 2px 4px;
-  margin: 0 1px;
-}
-
 .final-correct{
   background: rgba(0,230,118,.18);
   border: 1px solid rgba(0,230,118,.24);
@@ -589,13 +593,13 @@ select.input option{
 }
 
 .modal{
-  width: min(720px, 100%);
+  width: min(760px, 100%);
   background: rgba(15,18,26,.96);
   border: 1px solid rgba(255,255,255,.14);
   border-radius: 18px;
   box-shadow: 0 30px 90px rgba(0,0,0,.55);
   overflow: hidden;
-  transform: translateY(6px) scale(.99);
+  transform: translateY(10px) scale(.99);
   transition: transform 180ms ease;
 }
 #overlay.show .modal{ transform: translateY(0) scale(1); }
@@ -691,7 +695,7 @@ select.input option{
 }
 
 /* =========================
-   Score float
+   Score float (apenas UMA versão)
    ========================= */
 .score-float{
   position: fixed;
@@ -702,6 +706,7 @@ select.input option{
   text-shadow: 0 10px 25px rgba(0,0,0,.45);
   animation: scoreUp 900ms ease-out forwards;
 }
+
 .score-float.plus{ color: #00e676; }
 .score-float.minus{ color: #ff1744; }
 
@@ -709,6 +714,100 @@ select.input option{
   from{ opacity: 0; transform: translateY(10px) scale(.95); }
   20%{ opacity: 1; }
   to{ opacity: 0; transform: translateY(-40px) scale(1.06); }
+}
+
+/* =========================
+   Ranking (tabs + animações)
+   ========================= */
+.ranking-tabs{
+  display:flex;
+  gap: 8px;
+  margin: 8px 0 12px;
+}
+.ranking-tab{
+  flex: 1;
+  border: 1px solid rgba(255,255,255,.12);
+  background: rgba(255,255,255,.06);
+  color: rgba(255,255,255,.92);
+  padding: 10px 10px;
+  border-radius: 14px;
+  cursor: pointer;
+  font-weight: 900;
+  letter-spacing: .1px;
+  transition: transform .12s ease, filter .2s ease, background .2s ease, border-color .2s ease;
+}
+.ranking-tab:hover{ filter: brightness(1.06); }
+.ranking-tab:active{ transform: translateY(1px); }
+.ranking-tab.active{
+  background: color-mix(in srgb, var(--accent) 75%, rgba(255,255,255,.10));
+  border-color: color-mix(in srgb, var(--accent) 55%, rgba(255,255,255,.14));
+}
+
+.ranking-panel{ display:none; }
+.ranking-panel.show{
+  display:block;
+  animation: panelIn 180ms ease-out;
+}
+@keyframes panelIn{
+  from{ opacity:0; transform: translateY(6px); }
+  to{ opacity:1; transform: translateY(0); }
+}
+
+.rank-table{
+  width: 100%;
+  border-collapse: collapse;
+  overflow: hidden;
+  border-radius: 14px;
+}
+.rank-table th{
+  text-align: left;
+  padding: 10px 10px;
+  font-size: 12px;
+  color: rgba(255,255,255,.74);
+  border-bottom: 1px solid rgba(255,255,255,.12);
+}
+.rank-table td{
+  padding: 10px 10px;
+  border-bottom: 1px solid rgba(255,255,255,.08);
+  vertical-align: middle;
+}
+.rank-table td.num, .rank-table th.num{
+  text-align:right;
+  font-variant-numeric: tabular-nums;
+}
+.rank-row{
+  animation: rowIn 220ms ease-out both;
+}
+@keyframes rowIn{
+  from{ opacity:0; transform: translateY(6px); }
+  to{ opacity:1; transform: translateY(0); }
+}
+
+.medal{
+  display:inline-flex;
+  min-width: 34px;
+  align-items:center;
+  justify-content:center;
+  font-size: 18px;
+  transform-origin: center;
+}
+.medal.top{
+  animation: medalPop 420ms ease-out both;
+}
+@keyframes medalPop{
+  0%{ transform: scale(.85); opacity:.7; }
+  70%{ transform: scale(1.10); opacity:1; }
+  100%{ transform: scale(1.0); }
+}
+
+.rank-name{
+  font-weight: 900;
+}
+.rank-sub{
+  display:block;
+  font-size: 12px;
+  color: rgba(255,255,255,.65);
+  margin-top: 2px;
 }
 
 /* =========================
@@ -721,40 +820,23 @@ select.input option{
 
 @media (max-width: 740px){
   .stat-grid{ grid-template-columns: 1fr; max-width: 420px; }
-  .message{ font-size: 15.5px; line-height: 1.45; }
-  .topbar{ padding: 12px 12px; }
-  .app > .topbar,
-  .app > .card{
-    width: calc(100% - 24px);
+  .message{ font-size: 16px; }
+  .card{ margin: 14px auto; }
+  .topbar{ padding: 12px 0; }
+
+  .message{
+    line-height: 1.45;
+    font-size: 15.5px;
+    word-spacing: 0;
+  }
+  .token{
+    display: inline;
+    padding: 0 1px;
+    margin: 0;
   }
 }
 
 /* Fallback para navegadores sem color-mix */
 @supports not (color: color-mix(in srgb, red 50%, white)) {
   a{ color: #ff8a80; }
-}
-/* =========================
-   PATCH 4 — Espaçamento correto no mobile
-   ========================= */
-@media (max-width: 740px){
-  .message{
-    font-size: 15.5px;
-    line-height: 1.45;
-    letter-spacing: 0;
-    word-spacing: 0;
-  }
-
-  /* tokens nunca criam “respiro” extra */
-  .token{
-    display: inline;
-    padding: 0 1px;
-    margin: 0;
-    vertical-align: baseline;
-  }
-
-  /* pontuação colada na palavra */
-  .token.punct{
-    padding: 0;
-    margin: 0;
-  }
 }

@@ -3,8 +3,10 @@
 // Firebase
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js";
 import {
-  getFirestore, doc, getDoc, runTransaction, serverTimestamp,
-  collection, getDocs
+  getFirestore,
+  doc, getDoc, runTransaction, serverTimestamp,
+  collection, getDocs, addDoc,
+  query, orderBy, limit
 } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
 
 /* firebaseConfig */
@@ -40,9 +42,7 @@ const SCORE_RULES = {
 };
 let autoUsed = 0;
 
-/** =========================
- * Conteúdo / níveis
- * ========================= */
+/** Levels */
 const levels = [
   {
     name: "Fácil",
@@ -62,11 +62,11 @@ Ele escreveu tão rápido que acabou deixando três errinhos para trás.`,
     instruction: `Atenção: os erros podem envolver pontuação (inclusive vírgulas indevidas), concordância, acentuação e ortografia.`,
     raw: `O Natal, é um momento especial para celebrar a união e a esperança. As mensagens, que circulam nessa época, precisam transmitir carinho e acolhimento, mas muitas vezes, acabam sendo escritas de forma apressada. Os textos natalinos, exige atenção aos detalhes, para que a mensagem chegue clara ao leitor.`,
     rules: [
-      { id:"m1", label:"Pontuação",     wrong:/(?<=\bNatal),/g,        correct:"" },
-      { id:"m2", label:"Pontuação",     wrong:/(?<=\bmensagens),/g,    correct:"" },
-      { id:"m3", label:"Pontuação",     wrong:/(?<=\bvezes),/g,        correct:"" },
-      { id:"m4", label:"Pontuação",     wrong:/(?<=\bnatalinos),/g,    correct:"" },
-      { id:"m5", label:"Concordância",  wrong:/\bexige\b/g,            correct:"exigem" },
+      { id:"m1", label:"Pontuação",  wrong:/(?<=\bNatal),/g,        correct:"" },
+      { id:"m2", label:"Pontuação",  wrong:/(?<=\bmensagens),/g,    correct:"" },
+      { id:"m3", label:"Pontuação",  wrong:/(?<=\bvezes),/g,        correct:"" },
+      { id:"m4", label:"Pontuação",  wrong:/(?<=\bnatalinos),/g,    correct:"" },
+      { id:"m5", label:"Concordância", wrong:/\bexige\b/g, correct:"exigem" },
     ]
   },
   {
@@ -79,17 +79,15 @@ Pensadores cientificistas pensam que o tempo é só um passar, que datas e símb
 Recomece quantas vezes precisar, pois, enquanto estivermos no "kairós", não seremos reféns do "chronos".`,
     rules: [
       { id:"d1", label:"Colocação pronominal", wrong:/No Natal,\s*se deve pensar/g, correct:"No Natal, deve-se pensar" },
-      { id:"d2", label:"Colocação pronominal", wrong:/aos filhos,\s*os ame/gi,      correct:"aos filhos, ame-os" },
+      { id:"d2", label:"Colocação pronominal", wrong:/aos filhos,\s*os ame/gi, correct:"aos filhos, ame-os" },
 
-      // vírgulas indevidas / termos essenciais
-      { id:"d3", label:"Pontuação", wrong:/(?<=\batitudes),/g,          correct:"" },
-      { id:"d4", label:"Pontuação", wrong:/o amor,\s*em todas/gi,        correct:"o amor em todas" },
-      { id:"d5", label:"Pontuação", wrong:/quanto o Natal\s*e,/gi,       correct:"quanto o Natal e" },
+      // vírgulas indevidas (sujeito + verbo / termos essenciais)
+      { id:"d3", label:"Pontuação", wrong:/(?<=\batitudes),/g, correct:"" },
+      { id:"d4", label:"Pontuação", wrong:/o amor,\s*em todas/gi, correct:"o amor em todas" },
+      { id:"d5", label:"Pontuação", wrong:/quanto o Natal\s*e,/gi, correct:"quanto o Natal e" },
 
-      // ajuste editorial objetivo
-      { id:"d6", label:"Pontuação", wrong:/ofereço um caloroso abraço,\s*o maior conforto da alma/gi,
-        correct:"ofereço um caloroso abraço: o maior conforto da alma"
-      },
+      // melhoria pontual (mais editorial e objetiva)
+      { id:"d6", label:"Pontuação", wrong:/ofereço um caloroso abraço,\s*o maior conforto da alma/gi, correct:"ofereço um caloroso abraço: o maior conforto da alma" },
     ]
   }
 ];
@@ -107,21 +105,20 @@ const explanations = [
     title: "Atividade 2 — Nível Médio",
     items: [
       { wrong: "O Natal, é um momento", correct: "O Natal é um momento", reason: "Vírgula indevida separando sujeito e predicado." },
-      { wrong: "As mensagens, que circulam", correct: "As mensagens que circulam", reason: "Vírgula indevida separando sujeito e oração adjetiva restritiva." },
-      { wrong: "muitas vezes, acabam", correct: "muitas vezes acabam", reason: "Vírgula indevida separando advérbio e verbo." },
-      { wrong: "Os textos natalinos, exige", correct: "Os textos natalinos exigem", reason: "Concordância verbal: sujeito plural exige verbo no plural." },
-      { wrong: "detalhes, para que", correct: "detalhes para que", reason: "Vírgula indevida separando termo essencial da oração." }
+      { wrong: "As mensagens, que circulam", correct: "As mensagens que circulam", reason: "Vírgula indevida isolando oração restritiva (sem necessidade aqui)." },
+      { wrong: "mas muitas vezes, acabam", correct: "mas muitas vezes acabam", reason: "Vírgula indevida entre adjunto e verbo." },
+      { wrong: "Os textos natalinos, exige", correct: "Os textos natalinos exigem", reason: "Erro de concordância verbal: sujeito plural exige verbo no plural." }
     ]
   },
   {
     title: "Atividade 3 — Nível Difícil",
     items: [
-      { wrong: "No Natal, se deve pensar", correct: "No Natal, deve-se pensar", reason: "Colocação pronominal: forma adequada é 'deve-se'." },
+      { wrong: "No Natal, se deve pensar", correct: "No Natal, deve-se pensar", reason: "Colocação pronominal: a forma adequada é 'deve-se'." },
       { wrong: "aos filhos, os ame", correct: "aos filhos, ame-os", reason: "Colocação pronominal: forma recomendada 'ame-os'." },
       { wrong: "Essas atitudes, reforçam", correct: "Essas atitudes reforçam", reason: "Vírgula indevida entre sujeito e predicado." },
-      { wrong: "o amor, em todas", correct: "o amor em todas", reason: "Vírgula indevida entre termo essencial e complemento." },
-      { wrong: "quanto o Natal e,", correct: "quanto o Natal e", reason: "Vírgula indevida quebrando a fluidez do período." },
-      { wrong: "um caloroso abraço, o maior conforto", correct: "um caloroso abraço: o maior conforto", reason: "Dois termos em aposição: melhor usar dois-pontos para clareza." }
+      { wrong: "o amor, em todas", correct: "o amor em todas", reason: "Vírgula indevida separando termo essencial." },
+      { wrong: "quanto o Natal e,", correct: "quanto o Natal e", reason: "Vírgula indevida quebrando coordenação." },
+      { wrong: "abraço, o maior conforto", correct: "abraço: o maior conforto", reason: "Melhoria editorial: dois-pontos para aposto explicativo." }
     ]
   }
 ];
@@ -171,12 +168,12 @@ const reindeerLayer = document.getElementById("reindeerLayer");
 const reviewBtn1 = document.getElementById("reviewBtn1");
 const reviewBtn2 = document.getElementById("reviewBtn2");
 const reviewBtn3 = document.getElementById("reviewBtn3");
-const reviewBtn = document.getElementById("reviewBtn"); // pode não existir
+const reviewBtn = document.getElementById("reviewBtn");
 
 const optRankingEl = document.getElementById("optRanking");
 
 /** =========================
- * Modal
+ * Modal (FIXED + trava scroll no lugar certo)
  * ========================= */
 const overlay = document.getElementById("overlay");
 const modalTitle = document.getElementById("modalTitle");
@@ -189,8 +186,24 @@ document.addEventListener("keydown", (e) => {
   if (e.key === "Escape" && overlay && !overlay.classList.contains("hidden")) closeModal();
 });
 
+function lockBodyScroll(){
+  const y = window.scrollY || 0;
+  document.body.dataset.scrollY = String(y);
+  document.body.classList.add("modal-open");
+  document.body.style.top = `-${y}px`;
+}
+
+function unlockBodyScroll(){
+  const y = Number(document.body.dataset.scrollY || "0");
+  document.body.classList.remove("modal-open");
+  document.body.style.top = "";
+  window.scrollTo(0, y);
+}
+
 function openModal({ title, bodyHTML, buttons=[] }){
   if (!overlay) return;
+
+  lockBodyScroll();
 
   if (modalTitle) modalTitle.textContent = title || "";
   if (modalBody) modalBody.innerHTML = bodyHTML || "";
@@ -212,11 +225,14 @@ function openModal({ title, bodyHTML, buttons=[] }){
 function closeModal(){
   if (!overlay) return;
   overlay.classList.remove("show");
-  setTimeout(() => overlay.classList.add("hidden"), 180);
+  setTimeout(() => {
+    overlay.classList.add("hidden");
+    unlockBodyScroll();
+  }, 180);
 }
 
 /** =========================
- * Score float (uma única versão)
+ * Score float
  * ========================= */
 function showScoreFloat(delta, anchorEl = null){
   const el = document.createElement("div");
@@ -271,6 +287,18 @@ function ensureGlobal(re){
   return new RegExp(re.source, flags);
 }
 
+function clampName(name){
+  const n = (name || "").trim().replace(/\s+/g, " ");
+  return n.length > 60 ? n.slice(0,60) : n;
+}
+
+function medalFor(i){
+  if (i === 0) return { t:"🥇", top:true };
+  if (i === 1) return { t:"🥈", top:true };
+  if (i === 2) return { t:"🥉", top:true };
+  return { t:`${i+1}º`, top:false };
+}
+
 /** =========================
  * Estado
  * ========================= */
@@ -285,15 +313,11 @@ let wrongCount = 0;
 let correctCount = 0;
 let hintsUsed = 0;
 
-// por tarefa
 const taskScore = [0,0,0];
 const taskCorrect = [0,0,0];
 const taskWrong = [0,0,0];
 
-// texto final do usuário por nível
 const currentTextByLevel = ["", "", ""];
-
-// marcações do trecho já corrigido
 const correctedSegmentsByRule = new Map();
 
 /** =========================
@@ -365,48 +389,33 @@ function tokenize(seg){
 
   for (let i=0;i<seg.length;i++){
     const ch = seg[i];
-
     if (ch === " " || ch === "\n" || ch === "\t"){
       flush();
       out.push({t:"s", v:ch});
       continue;
     }
-
     if (",.;:!?".includes(ch)){
       flush();
-      out.push({ t:"p", v: ch });
+      out.push({t:"p", v:ch});
       continue;
     }
-
     buf += ch;
   }
   flush();
   return out;
 }
 
-/**
- * ⚠️ IMPORTANTE:
- * - Pontuação normal (t.t === "p") vira TextNode (sem span) pra NÃO criar espaço estranho.
- * - Só erros viram span clicável (no renderMessage).
- */
 function appendPlain(frag, seg){
   const tokens = tokenize(seg);
-
   for (const t of tokens){
-    if (t.t === "s"){
+    if (t.t === "s" || t.t === "p"){
       frag.appendChild(document.createTextNode(t.v));
       continue;
     }
-    if (t.t === "p"){
-      frag.appendChild(document.createTextNode(t.v));
-      continue;
-    }
-
     const span = document.createElement("span");
     span.className = "token";
     span.textContent = t.v;
     span.dataset.kind = "plain";
-    span.style.display = "inline";
     span.addEventListener("click", () => onPlainClick(span));
     frag.appendChild(span);
   }
@@ -414,22 +423,15 @@ function appendPlain(frag, seg){
 
 function appendCorrected(frag, seg){
   const tokens = tokenize(seg);
-
   for (const t of tokens){
-    if (t.t === "s"){
+    if (t.t === "s" || t.t === "p"){
       frag.appendChild(document.createTextNode(t.v));
       continue;
     }
-    if (t.t === "p"){
-      frag.appendChild(document.createTextNode(t.v));
-      continue;
-    }
-
     const span = document.createElement("span");
     span.className = "token corrected";
     span.textContent = t.v;
     span.dataset.kind = "corrected";
-    span.style.display = "inline";
     span.addEventListener("click", () => onLockedTextClick());
     frag.appendChild(span);
   }
@@ -437,7 +439,6 @@ function appendCorrected(frag, seg){
 
 function renderMessage(){
   if (!messageArea) return;
-
   messageArea.classList.remove("show");
   messageArea.innerHTML = "";
 
@@ -472,7 +473,6 @@ function renderMessage(){
 
     let best = null;
     let bestRule = null;
-
     for (const rule of currentRules){
       if (fixedRuleIds.has(rule.id)) continue;
       const m = findNextMatch(text, pos, rule);
@@ -494,17 +494,13 @@ function renderMessage(){
       appendPlain(frag, text.slice(pos, best.index));
     }
 
-    // ✅ Aqui sim existe best/bestRule e é o ÚNICO lugar que usa best.text
     const span = document.createElement("span");
     span.className = "token" + (",.;:!?".includes(best.text) ? " punct" : "");
     span.textContent = best.text;
-
     span.dataset.kind = "error";
     span.dataset.ruleid = bestRule.id;
     span.dataset.start = String(best.index);
     span.dataset.len = String(best.len);
-    span.style.display = "inline";
-
     span.addEventListener("click", () => onErrorClick(span, bestRule));
     frag.appendChild(span);
 
@@ -516,7 +512,7 @@ function renderMessage(){
 }
 
 /** =========================
- * Pontuação / ações
+ * Interação / correção
  * ========================= */
 function addScore(delta, anchorEl=null){
   score += delta;
@@ -643,7 +639,6 @@ function onErrorClick(errSpan, rule){
   const wrongText = errSpan.textContent || "";
   const expected = rule.correct;
 
-  // caso especial: remoção de vírgula
   if (expected === "" && wrongText === ","){
     openModal({
       title: "Remover vírgula",
@@ -663,8 +658,7 @@ function onErrorClick(errSpan, rule){
       <p style="margin:8px 0 0"><strong>${escapeHtml(wrongText)}</strong></p>
 
       <p style="margin:12px 0 6px">Digite a forma correta:</p>
-      <input class="input" id="fixInput" type="text" autocomplete="off"
-        placeholder="${expected === "" ? "Deixe em branco para remover" : "Digite aqui..."}" />
+      <input class="input" id="fixInput" type="text" autocomplete="off" placeholder="${expected === "" ? "Deixe em branco para remover" : "Digite aqui..."}" />
 
       <p class="muted" style="margin:10px 0 0">Erros podem ser de acentuação, ortografia, gramática, pontuação etc.</p>
     `,
@@ -678,7 +672,6 @@ function onErrorClick(errSpan, rule){
 
 function finalizeIfDone(){
   updateHUD();
-
   const done = fixedRuleIds.size >= currentRules.length;
   if (done){
     levelLocked = true;
@@ -785,6 +778,7 @@ async function skipLevel(){
 async function finishMission(){
   try {
     await maybeCommitMissionToRanking();
+    await commitIndividualRanking();
   } catch (err) {
     console.error("Falha ao salvar ranking:", err);
   } finally {
@@ -800,6 +794,7 @@ async function goNext(){
   }
   try {
     await maybeCommitMissionToRanking();
+    await commitIndividualRanking();
   } catch (err) {
     console.error("Falha ao salvar ranking:", err);
   } finally {
@@ -992,7 +987,7 @@ function startLevel(){
 }
 
 /** =========================
- * Ranking
+ * Ranking (abas + individual + setor)
  * ========================= */
 rankingBtn?.addEventListener("click", () => openRankingModal());
 finalRankingBtn?.addEventListener("click", () => openRankingModal());
@@ -1033,99 +1028,240 @@ async function maybeCommitMissionToRanking(){
   });
 }
 
+async function commitIndividualRanking(){
+  const optOut = localStorage.getItem("mission_optout_ranking") === "1";
+  if (optOut) return;
+
+  const name = clampName(getUserName());
+  const sector = getUserSector();
+  if (!name || !sector) return;
+
+  await addDoc(collection(db, "individualRanking"), {
+    name,
+    sector,
+    score,
+    correct: correctCount,
+    wrong: wrongCount,
+    createdAt: serverTimestamp()
+  });
+}
+
 async function openRankingModal(){
+  openModal({
+    title: "🏆 Ranking",
+    bodyHTML: `
+      <div class="ranking-tabs" id="rankingTabs">
+        <button class="ranking-tab active" data-tab="ind">🧑 Individual</button>
+        <button class="ranking-tab" data-tab="sec">🏢 Por setor</button>
+      </div>
+
+      <div class="ranking-panel show" id="panel-ind">
+        <p class="muted" style="margin-top:0">Carregando ranking individual…</p>
+      </div>
+
+      <div class="ranking-panel" id="panel-sec">
+        <p class="muted" style="margin-top:0">Carregando ranking por setor…</p>
+      </div>
+
+      <p class="muted" style="margin-top:12px">
+        Ranking individual exibe nomes apenas de quem optou por participar. Ranking por setor é agregado (LGPD).
+      </p>
+    `,
+    buttons: [{ label:"Fechar", onClick: closeModal }]
+  });
+
+  // tabs
+  setTimeout(() => {
+    const wrap = document.getElementById("rankingTabs");
+    const btns = wrap?.querySelectorAll(".ranking-tab");
+    const ind = document.getElementById("panel-ind");
+    const sec = document.getElementById("panel-sec");
+
+    btns?.forEach(b => {
+      b.addEventListener("click", () => {
+        btns.forEach(x => x.classList.remove("active"));
+        b.classList.add("active");
+
+        const tab = b.dataset.tab;
+        if (tab === "ind"){
+          ind?.classList.add("show");
+          sec?.classList.remove("show");
+        } else {
+          sec?.classList.add("show");
+          ind?.classList.remove("show");
+        }
+      });
+    });
+  }, 0);
+
+  // load data (parallel)
+  await Promise.allSettled([renderIndividualRanking(), renderSectorRanking()]);
+}
+
+async function renderIndividualRanking(){
+  const panel = document.getElementById("panel-ind");
+  if (!panel) return;
+
+  try {
+    const q = query(
+      collection(db, "individualRanking"),
+      orderBy("score", "desc"),
+      orderBy("createdAt", "asc"),
+      limit(50)
+    );
+
+    const snap = await getDocs(q);
+    const rows = [];
+    snap.forEach(docu => {
+      const d = docu.data() || {};
+      rows.push({
+        name: String(d.name || "").trim(),
+        sector: String(d.sector || "").trim(),
+        score: Number(d.score || 0),
+        correct: Number(d.correct || 0),
+        wrong: Number(d.wrong || 0),
+      });
+    });
+
+    if (rows.length === 0){
+      panel.innerHTML = `<p class="muted">Ainda não há resultados no ranking individual.</p>`;
+      return;
+    }
+
+    panel.innerHTML = `
+      <div style="overflow:auto; border-radius:14px">
+        <table class="rank-table">
+          <thead>
+            <tr>
+              <th style="width:56px">#</th>
+              <th>Nome</th>
+              <th class="num">Pontos</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rows.map((r,i) => {
+              const m = medalFor(i);
+              const delay = Math.min(i * 30, 420);
+              return `
+                <tr class="rank-row" style="animation-delay:${delay}ms">
+                  <td>
+                    <span class="medal ${m.top ? "top":""}">${m.t}</span>
+                  </td>
+                  <td>
+                    <span class="rank-name">${escapeHtml(r.name || "—")}</span>
+                    <span class="rank-sub">${escapeHtml(r.sector || "")}</span>
+                  </td>
+                  <td class="num"><strong>${r.score}</strong></td>
+                </tr>
+              `;
+            }).join("")}
+          </tbody>
+        </table>
+      </div>
+    `;
+  } catch (err) {
+    console.error("Ranking individual falhou:", err);
+    panel.innerHTML = `
+      <p>Não foi possível carregar o ranking individual.</p>
+      <p class="muted"><code>${escapeHtml(err?.message || String(err))}</code></p>
+      <p class="muted">Se aparecer erro de índice, crie o índice sugerido pelo Firebase Console.</p>
+    `;
+  }
+}
+
+async function renderSectorRanking(){
+  const panel = document.getElementById("panel-sec");
+  if (!panel) return;
+
   try {
     const sectors = SECTORS.filter(s => s !== "Selecione…");
-    const rows = [];
+    const map = new Map();
 
-    // ✅ tenta carregar tudo em 1 request (se regras permitirem listagem)
-    let map = new Map();
     try {
       const snapAll = await getDocs(collection(db, "sectorStats"));
       snapAll.forEach(d => map.set(d.id, d.data()));
     } catch {
-      // fallback: map vazio e faz getDoc setor a setor
+      // fallback via getDoc por setor
     }
 
+    const rows = [];
     for (const s of sectors){
       let d = map.get(s);
-
       if (!d){
         const ref = doc(db, "sectorStats", s);
         const snap = await getDoc(ref);
         d = snap.exists() ? snap.data() : null;
       }
 
-      const missions = d?.missions || 0;
-      const avg = (num) => missions ? (num / missions) : 0;
+      const missions = Number(d?.missions || 0);
+      const avg = (num) => missions ? (Number(num || 0) / missions) : 0;
 
       rows.push({
         sector: s,
-        missions,
-        avgT1: avg(d?.totalT1 || 0),
-        avgT2: avg(d?.totalT2 || 0),
-        avgT3: avg(d?.totalT3 || 0),
-        avgOverall: avg(d?.totalOverall || 0),
-        avgCorrect: avg(d?.totalCorrect || 0),
-        avgWrong: avg(d?.totalWrong || 0),
+        avgT1: avg(d?.totalT1),
+        avgT2: avg(d?.totalT2),
+        avgT3: avg(d?.totalT3),
+        avgOverall: avg(d?.totalOverall),
+        avgCorrect: avg(d?.totalCorrect),
+        avgWrong: avg(d?.totalWrong),
       });
     }
 
-    rows.sort((a,b) => b.avgOverall - a.avgOverall || b.missions - a.missions);
+    // edge case: tudo zero
+    const hasAny = rows.some(r => r.avgOverall !== 0 || r.avgCorrect !== 0 || r.avgWrong !== 0);
+    if (!hasAny){
+      panel.innerHTML = `<p class="muted">Ainda não há dados suficientes para o ranking por setor.</p>`;
+      return;
+    }
 
-    openModal({
-      title: "🏆 Ranking por setor",
-      bodyHTML: `
-        <div style="overflow:auto">
-          <table style="width:100%; border-collapse:collapse">
-            <thead>
-              <tr>
-                <th style="text-align:left; padding:8px; border-bottom:1px solid rgba(255,255,255,.15)">Setor</th>
-                <th style="text-align:right; padding:8px; border-bottom:1px solid rgba(255,255,255,.15)">Missões</th>
-                <th style="text-align:right; padding:8px; border-bottom:1px solid rgba(255,255,255,.15)">Ativ. 1</th>
-                <th style="text-align:right; padding:8px; border-bottom:1px solid rgba(255,255,255,.15)">Ativ. 2</th>
-                <th style="text-align:right; padding:8px; border-bottom:1px solid rgba(255,255,255,.15)">Ativ. 3</th>
-                <th style="text-align:right; padding:8px; border-bottom:1px solid rgba(255,255,255,.15)">Média geral</th>
-                <th style="text-align:right; padding:8px; border-bottom:1px solid rgba(255,255,255,.15)">Acertos</th>
-                <th style="text-align:right; padding:8px; border-bottom:1px solid rgba(255,255,255,.15)">Erros</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${rows.map(r => `
-                <tr>
-                  <td style="padding:8px; border-bottom:1px solid rgba(255,255,255,.08)">${escapeHtml(r.sector)}</td>
-                  <td style="padding:8px; text-align:right; border-bottom:1px solid rgba(255,255,255,.08)">${r.missions}</td>
-                  <td style="padding:8px; text-align:right; border-bottom:1px solid rgba(255,255,255,.08)">${r.avgT1.toFixed(2)}</td>
-                  <td style="padding:8px; text-align:right; border-bottom:1px solid rgba(255,255,255,.08)">${r.avgT2.toFixed(2)}</td>
-                  <td style="padding:8px; text-align:right; border-bottom:1px solid rgba(255,255,255,.08)">${r.avgT3.toFixed(2)}</td>
-                  <td style="padding:8px; text-align:right; border-bottom:1px solid rgba(255,255,255,.08)">${r.avgOverall.toFixed(2)}</td>
-                  <td style="padding:8px; text-align:right; border-bottom:1px solid rgba(255,255,255,.08)">${r.avgCorrect.toFixed(2)}</td>
-                  <td style="padding:8px; text-align:right; border-bottom:1px solid rgba(255,255,255,.08)">${r.avgWrong.toFixed(2)}</td>
+    rows.sort((a,b) =>
+      b.avgOverall - a.avgOverall ||
+      b.avgCorrect - a.avgCorrect ||
+      a.avgWrong - b.avgWrong
+    );
+
+    panel.innerHTML = `
+      <div style="overflow:auto; border-radius:14px">
+        <table class="rank-table">
+          <thead>
+            <tr>
+              <th style="width:56px">#</th>
+              <th>Setor</th>
+              <th class="num">Ativ. 1</th>
+              <th class="num">Ativ. 2</th>
+              <th class="num">Ativ. 3</th>
+              <th class="num">Média geral</th>
+              <th class="num">Acertos</th>
+              <th class="num">Erros</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rows.map((r,i) => {
+              const m = medalFor(i);
+              const delay = Math.min(i * 30, 420);
+              return `
+                <tr class="rank-row" style="animation-delay:${delay}ms">
+                  <td><span class="medal ${m.top ? "top":""}">${m.t}</span></td>
+                  <td><span class="rank-name">${escapeHtml(r.sector)}</span></td>
+                  <td class="num">${r.avgT1.toFixed(2)}</td>
+                  <td class="num">${r.avgT2.toFixed(2)}</td>
+                  <td class="num">${r.avgT3.toFixed(2)}</td>
+                  <td class="num"><strong>${r.avgOverall.toFixed(2)}</strong></td>
+                  <td class="num">${r.avgCorrect.toFixed(2)}</td>
+                  <td class="num">${r.avgWrong.toFixed(2)}</td>
                 </tr>
-              `).join("")}
-            </tbody>
-          </table>
-        </div>
-        <p class="muted" style="margin-top:12px">
-          Ranking agregado por setor (sem nomes), conforme LGPD.
-        </p>
-      `,
-      buttons: [{ label:"Fechar", onClick: closeModal }]
-    });
-
+              `;
+            }).join("")}
+          </tbody>
+        </table>
+      </div>
+    `;
   } catch (err) {
-    console.error("Ranking falhou:", err);
-    openModal({
-      title: "Ranking indisponível",
-      bodyHTML: `
-        <p>O ranking não pôde ser carregado.</p>
-        <p class="muted" style="margin-top:10px">
-          Possíveis causas: regras do Firestore bloqueando leitura, falta de conexão ou coleção vazia.
-        </p>
-        <p class="muted"><code>${escapeHtml(err?.message || String(err))}</code></p>
-      `,
-      buttons: [{ label:"Fechar", onClick: closeModal }]
-    });
+    console.error("Ranking setor falhou:", err);
+    panel.innerHTML = `
+      <p>Não foi possível carregar o ranking por setor.</p>
+      <p class="muted"><code>${escapeHtml(err?.message || String(err))}</code></p>
+    `;
   }
 }
 
@@ -1136,11 +1272,11 @@ customizeBtn?.addEventListener("click", openCustomizeModal);
 openCustomizeInline?.addEventListener("click", openCustomizeModal);
 
 const THEME_PRESETS = {
-  classic: { name:"Clássico",   accent:"#e53935", bg:"#0b1020" },
+  classic: { name:"Clássico", accent:"#e53935", bg:"#0b1020" },
   candy:   { name:"Candy Cane", accent:"#ff2e63", bg:"#140a12" },
-  neon:    { name:"Neon Noel",  accent:"#00ffd5", bg:"#001016" },
-  aurora:  { name:"Aurora",     accent:"#7c4dff", bg:"#071022" },
-  gold:    { name:"Dourado",    accent:"#ffcc00", bg:"#140f02" },
+  neon:    { name:"Neon Noel", accent:"#00ffd5", bg:"#001016" },
+  aurora:  { name:"Aurora", accent:"#7c4dff", bg:"#071022" },
+  gold:    { name:"Dourado", accent:"#ffcc00", bg:"#140f02" },
 };
 
 function saveTheme(obj){ localStorage.setItem("mission_theme", JSON.stringify(obj)); }
@@ -1198,8 +1334,7 @@ function openCustomizeModal(){
         <div>
           <b>Intensidade</b>
           <div class="muted" style="margin:2px 0 8px">Quanto mais alto, mais vivo.</div>
-          <input id="optIntensity" type="range" min="0.8" max="1.6" step="0.05"
-                 value="${saved.intensity ?? 1}" style="width:100%"/>
+          <input id="optIntensity" type="range" min="0.8" max="1.6" step="0.05" value="${saved.intensity ?? 1}" style="width:100%"/>
         </div>
       </div>
     `,
@@ -1362,7 +1497,7 @@ function setupRankingToggle(){
 }
 
 function getUserName(){
-  return (userNameEl?.value || localStorage.getItem("mission_name") || "").trim();
+  return clampName((userNameEl?.value || localStorage.getItem("mission_name") || "").trim());
 }
 function getUserSector(){
   return (userSectorEl?.value || localStorage.getItem("mission_sector") || "").trim();
@@ -1385,11 +1520,11 @@ lgpdMoreBtn?.addEventListener("click", () => {
       <p class="muted">Esta dinâmica é recreativa e foi criada para destacar a importância da revisão editorial.</p>
       <h3 style="margin:14px 0 6px">Quais dados são coletados?</h3>
       <ul style="margin:0; padding-left:18px; color:rgba(255,255,255,.74); line-height:1.6">
-        <li><strong>Nome</strong>: usado apenas para exibir a mensagem de parabéns no final.</li>
-        <li><strong>Setor</strong>: usado para consolidar o ranking de forma <strong>agregada por setor</strong>.</li>
+        <li><strong>Nome</strong>: exibido somente no ranking individual para quem optou por participar.</li>
+        <li><strong>Setor</strong>: usado para consolidar o ranking por setor (agregado).</li>
       </ul>
       <h3 style="margin:14px 0 6px">Compartilhamento</h3>
-      <p class="muted">Não há compartilhamento de informações pessoais no ranking. O ranking mostra apenas números por setor.</p>
+      <p class="muted">Não há compartilhamento de informações pessoais no ranking por setor. Ele mostra apenas números por setor.</p>
     `,
     buttons: [{ label: "Fechar", onClick: closeModal }]
   });
