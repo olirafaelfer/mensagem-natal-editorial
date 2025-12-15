@@ -74,6 +74,79 @@ Ele escreveu tão rápido que acabou deixando três errinhos para trás.`,
     ]
   }
 ];
+const explanations = [
+  {
+    title: "Atividade 1 — Nível Fácil",
+    items: [
+      {
+        wrong: "refeissões",
+        correct: "refeições",
+        reason: "Erro ortográfico. A forma correta do substantivo é 'refeições'."
+      },
+      {
+        wrong: "voces",
+        correct: "vocês",
+        reason: "Erro de acentuação gráfica. O pronome 'vocês' é acentuado."
+      },
+      {
+        wrong: "xeia",
+        correct: "cheia",
+        reason: "Erro ortográfico. A palavra correta é 'cheia', com dígrafo 'ch'."
+      }
+    ]
+  },
+  {
+    title: "Atividade 2 — Nível Médio",
+    items: [
+      {
+        wrong: "O Natal, é um momento",
+        correct: "O Natal é um momento",
+        reason: "Vírgula indevida separando sujeito e predicado."
+      },
+      {
+        wrong: "Os textos natalinos, exige",
+        correct: "Os textos natalinos exigem",
+        reason: "Erro de concordância verbal: sujeito plural exige verbo no plural."
+      }
+      // você pode ajustar depois se mudar a atividade 2
+    ]
+  },
+  {
+    title: "Atividade 3 — Nível Difícil",
+    items: [
+      {
+        wrong: "Essas atitudes, reforçam",
+        correct: "Essas atitudes reforçam",
+        reason: "Vírgula indevida entre sujeito e predicado."
+      },
+      {
+        wrong: "consiste uma peça-chave",
+        correct: "consiste em uma peça-chave",
+        reason: "Erro de regência verbal. O verbo 'consistir' exige a preposição 'em'."
+      },
+      {
+        wrong: "os ofereço um abraço",
+        correct: "ofereço-lhes um abraço",
+        reason: "Erro de colocação pronominal. A próclise após vírgula não é admitida neste contexto."
+      },
+      {
+        wrong: "elemento meramente psicológicos",
+        correct: "elementos meramente psicológicos",
+        reason: "Erro de concordância nominal entre substantivo e adjetivo."
+      },
+      {
+        wrong: "isso, independe",
+        correct: "isso independe",
+        reason: "Vírgula indevida separando sujeito do predicado."
+      },
+      {
+        wrong: "descontruir",
+        correct: "desconstruir",
+        reason: "Erro ortográfico. A forma correta é 'desconstruir'."
+      }
+    ]
+  }
+];
 
 /** =========================
  *  Elementos
@@ -116,6 +189,34 @@ const lgpdMoreBtn = document.getElementById("lgpdMoreBtn");
 
 const lightsEl = document.getElementById("lights");
 const reindeerLayer = document.getElementById("reindeerLayer");
+const reviewBtn = document.getElementById("reviewBtn");
+
+reviewBtn.addEventListener("click", () => {
+  let html = "";
+
+  for (const level of explanations){
+    html += `<h3 style="margin:14px 0 6px">${level.title}</h3>`;
+    html += `<ul style="padding-left:18px; line-height:1.6">`;
+
+    for (const item of level.items){
+      html += `
+        <li style="margin-bottom:8px">
+          <strong>Erro:</strong> ${escapeHtml(item.wrong)}<br>
+          <strong>Correção:</strong> ${escapeHtml(item.correct)}<br>
+          <span class="muted">${escapeHtml(item.reason)}</span>
+        </li>
+      `;
+    }
+
+    html += `</ul>`;
+  }
+
+  openModal({
+    title: "Correções e justificativas editoriais",
+    bodyHTML: html,
+    buttons: [{ label:"Fechar", onClick: closeModal }]
+  });
+});
 
 /** =========================
  *  Modal
@@ -692,8 +793,15 @@ function showFinal(){
     `Pontos: ${score} | Acertos: ${correctCount} | Erros: ${wrongCount} | Colas: ${hintsUsed}` +
     (missionValidForRanking ? "" : " (missão não contabilizada no ranking)");
 
-  finalRecado.textContent =
-    `Recado editorial: revisão, editoração, diagramação e preparação textual — com atenção à ortografia, pontuação, concordância e colocação pronominal — elevam a clareza, evitam ruídos e valorizam a experiência do leitor.`;
+  finalRecado.innerHTML = `
+  <blockquote style="margin:16px 0; font-style:italic; color:rgba(255,255,255,.85)">
+    “A luta contra o erro tipográfico tem algo de homérico. Durante a revisão os erros se escondem, fazem-se positivamente invisíveis.
+    Mas, assim que o texto é publicado, tornam-se visibilíssimos, verdadeiros sacis a nos botar a língua em todas as páginas.”
+    <br><br>
+    <strong>Monteiro Lobato</strong>
+  </blockquote>
+`;
+
 
   finalBox1.innerHTML = `<p style="margin:0">${correctedHTMLByLevel[0] ?? ""}</p>`;
   finalBox2.innerHTML = `<p style="margin:0">${correctedHTMLByLevel[1] ?? ""}</p>`;
@@ -775,11 +883,17 @@ function startLevel(){
   updateHUD();
   renderMessage();
 
-  openModal({
-    title: `🎅 ${lvl.name}`,
-    bodyHTML: `<p style="white-space:pre-line">${lvl.intro}</p>`,
-    buttons: [{ label:"Entendi", onClick: closeModal }]
-  });
+openModal({
+  title: `🎅 ${lvl.name}`,
+  bodyHTML: `
+    <p style="white-space:pre-line">${lvl.intro}</p>
+    <p class="muted" style="margin-top:12px">
+      Os erros serão explicados e detalhados ao término da atividade.
+    </p>
+  `,
+  buttons: [{ label:"Entendi", onClick: closeModal }]
+});
+
 }
 
 /** =========================
