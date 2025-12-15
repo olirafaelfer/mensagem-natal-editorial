@@ -149,7 +149,6 @@ const customizeBtn = document.getElementById("customizeBtn");
 const openCustomizeInline = document.getElementById("openCustomizeInline");
 const lgpdMoreBtn = document.getElementById("lgpdMoreBtn");
 
-const lightsEl = document.getElementById("lights");
 const reindeerLayer = document.getElementById("reindeerLayer");
 
 // review
@@ -1083,7 +1082,7 @@ function saveTheme(obj){ localStorage.setItem("mission_theme", JSON.stringify(ob
 function loadTheme(){
   try {
     return JSON.parse(localStorage.getItem("mission_theme")||"null") || {
-      snow:true, lights:false, reindeer:true,
+      snow:true, reindeer:true,
       preset:"classic", intensity: 1
     };
   } catch {
@@ -1131,7 +1130,6 @@ function openCustomizeModal(){
 
       <div style="display:grid; gap:10px; margin-top:12px">
         ${toggleHTML("optSnow","Neve","Clima clássico de Natal", saved.snow)}
-        ${toggleHTML("optLights","Pisca-pisca","Mais brilho e energia", saved.lights)}
         ${toggleHTML("optReindeer","Renas","Várias renas passando", saved.reindeer)}
       </div>
 
@@ -1156,7 +1154,6 @@ function openCustomizeModal(){
 
   setTimeout(() => {
     const optSnow = document.getElementById("optSnow");
-    const optLights = document.getElementById("optLights");
     const optReindeer = document.getElementById("optReindeer");
     const optPreset = document.getElementById("optPreset");
     const optIntensity = document.getElementById("optIntensity");
@@ -1174,7 +1171,6 @@ function openCustomizeModal(){
     };
 
     optSnow?.addEventListener("change", applyNow);
-    optLights?.addEventListener("change", applyNow);
     optReindeer?.addEventListener("change", applyNow);
     optPreset?.addEventListener("change", applyNow);
     optIntensity?.addEventListener("input", applyNow);
@@ -1185,7 +1181,7 @@ function openCustomizeModal(){
 
 let reindeerTimer = null;
 
-function applyTheme({ snow, lights, reindeer, preset="classic", intensity=1 }){
+function applyTheme({ snow, reindeer, preset="classic", intensity=1 }){
   const p = THEME_PRESETS[preset] || THEME_PRESETS.classic;
   const root = document.documentElement;
   root.style.setProperty("--accent", p.accent);
@@ -1196,10 +1192,6 @@ function applyTheme({ snow, lights, reindeer, preset="classic", intensity=1 }){
   const snowCanvas = document.getElementById("snow");
   if (snowCanvas) snowCanvas.style.display = snow ? "block" : "none";
 
-  if (lightsEl){
-    ensureLightsBulbs();
-    lightsEl.classList.toggle("hidden", !lights);
-  }
 
   if (reindeer){
     reindeerLayer?.classList.remove("hidden");

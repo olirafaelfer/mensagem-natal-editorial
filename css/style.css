@@ -100,61 +100,6 @@ hr{ border:0; border-top: 1px solid rgba(255,255,255,.12); margin: 16px 0; }
   100%{ transform: translateX(125vw); opacity: 0.95; }
 }
 
-/* =========================
-   Lights (pisca-pisca) — moldura em volta
-   ========================= */
-#lights{
-  position: fixed;
-  inset: 10px;
-  z-index: 4;
-  pointer-events: none;
-}
-
-/* 4 bordas */
-#lights::before,
-#lights::after{
-  content:"";
-  position:absolute;
-  inset:0;
-  border-radius: 18px;
-  pointer-events:none;
-}
-
-/* trilho com lâmpadas (topo e base) */
-#lights::before{
-  background:
-    radial-gradient(circle, rgba(255,255,255,.95) 0 4px, transparent 5px) 0 0/34px 20px repeat-x,
-    radial-gradient(circle, color-mix(in srgb, var(--accent) 70%, white) 0 4px, transparent 5px) 17px 10px/34px 20px repeat-x;
-  filter: drop-shadow(0 0 10px color-mix(in srgb, var(--accent) 55%, white));
-  animation: lightsBlink 1.2s infinite ease-in-out;
-  /* desenha top e bottom usando máscara */
-  -webkit-mask:
-    linear-gradient(#000 0 0) top/100% 20px no-repeat,
-    linear-gradient(#000 0 0) bottom/100% 20px no-repeat;
-  mask:
-    linear-gradient(#000 0 0) top/100% 20px no-repeat,
-    linear-gradient(#000 0 0) bottom/100% 20px no-repeat;
-}
-
-/* trilho com lâmpadas (laterais) */
-#lights::after{
-  background:
-    radial-gradient(circle, rgba(255,255,255,.95) 0 4px, transparent 5px) 0 0/20px 34px repeat-y,
-    radial-gradient(circle, color-mix(in srgb, var(--accent) 70%, white) 0 4px, transparent 5px) 10px 17px/20px 34px repeat-y;
-  filter: drop-shadow(0 0 10px color-mix(in srgb, var(--accent) 55%, white));
-  animation: lightsBlink 0.95s infinite ease-in-out;
-  -webkit-mask:
-    linear-gradient(#000 0 0) left/20px 100% no-repeat,
-    linear-gradient(#000 0 0) right/20px 100% no-repeat;
-  mask:
-    linear-gradient(#000 0 0) left/20px 100% no-repeat,
-    linear-gradient(#000 0 0) right/20px 100% no-repeat;
-}
-
-@keyframes lightsBlink{
-  0%,100%{ opacity: .55; transform: translateY(0); }
-  50%{ opacity: 1; transform: translateY(-1px); }
-}
 
 
 /* =========================
