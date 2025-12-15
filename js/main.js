@@ -487,14 +487,27 @@ function confirmCommaRemoval(errSpan, rule){
   const start = Number(errSpan.dataset.start);
   const len = Number(errSpan.dataset.len);
 
-  applyReplacementAt(start, len, "");
+  // Remove a vírgula do texto
+  const before = currentText.slice(0, start);
+  const after = currentText.slice(start + len);
+  currentText = before + after;
+
+  // Marca a regra como corrigida
   fixedRuleIds.add(rule.id);
-  markCorrected(rule.id, start, ""); // sem verde (nada para marcar), mas fica “feito”
+
+  // Pontuação
   registerCorrect();
 
+  // Fecha modal ANTES de re-renderizar
+  closeModal();
+
+  // Re-renderiza o texto
   renderMessage();
+
+  // Verifica se terminou o nível
   finalizeIfDone();
 }
+
 
 function confirmTyped(errSpan, rule){
   const typed = document.getElementById("fixInput")?.value ?? "";
@@ -522,12 +535,14 @@ function confirmTyped(errSpan, rule){
   applyReplacementAt(start, len, expected);
   fixedRuleIds.add(rule.id);
 
-  // ✅ marcação verde do trecho corrigido
-  if (expected !== ""){
-    markCorrected(rule.id, start, expected);
-  } else {
-    markCorrected(rule.id, start, "");
-  }
+// Remover a vírgula do texto sem marcar
+if (expected === "") {
+  // No caso de remoção de pontuação (vírgula), apenas faz a remoção
+  applyReplacementAt(start, len, ""); // Remover a vírgula
+} else {
+  // Para qualquer outro tipo de correção, marca como corrigido
+  markCorrected(rule.id, start, expected);
+}
 
   registerCorrect();
 
