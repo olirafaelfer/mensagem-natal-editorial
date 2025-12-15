@@ -54,7 +54,7 @@ const levels = [
     name: "Fácil",
     intro: `O Papai Noel, editor-chefe, pediu sua ajuda para revisar a Mensagem de Natal.
 Ele escreveu tão rápido que acabou deixando três errinhos para trás.`,
-    instruction: `Revisor, clique a nos erros a serem corrigidos para ajudar o Papai Noel nesta importante missão!`,
+    instruction: `Os erros podem envolver acentuação, ortografia ou gramática. Clique nas palavras incorretas para ajudar o Papai Noel nesta importante missão!`,
     raw: `Mais do que presentes e refeissões caprichadas, o Natal é a época de lembrar o valor de um abraço apertado e de um sorriso sincero! Que para voces, meus amigos, seja uma época xeia de carinho e amor, preenchida pelo que realmente importa nessa vida!`,
     corrections: {
       "refeissões": "refeições",
@@ -62,29 +62,34 @@ Ele escreveu tão rápido que acabou deixando três errinhos para trás.`,
       "xeia": "cheia"
     }
   },
+
   {
     name: "Médio",
-    intro: `Nível intermediário! A equipe editorial encontrou mais um rascunho.`,
-    instruction: `Clique nos erros e corrija para manter a qualidade da publicação!`,
-    raw: `Que o Natal traga paz, saude e muita esperança! Que a união da família seja sempre valorizada e que cada dia seja uma nova oportuinidade de fazer o bem!`,
+    intro: `Agora o desafio aumenta. Aqui, os erros envolvem principalmente pontuação e concordância.`,
+    instruction: `Atenção: neste nível, os erros podem envolver o uso incorreto de vírgulas e problemas de concordância.`,
+    raw: `O Natal, é um momento especial para celebrar a união e a esperança. As mensagens, que circulam nessa época, precisam transmitir carinho e acolhimento, mas muitas vezes, acabam sendo escritas de forma apressada. Os textos natalinos, exige atenção aos detalhes, para que a mensagem chegue clara ao leitor.`,
     corrections: {
-      "saude": "saúde",
-      "oportuinidade": "oportunidade",
-      "família": "família" // (exemplo “pegadinha”: aqui está correto; você pode remover e colocar outro erro real)
+      "Natal,": "Natal",
+      "mensagens,": "mensagens",
+      "vezes,": "vezes",
+      "natalinos,": "natalinos",
+      "exige": "exigem"
     }
   },
+
   {
     name: "Difícil",
-    intro: `Agora é o nível difícil: revisão de última hora!`,
-    instruction: `Atenção total: clique apenas onde for necessário e corrija com precisão.`,
-    raw: `Neste fim de ano, que possamos renovar os votos de gratidão e seguir com corajem, generosidade e resiliencia. Boas festas a todos!`,
+    intro: `Este é o nível mais desafiador. Aqui entram questões avançadas de colocação pronominal e pontuação.`,
+    instruction: `Os erros podem envolver ortografia, pontuação e colocação pronominal. Leia com atenção cada frase.`,
+    raw: `No Natal, se deve pensar no amor ao próximo e na importância da empatia. Aos pais, respeite-os; aos filhos, os ame; aos necessitados, ajude-os. Essas atitudes, reforçam os valores natalinos e mostram como a revisão textual é essencial para evitar ruídos na comunicação.`,
     corrections: {
-      "corajem": "coragem",
-      "resiliencia": "resiliência",
-      "fim": "fim" // (troque por um erro real se preferir; deixei placeholder)
+      "se": "se",
+      "os": "ame-os",
+      "atitudes,": "atitudes"
     }
   }
 ];
+
 
 /**
  * IMPORTANTE:
@@ -348,6 +353,36 @@ function checkLevelDone(){
     nextLevelBtn.disabled = false;
   }
 }
+const lgpdMoreBtn = document.getElementById("lgpdMoreBtn");
+
+lgpdMoreBtn.addEventListener("click", () => {
+  openModal({
+    title: "LGPD — Informações sobre tratamento de dados",
+    bodyHTML: `
+      <p class="muted">
+        Esta página explica, de forma transparente, como os dados informados nesta dinâmica são tratados.
+      </p>
+
+      <h3 style="margin:14px 0 6px">Quais dados são coletados?</h3>
+      <ul class="list">
+        <li><strong>Nome</strong> (usado para exibir a mensagem de parabéns ao final da dinâmica).</li>
+        <li><strong>Setor</strong> (para consolidar métricas agregadas no ranking).</li>
+      </ul>
+
+      <h3 style="margin:14px 0 6px">Como os dados são usados?</h3>
+      <ul class="list">
+        <li>O ranking exibe apenas <strong>resultados agregados por setor</strong> (sem nomes).</li>
+        <li>Não há compartilhamento público de informações pessoais.</li>
+      </ul>
+
+      <h3 style="margin:14px 0 6px">Dúvidas</h3>
+      <p class="muted">
+        Em caso de dúvidas sobre o tratamento de dados, procure o responsável interno pela área de privacidade/controles da sua organização.
+      </p>
+    `,
+    buttons: [{ label: "Fechar", onClick: closeModal }]
+  });
+});
 
 /** =========================
  *  Corretor automático
@@ -682,28 +717,29 @@ function applyTheme({ snow, lights, reindeer, theme }){
 
   // cores
   const root = document.documentElement.style;
-  if (theme === "classic"){
-    root.setProperty("--accentA", "rgba(255, 80, 80, .20)");
-    root.setProperty("--accentB", "rgba(0, 180, 255, .18)");
-    root.setProperty("--accentC", "rgba(255, 210, 90, .14)");
-  } else if (theme === "cool"){
-    root.setProperty("--accentA", "rgba(120, 220, 255, .18)");
-    root.setProperty("--accentB", "rgba(0, 160, 255, .20)");
-    root.setProperty("--accentC", "rgba(160, 255, 230, .12)");
-  } else {
-    root.setProperty("--accentA", "rgba(255, 140, 90, .18)");
-    root.setProperty("--accentB", "rgba(255, 90, 140, .16)");
-    root.setProperty("--accentC", "rgba(255, 210, 90, .16)");
-  }
+if (theme === "classic"){
+  root.setProperty("--accentA", "rgba(255, 50, 50, .34)");
+  root.setProperty("--accentB", "rgba(0, 170, 255, .28)");
+  root.setProperty("--accentC", "rgba(255, 210, 60, .22)");
+} else if (theme === "cool"){
+  root.setProperty("--accentA", "rgba(120, 230, 255, .30)");
+  root.setProperty("--accentB", "rgba(0, 140, 255, .30)");
+  root.setProperty("--accentC", "rgba(160, 255, 230, .20)");
+} else {
+  root.setProperty("--accentA", "rgba(255, 120, 60, .30)");
+  root.setProperty("--accentB", "rgba(255, 70, 150, .26)");
+  root.setProperty("--accentC", "rgba(255, 220, 80, .24)");
+}
 }
 
 function spawnReindeer(){
   reindeerLayer.innerHTML = "";
-  const count = 6;
+  const count = 10;
   for (let i=0; i<count; i++){
     const d = document.createElement("div");
     d.className = "reindeer";
     d.textContent = "🦌";
+    d.style.fontSize = `${22 + Math.random()*14}px`;
     const y = Math.floor(Math.random() * 70) + 5;
     d.style.setProperty("--y", `${y}vh`);
     d.style.animationDelay = `${i * 1.2}s`;

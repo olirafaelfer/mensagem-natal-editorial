@@ -62,19 +62,20 @@ body{
 .lights::after{
   content:"";
   display:block;
-  height:18px;
+  height:22px;
   margin-top:6px;
   background: repeating-linear-gradient(
     90deg,
-    rgba(255,80,80,.55) 0 10px,
-    rgba(80,255,170,.55) 10px 20px,
-    rgba(255,210,90,.55) 20px 30px,
-    rgba(0,180,255,.55) 30px 40px,
+    rgba(255,60,60,.95) 0 10px,
+    rgba(60,255,170,.95) 10px 20px,
+    rgba(255,210,60,.95) 20px 30px,
+    rgba(80,160,255,.95) 30px 40px,
     transparent 40px 48px
   );
-  filter: blur(.2px);
-  animation: twinkle 1.6s ease-in-out infinite;
+  filter: blur(.6px) drop-shadow(0 0 12px rgba(255,255,255,.25));
+  animation: twinkle .95s ease-in-out infinite;
 }
+
 @keyframes twinkle{
   0%,100%{opacity:.55}
   50%{opacity:1}
@@ -199,6 +200,27 @@ body{
   font-size: 13px;
   color: var(--muted);
   margin: 0 0 6px;
+}
+/* Melhor leitura em inputs/selects */
+.input{
+  background: rgba(0,0,0,.28) !important;
+  color: rgba(255,255,255,.92) !important;
+}
+
+/* Select e opções (evita “branco no branco”) */
+select.input{
+  background-color: rgba(0,0,0,.28) !important;
+  color: rgba(255,255,255,.92) !important;
+}
+
+select.input option{
+  background: #0b1020;   /* fundo escuro */
+  color: #ffffff;        /* texto branco */
+}
+
+/* (Opcional) placeholder mais claro */
+.input::placeholder{
+  color: rgba(255,255,255,.55);
 }
 
 .input{
