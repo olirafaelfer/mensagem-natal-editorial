@@ -13,7 +13,6 @@
   <link rel="stylesheet" href="css/style.css" />
 </head>
 <body>
-  <!-- Efeitos -->
   <canvas id="snow"></canvas>
   <div id="lights" class="lights hidden" aria-hidden="true"></div>
   <div id="reindeerLayer" class="reindeer-layer hidden" aria-hidden="true"></div>
@@ -31,7 +30,7 @@
       </div>
     </header>
 
-    <!-- 1) Loading fake -->
+    <!-- Loading fake -->
     <section class="card" id="screenLoading">
       <div class="card-inner center">
         <img class="logo-pulse" src="img/logo-natal.png" alt="Logo natalina" />
@@ -40,7 +39,7 @@
       </div>
     </section>
 
-    <!-- 2) Form -->
+    <!-- Form -->
     <section class="card hidden" id="screenForm">
       <div class="card-inner">
         <h2 class="h2">Antes de começar</h2>
@@ -75,21 +74,17 @@
       </div>
     </section>
 
-    <!-- 3) Atividades -->
+    <!-- Game -->
     <section class="card hidden" id="screenGame">
       <div class="card-inner">
         <div class="status-row">
           <div class="pill">Nível: <strong id="levelLabel">Fácil</strong></div>
-          <div class="pill">Correções: <strong id="progressCount">0</strong>/<span id="totalFix">3</span></div>
-          <div class="pill muted">Erros: <strong id="wrongCount">0</strong></div>
-
+          <div class="pill">Correções a serem feitas: <strong id="remainingCount">0</strong>/<span id="totalFix">0</span></div>
+          <div class="pill pill-danger">Erros: <strong id="wrongCount">0</strong></div>
           <div class="pill">Pontos: <strong id="scoreCount">0</strong></div>
-          <div class="pill">Colas: <strong id="hintCount">0</strong></div>
-          <div class="pill">Auto: <strong id="autoCount">0</strong></div>
         </div>
 
         <p class="lead" id="instruction"></p>
-
         <article class="message" id="messageArea" aria-label="Mensagem para revisar"></article>
 
         <div class="hintbar">
@@ -98,20 +93,20 @@
 
         <div class="actions">
           <button id="hintBtn" class="btn ghost">Me dê uma cola!</button>
-          <button id="skipBtn" class="btn ghost">Avançar para a próxima atividade</button>
-          <button id="nextLevelBtn" class="btn" disabled>Próximo nível</button>
+          <button id="nextLevelBtn" class="btn btn-disabled" aria-disabled="true">Próximo nível</button>
         </div>
       </div>
     </section>
 
-    <!-- 4) Final -->
+    <!-- Final -->
     <section class="card hidden" id="screenFinal">
       <div class="card-inner center">
         <h2 class="final-title">🎄</h2>
 
         <p class="final-text" id="finalCongrats"></p>
 
-        <p class="final-sub" id="finalScoreLine"></p>
+        <p class="final-sub" id="finalStats"></p>
+
         <p class="final-sub" id="finalRecado"></p>
 
         <p class="final-sub">Veja as mensagens que você acabou de corrigir:</p>
@@ -148,7 +143,7 @@
     </section>
   </main>
 
-  <!-- Modal genérico -->
+  <!-- Modal -->
   <div class="overlay hidden" id="overlay" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
     <div class="modal">
       <div class="modal-head">
