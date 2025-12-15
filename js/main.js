@@ -3,7 +3,9 @@
 // Firebase
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js";
 import {
-  getFirestore, doc, getDoc, runTransaction, serverTimestamp
+  getFirestore,
+  doc, getDoc, runTransaction, serverTimestamp,
+  collection, addDoc, getDocs, query, orderBy, limit
 } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
 
 /* COLE AQUI O SEU firebaseConfig (o seu já está funcionando) */
@@ -19,7 +21,7 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-/** Setores*/
+/** Setores */
 const SECTORS = [
   "Selecione…",
   "Produção (CTP, PCP, Offset, Acabamento...)",
@@ -31,12 +33,18 @@ const SECTORS = [
 
 /** Pontuação */
 const SCORE_RULES = {
-  correct: +5,    // ✅ 5 pontos
+  correct: +5,
   wrong: -3,
   skip: -5,
-  hint: -1
+  hint: -1,
+  auto: -2
 };
 
+let autoUsed = 0;
+
+/** =========================
+ *  Níveis / Atividades
+ *  ========================= */
 const levels = [
   {
     name: "Fácil",
@@ -63,15 +71,31 @@ Ele escreveu tão rápido que acabou deixando três errinhos para trás.`,
       { id:"m5", label:"Concordância", wrong:/\bexige\b/g, correct:"exigem" },
     ]
   },
+
+  // ✅ ATUALIZADO: Nível Difícil com o TEXTO NOVO
   {
     name: "Difícil",
-    intro: `Nível difícil: desafios reais de edição — colocação pronominal, pontuação e paralelismo.`,
-    instruction: `Erros podem envolver pontuação, gramática e colocação pronominal. Clique no trecho inteiro que precisa ser reescrito.`,
-    raw: `No Natal, se deve pensar no amor ao próximo e na importância da empatia. Aos pais, respeite-os; aos filhos, os ame; aos necessitados, ajude-os. Essas atitudes, reforçam os valores natalinos e mostram como a revisão textual é essencial para evitar ruídos na comunicação.`,
+    intro: `Nível difícil: desafios reais de edição — colocação pronominal, pontuação e gramática.`,
+    instruction: `Erros podem envolver pontuação, gramática, colocação pronominal e ortografia. Clique no trecho inteiro que precisa ser reescrito (incluindo vírgulas indevidas).`,
+    raw: `Se deve pensar no amor ao próximo e na importância da empatia. Essas atitudes reforçam os valores natalinos e mostram que o amor, em todas as suas formas e meios de manifestação, é a peça-chave para uma vida boa, feliz e luz nos tempos de escuridão. 
+Aos que estão em guerra, peço a paz; aos que não a encontram, que Deus acalme seus corações inquietos; aos que nada disso sirva, ofereço um calente abraço, o maior conforto da alma.
+Pensadores cientificistas pensam que o tempo é só um passar, que datas e símbolos são itens meramente psicológicos, que a linearidade intrínseca ao mensurável e durável tempo é uma prisão (ou mesmo um castigo). Chamam este tempo "chronos" e negam que e o "kairós", que é aquele tempo espiritual, profundo, com significado. Aquele tempo em que paramos para respirar e sim, sentimos que algo está ali presente. Não enxergo um tempo tão "kairós" quanto o Natal e, o mais incrível, independe de crenças ou religiões. É época de partilhar, festejar, refletir; é oportunidade para planejar, remodelar e descontruir.
+Recomece quantas vezes precisar, pois enquanto estivermos no "kairós", não seremos reféns do "chronos".`,
     rules: [
-      { id:"d1", label:"Colocação pronominal", wrong:/No Natal,\s*se deve pensar/g, correct:"No Natal, deve-se pensar" },
-      { id:"d2", label:"Colocação pronominal", wrong:/aos filhos,\s*os ame/gi, correct:"aos filhos, ame-os" },
-      { id:"d3", label:"Pontuação", wrong:/(?<=\batitudes),/g, correct:"" },
+      // Colocação pronominal: "Se deve..." -> "Deve-se..."
+      { id:"d1", label:"Colocação pronominal", wrong:/\bSe deve pensar\b/g, correct:"Deve-se pensar" },
+
+      // Pontuação: vírgula indevida isolando adjunto
+      { id:"d2", label:"Pontuação", wrong:/o amor,\s*em todas/gi, correct:"o amor em todas" },
+
+      // Ortografia/uso: "calente" -> "caloroso"
+      { id:"d3", label:"Ortografia", wrong:/\bcalente\b/gi, correct:"caloroso" },
+
+      // Gramática: "negam que e o" -> "negam que é o"
+      { id:"d4", label:"Gramática", wrong:/negam que e o "kairós"/g, correct:'negam que é o "kairós"' },
+
+      // Ortografia: "descontruir" -> "desconstruir"
+      { id:"d5", label:"Ortografia", wrong:/\bdescontruir\b/gi, correct:"desconstruir" },
     ]
   }
 ];
@@ -92,12 +116,36 @@ const explanations = [
       { wrong: "Os textos natalinos, exige", correct: "Os textos natalinos exigem", reason: "Erro de concordância verbal: sujeito plural exige verbo no plural." }
     ]
   },
+
+  // ✅ ATUALIZADO: justificativas coerentes com o texto novo
   {
     title: "Atividade 3 — Nível Difícil",
     items: [
-      { wrong: "Essas atitudes, reforçam", correct: "Essas atitudes reforçam", reason: "Vírgula indevida entre sujeito e predicado." },
-      { wrong: "No Natal, se deve pensar", correct: "No Natal, deve-se pensar", reason: "Colocação pronominal: não se inicia oração com 'se' nesse caso; a forma correta é 'deve-se'." },
-      { wrong: "aos filhos, os ame", correct: "aos filhos, ame-os", reason: "Colocação pronominal: após vírgula, evita-se próclise sem fator de atração; a forma consagrada é 'ame-os'." }
+      {
+        wrong: "Se deve pensar",
+        correct: "Deve-se pensar",
+        reason: "Colocação pronominal: evita-se iniciar oração com pronome oblíquo átono neste caso; a forma consagrada é a ênclise ('deve-se')."
+      },
+      {
+        wrong: "o amor, em todas as suas formas...",
+        correct: "o amor em todas as suas formas...",
+        reason: "Pontuação: a vírgula foi inserida indevidamente, criando uma quebra desnecessária no sintagma."
+      },
+      {
+        wrong: "calente abraço",
+        correct: "caloroso abraço",
+        reason: "Ortografia/uso vocabular: 'calente' não é forma adequada aqui; 'caloroso' é a opção correta."
+      },
+      {
+        wrong: "negam que e o \"kairós\"",
+        correct: "negam que é o \"kairós\"",
+        reason: "Gramática: ausência do verbo 'ser' com acento (é)."
+      },
+      {
+        wrong: "descontruir",
+        correct: "desconstruir",
+        reason: "Ortografia: a grafia correta é 'desconstruir'."
+      }
     ]
   }
 ];
@@ -126,10 +174,11 @@ const messageArea = document.getElementById("messageArea");
 
 const hintBtn = document.getElementById("hintBtn");
 const nextLevelBtn = document.getElementById("nextLevelBtn");
+const autoFixBtn = document.getElementById("autoFixBtn"); // ✅ opcional
 
 const finalCongrats = document.getElementById("finalCongrats");
-const finalStats = document.getElementById("finalStats"); // pode estar no HTML, mas agora usamos stat-grid
-const finalRecado = document.getElementById("finalRecado"); // pode existir; vamos deixar vazio (evita duplicar epígrafe)
+const finalStats = document.getElementById("finalStats");
+const finalRecado = document.getElementById("finalRecado");
 const finalBox1 = document.getElementById("finalBox1");
 const finalBox2 = document.getElementById("finalBox2");
 const finalBox3 = document.getElementById("finalBox3");
@@ -144,6 +193,8 @@ const lgpdMoreBtn = document.getElementById("lgpdMoreBtn");
 const lightsEl = document.getElementById("lights");
 const reindeerLayer = document.getElementById("reindeerLayer");
 
+const optInRankingEl = document.getElementById("optInRanking"); // ✅ opcional
+
 // botão antigo único (se não existir no HTML, não quebra)
 const reviewBtn = document.getElementById("reviewBtn");
 
@@ -155,13 +206,15 @@ const modalTitle = document.getElementById("modalTitle");
 const modalBody = document.getElementById("modalBody");
 const modalFoot = document.getElementById("modalFoot");
 
-document.getElementById("closeModal").addEventListener("click", closeModal);
-overlay.addEventListener("click", (e) => { if (e.target === overlay) closeModal(); });
+document.getElementById("closeModal")?.addEventListener("click", closeModal);
+overlay?.addEventListener("click", (e) => { if (e.target === overlay) closeModal(); });
 document.addEventListener("keydown", (e) => {
-  if (e.key === "Escape" && !overlay.classList.contains("hidden")) closeModal();
+  if (e.key === "Escape" && overlay && !overlay.classList.contains("hidden")) closeModal();
 });
 
 function openModal({ title, bodyHTML, buttons=[] }){
+  if (!overlay) return;
+
   modalTitle.textContent = title;
   modalBody.innerHTML = bodyHTML;
   modalFoot.innerHTML = "";
@@ -177,6 +230,7 @@ function openModal({ title, bodyHTML, buttons=[] }){
   requestAnimationFrame(() => overlay.classList.add("show"));
 }
 function closeModal(){
+  if (!overlay) return;
   overlay.classList.remove("show");
   setTimeout(() => overlay.classList.add("hidden"), 180);
 }
@@ -212,20 +266,50 @@ function applyAllFixes(levelDef, text){
 }
 
 /** =========================
+ *  Opt-in ranking (se não existir, participa por padrão)
+ *  ========================= */
+function isOptInRanking(){
+  if (!optInRankingEl) return true;
+  return !!optInRankingEl.checked;
+}
+function maskName(name){
+  const n = (name || "").trim();
+  if (!n) return "??***";
+  const two = n.slice(0,2);
+  return two + "***";
+}
+
+/** =========================
+ *  Pontuação “pulando”
+ *  (CSS vem depois — mas JS já fica pronto)
+ *  ========================= */
+function showScoreDelta(delta, x=null, y=null){
+  const el = document.createElement("div");
+  el.className = "score-float " + (delta >= 0 ? "pos" : "neg");
+  el.textContent = (delta >= 0 ? `+${delta}` : `${delta}`);
+  const px = x ?? (window.innerWidth * 0.5);
+  const py = y ?? 90;
+  el.style.left = px + "px";
+  el.style.top = py + "px";
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 950);
+}
+
+/** =========================
  *  LGPD
  *  ========================= */
-lgpdMoreBtn.addEventListener("click", () => {
+lgpdMoreBtn?.addEventListener("click", () => {
   openModal({
     title: "LGPD — Informações sobre tratamento de dados",
     bodyHTML: `
       <p class="muted">Esta dinâmica é recreativa e foi criada para destacar a importância da revisão editorial.</p>
       <h3 style="margin:14px 0 6px">Quais dados são coletados?</h3>
       <ul style="margin:0; padding-left:18px; color:rgba(255,255,255,.74); line-height:1.6">
-        <li><strong>Nome</strong>: usado apenas para exibir a mensagem de parabéns no final.</li>
-        <li><strong>Setor</strong>: usado para consolidar o ranking de forma <strong>agregada por setor</strong>.</li>
+        <li><strong>Nome</strong>: usado para exibir a mensagem de parabéns no final e gerar um apelido mascarado no ranking (ex.: <em>RA***</em>).</li>
+        <li><strong>Setor</strong>: usado para consolidar estatísticas e ranking por setor.</li>
       </ul>
       <h3 style="margin:14px 0 6px">Compartilhamento</h3>
-      <p class="muted">Não há compartilhamento de informações pessoais no ranking. O ranking mostra apenas números por setor.</p>
+      <p class="muted">O ranking pode exibir apelidos mascarados (2 letras + ***), e estatísticas por setor, sem expor nomes completos.</p>
     `,
     buttons: [{ label: "Fechar", onClick: closeModal }]
   });
@@ -245,21 +329,20 @@ let wrongCount = 0;
 let correctCount = 0;
 let hintsUsed = 0;
 
-let missionValidForRanking = true; // vira false se pular nível sem concluir
-
-// por tarefa (para ranking detalhado)
+// por tarefa
 const taskScore = [0,0,0];
 const taskCorrect = [0,0,0];
 const taskWrong = [0,0,0];
+const taskDone = [false,false,false];
 
-// ✅ guarda o texto final do usuário por nível
+// guarda texto final do usuário por nível
 const currentTextByLevel = ["", "", ""];
 
 const correctedHTMLByLevel = [];
 const correctedSegmentsByRule = new Map(); // ruleId -> {start, lenNew}
 
 /** =========================
- *  Review por atividade (botões por box)
+ *  Review por atividade
  *  ========================= */
 const reviewBtn1 = document.getElementById("reviewBtn1");
 const reviewBtn2 = document.getElementById("reviewBtn2");
@@ -294,7 +377,6 @@ reviewBtn1?.addEventListener("click", () => openReviewModal(0));
 reviewBtn2?.addEventListener("click", () => openReviewModal(1));
 reviewBtn3?.addEventListener("click", () => openReviewModal(2));
 
-// botão único antigo (se existir no HTML)
 reviewBtn?.addEventListener("click", () => {
   let html = "";
   for (const level of explanations){
@@ -330,15 +412,13 @@ function updateHUD(){
   wrongCountEl.textContent = String(wrongCount);
   scoreCountEl.textContent = String(score);
 
-  // botão “inativo visualmente” quando não concluiu
   const isDone = done >= total;
   nextLevelBtn.classList.toggle("btn-disabled", !isDone);
   nextLevelBtn.setAttribute("aria-disabled", String(!isDone));
 }
 
 /** =========================
- *  Render (sem destacar erros ao carregar)
- *  + verde apenas para o que foi corrigido
+ *  Render
  *  ========================= */
 function findNextMatch(text, pos, rule){
   const re = ensureGlobal(rule.wrong);
@@ -410,15 +490,13 @@ function renderMessage(){
   const frag = document.createDocumentFragment();
   const text = currentText;
 
-  // lista de segmentos “corrigidos” (para ficar verde)
   const correctedSegs = [];
-  for (const [ruleId, info] of correctedSegmentsByRule.entries()){
+  for (const info of correctedSegmentsByRule.values()){
     correctedSegs.push({ start: info.start, end: info.start + info.lenNew });
   }
   correctedSegs.sort((a,b)=>a.start-b.start);
 
   let pos = 0;
-
   const nextCorrected = (p) => correctedSegs.find(s => s.start >= p) || null;
 
   while (pos < text.length){
@@ -438,7 +516,6 @@ function renderMessage(){
       continue;
     }
 
-    // procura próximo erro não corrigido
     let best = null;
     let bestRule = null;
     for (const rule of currentRules){
@@ -491,12 +568,14 @@ function registerWrong(){
   wrongCount += 1;
   taskWrong[levelIndex] += 1;
   addScore(SCORE_RULES.wrong);
+  showScoreDelta(SCORE_RULES.wrong);
 }
 
 function registerCorrect(){
   correctCount += 1;
   taskCorrect[levelIndex] += 1;
   addScore(SCORE_RULES.correct);
+  showScoreDelta(SCORE_RULES.correct);
 }
 
 function onLockedTextClick(){
@@ -532,7 +611,6 @@ function applyReplacementAt(start, len, replacement){
   const after = currentText.slice(start + len);
   currentText = before + replacement + after;
 
-  // atualiza posições dos segmentos já corrigidos
   const delta = replacement.length - len;
   for (const info of correctedSegmentsByRule.values()){
     if (info.start > start){
@@ -554,7 +632,7 @@ function onErrorClick(errSpan, rule){
   const wrongText = errSpan.textContent || "";
   const expected = rule.correct;
 
-  // ✅ vírgula indevida: confirmação de remoção
+  // vírgula indevida: confirmação de remoção
   if (expected === "" && wrongText === ","){
     openModal({
       title: "Remover vírgula",
@@ -574,7 +652,8 @@ function onErrorClick(errSpan, rule){
       <p style="margin:8px 0 0"><strong>${escapeHtml(wrongText)}</strong></p>
 
       <p style="margin:12px 0 6px">Digite a forma correta:</p>
-      <input class="input" id="fixInput" type="text" autocomplete="off" placeholder="${expected === "" ? "Deixe em branco para remover" : "Digite aqui..."}" />
+      <input class="input" id="fixInput" type="text" autocomplete="off"
+        placeholder="${expected === "" ? "Deixe em branco para remover" : "Digite aqui..."}" />
 
       <p class="muted" style="margin:10px 0 0">Erros podem ser de acentuação, ortografia, gramática, pontuação etc.</p>
     `,
@@ -586,13 +665,11 @@ function onErrorClick(errSpan, rule){
   setTimeout(() => document.getElementById("fixInput")?.focus(), 30);
 }
 
-// ✅ remoção de vírgula (não usa markCorrected)
 function confirmCommaRemoval(errSpan, rule){
   const start = Number(errSpan.dataset.start);
   const len = Number(errSpan.dataset.len);
 
   applyReplacementAt(start, len, "");
-
   fixedRuleIds.add(rule.id);
   registerCorrect();
 
@@ -623,11 +700,9 @@ function confirmTyped(errSpan, rule){
   const start = Number(errSpan.dataset.start);
   const len = Number(errSpan.dataset.len);
 
-  // ✅ aplica UMA vez
   applyReplacementAt(start, len, expected);
   fixedRuleIds.add(rule.id);
 
-  // ✅ só marca verde se houver texto (vírgula não marca)
   if (expected !== ""){
     markCorrected(rule.id, start, expected);
   }
@@ -644,11 +719,72 @@ function finalizeIfDone(){
   const done = fixedRuleIds.size >= currentRules.length;
   if (done){
     levelLocked = true;
-    renderMessage(); // re-render travado (sem erros clicáveis)
-
+    taskDone[levelIndex] = true;
+    renderMessage();
     nextLevelBtn.classList.remove("btn-disabled");
     nextLevelBtn.setAttribute("aria-disabled", "false");
   }
+}
+
+/** =========================
+ *  Correção automática (1 erro por clique) + popup confirmando perda de pontos
+ *  ========================= */
+autoFixBtn?.addEventListener("click", () => {
+  if (levelLocked){
+    onLockedTextClick();
+    return;
+  }
+
+  const remaining = currentRules.filter(r => !fixedRuleIds.has(r.id));
+  if (remaining.length === 0){
+    openModal({
+      title: "Correção automática",
+      bodyHTML: `<p>Este nível já está 100% corrigido ✅</p>`,
+      buttons: [{ label:"Ok", onClick: closeModal }]
+    });
+    return;
+  }
+
+  openModal({
+    title: "Correção automática",
+    bodyHTML: `<p>Ao usar a correção automática, você perde <strong>${Math.abs(SCORE_RULES.auto)}</strong> pontos. Deseja continuar?</p>`,
+    buttons: [
+      { label:"Cancelar", variant:"ghost", onClick: closeModal },
+      { label:"Continuar", onClick: () => { closeModal(); applyAutoFixOne(); } }
+    ]
+  });
+});
+
+function applyAutoFixOne(){
+  const remaining = currentRules.filter(r => !fixedRuleIds.has(r.id));
+  if (remaining.length === 0) return;
+
+  // pega o primeiro erro restante e aplica a 1ª ocorrência encontrada no texto
+  const rule = remaining[0];
+  const re = ensureGlobal(rule.wrong);
+  const m = re.exec(currentText);
+  if (!m) {
+    fixedRuleIds.add(rule.id);
+    updateHUD();
+    return;
+  }
+
+  const start = m.index;
+  const len = m[0].length;
+
+  applyReplacementAt(start, len, rule.correct);
+  fixedRuleIds.add(rule.id);
+
+  if (rule.correct !== ""){
+    markCorrected(rule.id, start, rule.correct);
+  }
+
+  autoUsed += 1;
+  addScore(SCORE_RULES.auto);
+  showScoreDelta(SCORE_RULES.auto);
+
+  renderMessage();
+  finalizeIfDone();
 }
 
 /** =========================
@@ -670,10 +806,8 @@ nextLevelBtn.addEventListener("click", async () => {
     return;
   }
 
-  // ✅ salva o texto final do usuário deste nível
+  // salva texto final do usuário
   currentTextByLevel[levelIndex] = currentText;
-
-  // salva highlight (opcional)
   correctedHTMLByLevel[levelIndex] = highlightCorrections(levels[levelIndex], currentText);
 
   if (isLast){
@@ -686,19 +820,20 @@ nextLevelBtn.addEventListener("click", async () => {
 });
 
 async function skipLevel(){
-  missionValidForRanking = false;
+  // registra penalidade do pulo
   addScore(SCORE_RULES.skip);
+  showScoreDelta(SCORE_RULES.skip);
 
-  // ✅ salva o texto final do usuário deste nível (mesmo pulando)
+  // salva texto final mesmo pulando
   currentTextByLevel[levelIndex] = currentText;
-
   correctedHTMLByLevel[levelIndex] = highlightCorrections(levels[levelIndex], currentText);
 
   await goNext();
 }
 
 async function finishMission(){
-  await maybeCommitMissionToRanking();
+  await commitAttempt(); // ✅ agora participa mesmo sem concluir tudo (se opt-in)
+  await maybeCommitMissionToSectorStats(); // opcional (agregado)
   showFinal();
 }
 
@@ -708,7 +843,8 @@ async function goNext(){
     startLevel();
     return;
   }
-  await maybeCommitMissionToRanking();
+  await commitAttempt();
+  await maybeCommitMissionToSectorStats();
   showFinal();
 }
 
@@ -733,6 +869,7 @@ hintBtn.addEventListener("click", () => {
 
   hintsUsed += 1;
   addScore(SCORE_RULES.hint);
+  showScoreDelta(SCORE_RULES.hint);
 
   const pick = remaining[Math.floor(Math.random() * remaining.length)];
   const msg = pick.correct === ""
@@ -762,34 +899,23 @@ function highlightCorrections(levelDef, correctedText){
   return html.replaceAll(/@@(.*?)@@/g, `<span class="final-highlight">$1</span>`);
 }
 
-/**
- * Monta HTML final (correto em verde, erro remanescente em vermelho).
- * - Para regras de remoção (correct === ""), marca apenas as vírgulas que ainda batem com a regex da regra.
- * - Para regras de substituição, marca ocorrências do "wrong" em vermelho.
- * - Marca ocorrências do "correct" em verde.
- */
 function buildFinalColoredHTML(levelDef, userText){
   const text = String(userText ?? "");
   let html = escapeHtml(text);
 
-  // 1) vermelho: erros ainda presentes
   for (const rule of levelDef.rules){
     const reWrong = ensureGlobal(rule.wrong);
 
     if (rule.correct === ""){
-      // marca apenas as vírgulas/trechos que ainda correspondem ao padrão errado
       html = html.replace(reWrong, (m) => `<span class="final-wrong">${escapeHtml(m)}</span>`);
       continue;
     }
-
     html = html.replace(reWrong, (m) => `<span class="final-wrong">${escapeHtml(m)}</span>`);
   }
 
-  // 2) verde: formas corretas presentes
   for (const rule of levelDef.rules){
     const c = String(rule.correct ?? "");
     if (!c) continue;
-
     const safe = c.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     const reCorrect = new RegExp(safe, "g");
     html = html.replace(reCorrect, (m) => `<span class="final-correct">${escapeHtml(m)}</span>`);
@@ -807,7 +933,6 @@ function showFinal(){
   const finalStatGrid = document.getElementById("finalStatGrid");
   const epigraphBox = document.getElementById("epigraphBox");
 
-  // epígrafe destacada
   if (epigraphBox){
     epigraphBox.innerHTML = `
       <blockquote>
@@ -818,28 +943,22 @@ function showFinal(){
     `;
   }
 
-  // evita duplicar epígrafe em outro lugar
   if (finalRecado) finalRecado.innerHTML = "";
 
   finalCongrats.textContent =
     `Parabéns, ${name}! Você ajudou o editor-chefe a publicar a mensagem de Natal no prazo!`;
 
-  // cards do resumo
   if (finalStatGrid){
     finalStatGrid.innerHTML = `
       <div class="stat-card"><p class="stat-k">Pontos</p><p class="stat-v">${score}</p></div>
       <div class="stat-card"><p class="stat-k">Acertos</p><p class="stat-v">${correctCount}</p></div>
       <div class="stat-card"><p class="stat-k">Erros</p><p class="stat-v">${wrongCount}</p></div>
-      <div class="stat-card"><p class="stat-k">Missão no ranking</p><p class="stat-v">${missionValidForRanking ? "Sim" : "Não"}</p></div>
+      <div class="stat-card"><p class="stat-k">Auto</p><p class="stat-v">${autoUsed}</p></div>
     `;
-  } else {
-    // fallback (se não tiver grid)
-    if (finalStats){
-      finalStats.textContent = `Pontos: ${score} | Acertos: ${correctCount} | Erros: ${wrongCount} | Ranking: ${missionValidForRanking ? "Sim" : "Não"}`;
-    }
+  } else if (finalStats){
+    finalStats.textContent = `Pontos: ${score} | Acertos: ${correctCount} | Erros: ${wrongCount} | Auto: ${autoUsed}`;
   }
 
-  // caixas finais por atividade com vermelho/verde usando texto do usuário por nível
   finalBox1.innerHTML = `<p style="margin:0">${buildFinalColoredHTML(levels[0], currentTextByLevel[0] || levels[0].raw)}</p>`;
   finalBox2.innerHTML = `<p style="margin:0">${buildFinalColoredHTML(levels[1], currentTextByLevel[1] || levels[1].raw)}</p>`;
   finalBox3.innerHTML = `<p style="margin:0">${buildFinalColoredHTML(levels[2], currentTextByLevel[2] || levels[2].raw)}</p>`;
@@ -848,12 +967,12 @@ function showFinal(){
   showOnly(screenFinal);
 }
 
-restartBtn.addEventListener("click", () => showOnly(screenForm));
+restartBtn?.addEventListener("click", () => showOnly(screenForm));
 
 /** =========================
  *  Início / nível
  *  ========================= */
-startBtn.addEventListener("click", () => {
+startBtn?.addEventListener("click", () => {
   const name = getUserName();
   const sector = getUserSector();
 
@@ -868,19 +987,21 @@ startBtn.addEventListener("click", () => {
 
   localStorage.setItem("mission_name", name);
   localStorage.setItem("mission_sector", sector);
+  localStorage.setItem("mission_optin", isOptInRanking() ? "1" : "0");
 
-  // reset missão
   levelIndex = 0;
-  missionValidForRanking = true;
 
   score = 0;
   wrongCount = 0;
   correctCount = 0;
   hintsUsed = 0;
+  autoUsed = 0;
 
   taskScore[0]=taskScore[1]=taskScore[2]=0;
   taskCorrect[0]=taskCorrect[1]=taskCorrect[2]=0;
   taskWrong[0]=taskWrong[1]=taskWrong[2]=0;
+
+  taskDone[0]=taskDone[1]=taskDone[2]=false;
 
   correctedHTMLByLevel.length = 0;
   currentTextByLevel[0] = currentTextByLevel[1] = currentTextByLevel[2] = "";
@@ -891,9 +1012,11 @@ startBtn.addEventListener("click", () => {
       <ul style="margin:0; padding-left:18px; color:rgba(255,255,255,.78); line-height:1.7">
         <li>Correção correta: <strong>+${SCORE_RULES.correct}</strong></li>
         <li>Correção incorreta: <strong>${SCORE_RULES.wrong}</strong></li>
+        <li>Correção automática: <strong>${SCORE_RULES.auto}</strong></li>
         <li>Avançar sem concluir: <strong>${SCORE_RULES.skip}</strong></li>
         <li>Colas utilizadas: <strong>${SCORE_RULES.hint}</strong></li>
       </ul>
+      <p class="muted" style="margin-top:10px">Os erros serão explicados e detalhados ao término da atividade.</p>
     `,
     buttons: [{ label:"Começar", onClick: () => { closeModal(); showOnly(screenGame); startLevel(); } }]
   });
@@ -931,14 +1054,41 @@ function startLevel(){
 }
 
 /** =========================
- *  Ranking: 1 participação por missão COMPLETA
+ *  Ranking — agora por tentativas (attempts)
  *  ========================= */
-rankingBtn.addEventListener("click", () => openRankingModal());
-finalRankingBtn.addEventListener("click", () => openRankingModal());
+rankingBtn?.addEventListener("click", () => openRankingModal());
+finalRankingBtn?.addEventListener("click", () => openRankingModal());
 
-async function maybeCommitMissionToRanking(){
-  if (!missionValidForRanking) return;
+async function commitAttempt(){
+  if (!isOptInRanking()) return;
 
+  const sector = getUserSector();
+  const name = getUserName();
+  if (!sector || !name) return;
+
+  const payload = {
+    sector,
+    masked: maskName(name),
+    scoreOverall: score,
+    correctOverall: correctCount,
+    wrongOverall: wrongCount,
+    autoUsed,
+    hintsUsed,
+    taskScore: [...taskScore],
+    taskCorrect: [...taskCorrect],
+    taskWrong: [...taskWrong],
+    taskDone: [...taskDone],
+    createdAt: serverTimestamp()
+  };
+
+  await addDoc(collection(db, "attempts"), payload);
+}
+
+/**
+ * Opcional: mantém o agregado antigo para quem quiser comparar rápido
+ * (não é mais a fonte principal do ranking)
+ */
+async function maybeCommitMissionToSectorStats(){
   const sector = getUserSector();
   if (!sector) return;
 
@@ -952,7 +1102,8 @@ async function maybeCommitMissionToRanking(){
       totalT2: 0,
       totalT3: 0,
       totalCorrect: 0,
-      totalWrong: 0
+      totalWrong: 0,
+      totalAuto: 0
     };
 
     tx.set(ref, {
@@ -963,72 +1114,132 @@ async function maybeCommitMissionToRanking(){
       totalT3: (d.totalT3 || 0) + taskScore[2],
       totalCorrect: (d.totalCorrect || 0) + correctCount,
       totalWrong: (d.totalWrong || 0) + wrongCount,
+      totalAuto: (d.totalAuto || 0) + autoUsed,
       updatedAt: serverTimestamp()
     }, { merge:true });
   });
 }
 
+function fmt(n){ return Number(n || 0).toFixed(2); }
+
 async function openRankingModal(){
+  const snap = await getDocs(query(
+    collection(db, "attempts"),
+    orderBy("createdAt", "desc"),
+    limit(250)
+  ));
+  const attempts = snap.docs.map(d => d.data());
+
   const sectors = SECTORS.filter(s => s !== "Selecione…");
-  const rows = [];
+  const bySector = new Map();
+  for (const s of sectors) bySector.set(s, []);
 
-  for (const s of sectors){
-    const ref = doc(db, "sectorStats", s);
-    const snap = await getDoc(ref);
-    const d = snap.exists() ? snap.data() : null;
-
-    const missions = d?.missions || 0;
-    const avg = (num) => missions ? (num / missions) : 0;
-
-    rows.push({
-      sector: s,
-      missions,
-      avgT1: avg(d?.totalT1 || 0),
-      avgT2: avg(d?.totalT2 || 0),
-      avgT3: avg(d?.totalT3 || 0),
-      avgOverall: avg(d?.totalOverall || 0),
-      avgCorrect: avg(d?.totalCorrect || 0),
-      avgWrong: avg(d?.totalWrong || 0),
-    });
+  for (const a of attempts){
+    if (!a?.sector) continue;
+    if (!bySector.has(a.sector)) bySector.set(a.sector, []);
+    bySector.get(a.sector).push(a);
   }
 
-  rows.sort((a,b) => b.avgOverall - a.avgOverall || b.missions - a.missions);
+  // Estatísticas globais
+  const totalAttempts = attempts.length;
+  const sum = (arr, fn) => arr.reduce((acc,x)=>acc + (fn(x)||0), 0);
+
+  const gCorrect = sum(attempts, a=>a.correctOverall);
+  const gWrong = sum(attempts, a=>a.wrongOverall);
+  const gAuto = sum(attempts, a=>a.autoUsed);
+  const gHints = sum(attempts, a=>a.hintsUsed);
+  const gScore = sum(attempts, a=>a.scoreOverall);
+
+  const gDone1 = sum(attempts, a=> (a.taskDone?.[0] ? 1 : 0));
+  const gDone2 = sum(attempts, a=> (a.taskDone?.[1] ? 1 : 0));
+  const gDone3 = sum(attempts, a=> (a.taskDone?.[2] ? 1 : 0));
+
+  // Monta cards por setor
+  const sectorCards = sectors.map(sector => {
+    const list = bySector.get(sector) || [];
+    const n = list.length;
+
+    const avgOverall = n ? sum(list, a=>a.scoreOverall)/n : 0;
+    const avgT1 = n ? sum(list, a=>a.taskScore?.[0])/n : 0;
+    const avgT2 = n ? sum(list, a=>a.taskScore?.[1])/n : 0;
+    const avgT3 = n ? sum(list, a=>a.taskScore?.[2])/n : 0;
+
+    const done1 = sum(list, a=> (a.taskDone?.[0] ? 1 : 0));
+    const done2 = sum(list, a=> (a.taskDone?.[1] ? 1 : 0));
+    const done3 = sum(list, a=> (a.taskDone?.[2] ? 1 : 0));
+
+    // notas individuais (mascaradas) por tarefa
+    const notes = (idx) => {
+      // pega até 10 mais recentes pra não ficar gigante
+      const top = list.slice(0, 10);
+      return top.map(a => {
+        const who = escapeHtml(a.masked || "??***");
+        const sc = Number(a.taskScore?.[idx] || 0);
+        return `<span class="pill">${who} <b>${sc}</b></span>`;
+      }).join(" ");
+    };
+
+    return `
+      <div class="rank-card">
+        <div class="rank-head">
+          <div>
+            <div class="rank-sector">${escapeHtml(sector)}</div>
+            <div class="rank-sub">Participações: <b>${n}</b></div>
+          </div>
+          <div class="rank-badge">${fmt(avgOverall)}</div>
+        </div>
+
+        <div class="rank-grid">
+          <div class="rank-mini">
+            <div class="k">T1 concluídas</div><div class="v">${done1}/${n || 0}</div>
+            <div class="k">Média T1</div><div class="v">${fmt(avgT1)}</div>
+          </div>
+          <div class="rank-mini">
+            <div class="k">T2 concluídas</div><div class="v">${done2}/${n || 0}</div>
+            <div class="k">Média T2</div><div class="v">${fmt(avgT2)}</div>
+          </div>
+          <div class="rank-mini">
+            <div class="k">T3 concluídas</div><div class="v">${done3}/${n || 0}</div>
+            <div class="k">Média T3</div><div class="v">${fmt(avgT3)}</div>
+          </div>
+        </div>
+
+        <details class="rank-details">
+          <summary>Notas individuais (mascaradas) por tarefa</summary>
+          <div class="rank-notes">
+            <div class="rank-notes-row"><b>Tarefa 1:</b> ${notes(0) || "<span class='muted'>Sem dados</span>"}</div>
+            <div class="rank-notes-row"><b>Tarefa 2:</b> ${notes(1) || "<span class='muted'>Sem dados</span>"}</div>
+            <div class="rank-notes-row"><b>Tarefa 3:</b> ${notes(2) || "<span class='muted'>Sem dados</span>"}</div>
+          </div>
+        </details>
+      </div>
+    `;
+  }).join("");
+
+  // Estatísticas globais em “caixinha”
+  const globalStatsHTML = `
+    <div class="rank-stats">
+      <div class="stat-card"><p class="stat-k">Participações</p><p class="stat-v">${totalAttempts}</p></div>
+      <div class="stat-card"><p class="stat-k">Pontuação média</p><p class="stat-v">${totalAttempts ? fmt(gScore/totalAttempts) : "0.00"}</p></div>
+      <div class="stat-card"><p class="stat-k">Acertos (total)</p><p class="stat-v">${gCorrect}</p></div>
+      <div class="stat-card"><p class="stat-k">Erros (total)</p><p class="stat-v">${gWrong}</p></div>
+      <div class="stat-card"><p class="stat-k">Auto (total)</p><p class="stat-v">${gAuto}</p></div>
+      <div class="stat-card"><p class="stat-k">Colas (total)</p><p class="stat-v">${gHints}</p></div>
+      <div class="stat-card"><p class="stat-k">T1 concluída</p><p class="stat-v">${totalAttempts ? fmt((gDone1/totalAttempts)*100) : "0.00"}%</p></div>
+      <div class="stat-card"><p class="stat-k">T2 concluída</p><p class="stat-v">${totalAttempts ? fmt((gDone2/totalAttempts)*100) : "0.00"}%</p></div>
+      <div class="stat-card"><p class="stat-k">T3 concluída</p><p class="stat-v">${totalAttempts ? fmt((gDone3/totalAttempts)*100) : "0.00"}%</p></div>
+    </div>
+  `;
 
   openModal({
-    title: "🏆 Ranking por setor (missões completas)",
+    title: "🏆 Ranking por setor — participações e médias",
     bodyHTML: `
-      <div style="overflow:auto">
-        <table style="width:100%; border-collapse:collapse">
-          <thead>
-            <tr>
-              <th style="text-align:left; padding:8px; border-bottom:1px solid rgba(255,255,255,.12)">Setor</th>
-              <th style="text-align:right; padding:8px; border-bottom:1px solid rgba(255,255,255,.12)">Missões</th>
-              <th style="text-align:right; padding:8px; border-bottom:1px solid rgba(255,255,255,.12)">Tarefa 1</th>
-              <th style="text-align:right; padding:8px; border-bottom:1px solid rgba(255,255,255,.12)">Tarefa 2</th>
-              <th style="text-align:right; padding:8px; border-bottom:1px solid rgba(255,255,255,.12)">Tarefa 3</th>
-              <th style="text-align:right; padding:8px; border-bottom:1px solid rgba(255,255,255,.12)">Média geral</th>
-              <th style="text-align:right; padding:8px; border-bottom:1px solid rgba(255,255,255,.12)">Acertos</th>
-              <th style="text-align:right; padding:8px; border-bottom:1px solid rgba(255,255,255,.12)">Erros</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${rows.map(r => `
-              <tr>
-                <td style="padding:8px; border-bottom:1px solid rgba(255,255,255,.08)">${escapeHtml(r.sector)}</td>
-                <td style="padding:8px; text-align:right; border-bottom:1px solid rgba(255,255,255,.08)">${r.missions}</td>
-                <td style="padding:8px; text-align:right; border-bottom:1px solid rgba(255,255,255,.08)">${r.avgT1.toFixed(2)}</td>
-                <td style="padding:8px; text-align:right; border-bottom:1px solid rgba(255,255,255,.08)">${r.avgT2.toFixed(2)}</td>
-                <td style="padding:8px; text-align:right; border-bottom:1px solid rgba(255,255,255,.08)">${r.avgT3.toFixed(2)}</td>
-                <td style="padding:8px; text-align:right; border-bottom:1px solid rgba(255,255,255,.08)">${r.avgOverall.toFixed(2)}</td>
-                <td style="padding:8px; text-align:right; border-bottom:1px solid rgba(255,255,255,.08)">${r.avgCorrect.toFixed(2)}</td>
-                <td style="padding:8px; text-align:right; border-bottom:1px solid rgba(255,255,255,.08)">${r.avgWrong.toFixed(2)}</td>
-              </tr>
-            `).join("")}
-          </tbody>
-        </table>
+      ${globalStatsHTML}
+      <div class="rank-wrap">
+        ${sectorCards || "<p class='muted'>Sem dados ainda.</p>"}
       </div>
       <p class="muted" style="margin:12px 0 0">
-        Ranking agregado por setor (sem nomes), conforme LGPD. Conta <strong>1 participação por missão completa</strong>.
+        Ranking por setor e apelidos mascarados (2 letras + ***), conforme LGPD. Se o usuário desmarcar “Participar do ranking”, a tentativa não é registrada.
       </p>
     `,
     buttons: [{ label:"Fechar", onClick: closeModal }]
@@ -1038,8 +1249,8 @@ async function openRankingModal(){
 /** =========================
  *  Personalização + renas
  *  ========================= */
-customizeBtn.addEventListener("click", openCustomizeModal);
-openCustomizeInline.addEventListener("click", openCustomizeModal);
+customizeBtn?.addEventListener("click", openCustomizeModal);
+openCustomizeInline?.addEventListener("click", openCustomizeModal);
 
 function saveTheme(obj){ localStorage.setItem("mission_theme", JSON.stringify(obj)); }
 function loadTheme(){
@@ -1091,9 +1302,9 @@ function openCustomizeModal(){
       saveTheme(cfg);
     };
 
-    optSnow.addEventListener("change", applyNow);
-    optLights.addEventListener("change", applyNow);
-    optReindeer.addEventListener("change", applyNow);
+    optSnow?.addEventListener("change", applyNow);
+    optLights?.addEventListener("change", applyNow);
+    optReindeer?.addEventListener("change", applyNow);
     applyNow();
   }, 0);
 }
@@ -1147,6 +1358,7 @@ function spawnReindeerWave(){
  *  ========================= */
 (function snowInit(){
   const canvas = document.getElementById("snow");
+  if (!canvas) return;
   const ctx = canvas.getContext("2d");
   let w, h, dpr;
   const flakes = [];
@@ -1225,4 +1437,8 @@ setTimeout(() => {
   showOnly(screenForm);
   userNameEl.value = localStorage.getItem("mission_name") || "";
   userSectorEl.value = localStorage.getItem("mission_sector") || "";
+  if (optInRankingEl){
+    const v = localStorage.getItem("mission_optin");
+    if (v === "0") optInRankingEl.checked = false;
+  }
 }, 1100);
