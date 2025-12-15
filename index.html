@@ -58,10 +58,17 @@
             <select class="input" id="userSector"></select>
           </label>
         </div>
-<label class="check">
-  <input type="checkbox" id="optInRanking" checked />
-  Participar do ranking (meus dados serão exibidos de forma mascarada)
-</label>
+<div class="toggle-row" style="margin-top:10px">
+  <div class="toggle-text">
+    <b>Participar do ranking</b>
+    <small class="muted">Se desligado, seu resultado não entra nas estatísticas.</small>
+  </div>
+
+  <label class="switch" aria-label="Participar do ranking">
+    <input type="checkbox" id="optRanking" checked>
+    <span class="slider"></span>
+  </label>
+</div>
 
         <div class="lgpd-box">
           <p class="lgpd-title">Observação</p>

@@ -110,10 +110,13 @@ const explanations = [
 /** =========================
  *  Elementos
  *  ========================= */
+const optRankingEl = document.getElementById("optRanking");
 const screenLoading = document.getElementById("screenLoading");
 const screenForm = document.getElementById("screenForm");
 const screenGame = document.getElementById("screenGame");
 const screenFinal = document.getElementById("screenFinal");
+const autoBtn = document.getElementById("autoBtn");
+
 
 const headerTitle = document.getElementById("headerTitle");
 const userNameEl = document.getElementById("userName");
@@ -482,6 +485,61 @@ function registerCorrect(){
   addScore(SCORE_RULES.correct);
 }
 
+function registerAutoCorrect(){
+  // conta como correção certa, mas com penalidade
+  correctCount += 1;
+  taskCorrect[levelIndex] += 1;
+
+  autoUsed += 1;
+
+  // aplica só a regra de auto (não soma +5)
+  addScore(SCORE_RULES.auto);
+}
+
+function autoFixOne(){
+  if (levelLocked){
+    onLockedTextClick();
+    return;
+  }
+
+  // pega a primeira regra ainda não corrigida
+  const rule = currentRules.find(r => !fixedRuleIds.has(r.id));
+  if (!rule){
+    openModal({
+      title: "Tudo certo!",
+      bodyHTML: `<p>Você já corrigiu tudo neste nível ✅</p>`,
+      buttons: [{ label:"Fechar", onClick: closeModal }]
+    });
+    return;
+  }
+
+  // acha a primeira ocorrência no texto
+  const m = findNextMatch(currentText, 0, rule);
+  if (!m){
+    // fallback: se por algum motivo não achou (regex), marca como feita pra não travar
+    fixedRuleIds.add(rule.id);
+    finalizeIfDone();
+    return;
+  }
+
+  const start = m.index;
+  const len = m.len;
+  const expected = rule.correct;
+
+  // aplica a correção automaticamente (inclusive remoção de vírgula)
+  applyReplacementAt(start, len, expected);
+  fixedRuleIds.add(rule.id);
+
+  // marca verde apenas se virou texto (pra remoção de vírgula não marca)
+  if (expected !== "") markCorrected(rule.id, start, expected);
+
+  registerAutoCorrect();
+
+  renderMessage();
+  finalizeIfDone();
+}
+
+
 function onLockedTextClick(){
   openModal({
     title: "Tudo certinho!",
@@ -658,6 +716,28 @@ nextLevelBtn?.addEventListener("click", async () => {
   levelIndex += 1;
   startLevel();
 });
+
+if (autoBtn){
+  autoBtn.addEventListener("click", () => {
+    if (levelLocked){
+      onLockedTextClick();
+      return;
+    }
+
+    openModal({
+      title: "Correção automática",
+      bodyHTML: `
+        <p>Se você usar a correção automática, você perde <strong>${Math.abs(SCORE_RULES.auto)}</strong> pontos.</p>
+        <p class="muted" style="margin-top:10px">Deseja continuar?</p>
+      `,
+      buttons: [
+        { label:"Cancelar", variant:"ghost", onClick: closeModal },
+        { label:"Sim, corrigir", onClick: () => { closeModal(); autoFixOne(); } }
+      ]
+    });
+  });
+}
+
 
 async function skipLevel(){
   missionValidForRanking = false;
@@ -899,36 +979,55 @@ rankingBtn?.addEventListener("click", () => openRankingModal());
 finalRankingBtn?.addEventListener("click", () => openRankingModal());
 
 async function maybeCommitMissionToRanking(){
-  if (!missionValidForRanking) return;
+  // ✅ Se usuário optou por NÃO participar, não salva nada
+  const optOut = localStorage.getItem("mission_optout_ranking") === "1";
+  if (optOut) return;
 
   const sector = getUserSector();
   if (!sector) return;
 
+  // ✅ Conta participação MESMO sem concluir tudo:
+  // (removemos a trava missionValidForRanking)
+  // Se quiser manter a info de "missão completa", dá pra salvar também (abaixo).
+
   const ref = doc(db, "sectorStats", sector);
+
+  // define se a missão foi "completa" (terminou com tudo corrigido)
+  // (opcional, mas útil para estatística)
+  const missionComplete = (levelIndex >= levels.length - 1) && (fixedRuleIds.size >= currentRules.length);
+
   await runTransaction(db, async (tx) => {
     const snap = await tx.get(ref);
     const d = snap.exists() ? snap.data() : {
-      missions: 0,
+      missions: 0,               // participações totais (completa ou não)
+      missionsComplete: 0,       // (opcional) completas
       totalOverall: 0,
       totalT1: 0,
       totalT2: 0,
       totalT3: 0,
       totalCorrect: 0,
-      totalWrong: 0
+      totalWrong: 0,
+      totalAuto: 0              // (se você está usando autoUsed)
     };
 
     tx.set(ref, {
       missions: (d.missions || 0) + 1,
+      missionsComplete: (d.missionsComplete || 0) + (missionComplete ? 1 : 0),
+
       totalOverall: (d.totalOverall || 0) + score,
-      totalT1: (d.totalT1 || 0) + taskScore[0],
-      totalT2: (d.totalT2 || 0) + taskScore[1],
-      totalT3: (d.totalT3 || 0) + taskScore[2],
+      totalT1: (d.totalT1 || 0) + (taskScore?.[0] || 0),
+      totalT2: (d.totalT2 || 0) + (taskScore?.[1] || 0),
+      totalT3: (d.totalT3 || 0) + (taskScore?.[2] || 0),
+
       totalCorrect: (d.totalCorrect || 0) + correctCount,
       totalWrong: (d.totalWrong || 0) + wrongCount,
+      totalAuto: (d.totalAuto || 0) + (autoUsed || 0),
+
       updatedAt: serverTimestamp()
     }, { merge:true });
   });
 }
+
 
 async function openRankingModal(){
   try {
@@ -1108,18 +1207,20 @@ function openCustomizeModal(){
 
 function toggleHTML(id, title, subtitle, checked){
   return `
-    <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; padding:10px; border-radius:14px; border:1px solid rgba(255,255,255,.12); background: rgba(0,0,0,.18)">
-      <div style="display:flex; flex-direction:column; gap:2px">
+    <div class="toggle-row">
+      <div class="toggle-text">
         <b>${escapeHtml(title)}</b>
-        <small style="color:rgba(255,255,255,.62)">${escapeHtml(subtitle)}</small>
+        <small class="muted">${escapeHtml(subtitle)}</small>
       </div>
-      <label class="switch" style="position:relative; width:52px; height:30px">
-        <input type="checkbox" id="${id}" ${checked ? "checked":""} style="opacity:0;width:0;height:0"/>
-        <span class="slider" style="position:absolute; inset:0; border-radius:999px; background: rgba(255,255,255,.16); border:1px solid rgba(255,255,255,.18)"></span>
+
+      <label class="switch" aria-label="${escapeHtml(title)}">
+        <input type="checkbox" id="${id}" ${checked ? "checked":""}/>
+        <span class="slider"></span>
       </label>
     </div>
   `;
 }
+
 
 let reindeerTimer = null;
 
@@ -1232,13 +1333,26 @@ function spawnReindeerWave(){
  *  Setores + boot
  *  ========================= */
 function populateSectors(){
-  if (!userSectorEl) return;
   userSectorEl.innerHTML = "";
+
   for (const s of SECTORS){
     const opt = document.createElement("option");
     opt.value = s === "Selecione…" ? "" : s;
     opt.textContent = s;
     userSectorEl.appendChild(opt);
+  }
+
+  // ✅ Ranking opt-out (switch na tela inicial)
+  // HTML esperado:
+  // <input type="checkbox" id="optRanking" checked>
+  const optRankingEl = document.getElementById("optRanking");
+  if (optRankingEl){
+    const savedOptOut = localStorage.getItem("mission_optout_ranking") === "1";
+    optRankingEl.checked = !savedOptOut;
+
+    optRankingEl.addEventListener("change", () => {
+      localStorage.setItem("mission_optout_ranking", optRankingEl.checked ? "0" : "1");
+    });
   }
 }
 
