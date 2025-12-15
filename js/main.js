@@ -19,7 +19,7 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-/** Setores*/
+/** Setores */
 const SECTORS = [
   "Selecione…",
   "Produção (CTP, PCP, Offset, Acabamento...)",
@@ -108,15 +108,12 @@ const explanations = [
 ];
 
 /** =========================
- *  Elementos
- *  ========================= */
-const optRankingEl = document.getElementById("optRanking");
+ * Elementos
+ * ========================= */
 const screenLoading = document.getElementById("screenLoading");
 const screenForm = document.getElementById("screenForm");
 const screenGame = document.getElementById("screenGame");
 const screenFinal = document.getElementById("screenFinal");
-const autoBtn = document.getElementById("autoBtn");
-
 
 const headerTitle = document.getElementById("headerTitle");
 const userNameEl = document.getElementById("userName");
@@ -135,6 +132,9 @@ const messageArea = document.getElementById("messageArea");
 const hintBtn = document.getElementById("hintBtn");
 const nextLevelBtn = document.getElementById("nextLevelBtn");
 
+// ✅ ID correto do HTML:
+const autoFixBtn = document.getElementById("autoFixBtn");
+
 const finalCongrats = document.getElementById("finalCongrats");
 const finalStats = document.getElementById("finalStats");
 const finalRecado = document.getElementById("finalRecado");
@@ -152,12 +152,18 @@ const lgpdMoreBtn = document.getElementById("lgpdMoreBtn");
 const lightsEl = document.getElementById("lights");
 const reindeerLayer = document.getElementById("reindeerLayer");
 
-// botão antigo único (se não existir no HTML, não quebra)
+// review
+const reviewBtn1 = document.getElementById("reviewBtn1");
+const reviewBtn2 = document.getElementById("reviewBtn2");
+const reviewBtn3 = document.getElementById("reviewBtn3");
 const reviewBtn = document.getElementById("reviewBtn");
 
+// ranking opt-in/out (tela inicial)
+const optRankingEl = document.getElementById("optRanking");
+
 /** =========================
- *  Modal
- *  ========================= */
+ * Modal
+ * ========================= */
 const overlay = document.getElementById("overlay");
 const modalTitle = document.getElementById("modalTitle");
 const modalBody = document.getElementById("modalBody");
@@ -202,6 +208,7 @@ function escapeHtml(s){
     .replaceAll('"',"&quot;")
     .replaceAll("'","&#039;");
 }
+
 function normalize(str){
   return (str || "")
     .trim()
@@ -214,39 +221,9 @@ function ensureGlobal(re){
   const flags = re.flags.includes("g") ? re.flags : (re.flags + "g");
   return new RegExp(re.source, flags);
 }
-
-function applyAllFixes(levelDef, text){
-  let t = text;
-  for (const rule of levelDef.rules){
-    const re = ensureGlobal(rule.wrong);
-    t = t.replace(re, rule.correct);
-  }
-  return t;
-}
-
 /** =========================
- *  LGPD
- *  ========================= */
-lgpdMoreBtn?.addEventListener("click", () => {
-  openModal({
-    title: "LGPD — Informações sobre tratamento de dados",
-    bodyHTML: `
-      <p class="muted">Esta dinâmica é recreativa e foi criada para destacar a importância da revisão editorial.</p>
-      <h3 style="margin:14px 0 6px">Quais dados são coletados?</h3>
-      <ul style="margin:0; padding-left:18px; color:rgba(255,255,255,.74); line-height:1.6">
-        <li><strong>Nome</strong>: usado apenas para exibir a mensagem de parabéns no final.</li>
-        <li><strong>Setor</strong>: usado para consolidar o ranking de forma <strong>agregada por setor</strong>.</li>
-      </ul>
-      <h3 style="margin:14px 0 6px">Compartilhamento</h3>
-      <p class="muted">Não há compartilhamento de informações pessoais no ranking. O ranking mostra apenas números por setor.</p>
-    `,
-    buttons: [{ label: "Fechar", onClick: closeModal }]
-  });
-});
-
-/** =========================
- *  Estado
- *  ========================= */
+ * Estado
+ * ========================= */
 let levelIndex = 0;
 let fixedRuleIds = new Set();
 let currentText = "";
@@ -258,26 +235,20 @@ let wrongCount = 0;
 let correctCount = 0;
 let hintsUsed = 0;
 
-let missionValidForRanking = true;
-
 // por tarefa
 const taskScore = [0,0,0];
 const taskCorrect = [0,0,0];
 const taskWrong = [0,0,0];
 
-// guarda o texto final do usuário por nível
+// texto final do usuário por nível
 const currentTextByLevel = ["", "", ""];
 
-const correctedHTMLByLevel = [];
+// marcações verdes do trecho já corrigido
 const correctedSegmentsByRule = new Map();
 
 /** =========================
- *  Review por atividade
- *  ========================= */
-const reviewBtn1 = document.getElementById("reviewBtn1");
-const reviewBtn2 = document.getElementById("reviewBtn2");
-const reviewBtn3 = document.getElementById("reviewBtn3");
-
+ * Review (final)
+ * ========================= */
 function openReviewModal(levelIdx){
   const block = explanations[levelIdx];
   if (!block) return;
@@ -306,12 +277,11 @@ function openReviewModal(levelIdx){
 reviewBtn1?.addEventListener("click", () => openReviewModal(0));
 reviewBtn2?.addEventListener("click", () => openReviewModal(1));
 reviewBtn3?.addEventListener("click", () => openReviewModal(2));
-
 reviewBtn?.addEventListener("click", () => openReviewModal(levelIndex));
 
 /** =========================
- *  HUD
- *  ========================= */
+ * HUD
+ * ========================= */
 function updateHUD(){
   const total = currentRules.length;
   const done = fixedRuleIds.size;
@@ -327,8 +297,8 @@ function updateHUD(){
 }
 
 /** =========================
- *  Render
- *  ========================= */
+ * Render
+ * ========================= */
 function findNextMatch(text, pos, rule){
   const re = ensureGlobal(rule.wrong);
   re.lastIndex = pos;
@@ -393,6 +363,7 @@ function appendCorrected(frag, seg){
 }
 
 function renderMessage(){
+  if (!messageArea) return;
   messageArea.classList.remove("show");
   messageArea.innerHTML = "";
 
@@ -466,8 +437,8 @@ function renderMessage(){
 }
 
 /** =========================
- *  Interação / correção
- *  ========================= */
+ * Interação / correção
+ * ========================= */
 function addScore(delta){
   score += delta;
   taskScore[levelIndex] += delta;
@@ -486,59 +457,11 @@ function registerCorrect(){
 }
 
 function registerAutoCorrect(){
-  // conta como correção certa, mas com penalidade
   correctCount += 1;
   taskCorrect[levelIndex] += 1;
-
   autoUsed += 1;
-
-  // aplica só a regra de auto (não soma +5)
   addScore(SCORE_RULES.auto);
 }
-
-function autoFixOne(){
-  if (levelLocked){
-    onLockedTextClick();
-    return;
-  }
-
-  // pega a primeira regra ainda não corrigida
-  const rule = currentRules.find(r => !fixedRuleIds.has(r.id));
-  if (!rule){
-    openModal({
-      title: "Tudo certo!",
-      bodyHTML: `<p>Você já corrigiu tudo neste nível ✅</p>`,
-      buttons: [{ label:"Fechar", onClick: closeModal }]
-    });
-    return;
-  }
-
-  // acha a primeira ocorrência no texto
-  const m = findNextMatch(currentText, 0, rule);
-  if (!m){
-    // fallback: se por algum motivo não achou (regex), marca como feita pra não travar
-    fixedRuleIds.add(rule.id);
-    finalizeIfDone();
-    return;
-  }
-
-  const start = m.index;
-  const len = m.len;
-  const expected = rule.correct;
-
-  // aplica a correção automaticamente (inclusive remoção de vírgula)
-  applyReplacementAt(start, len, expected);
-  fixedRuleIds.add(rule.id);
-
-  // marca verde apenas se virou texto (pra remoção de vírgula não marca)
-  if (expected !== "") markCorrected(rule.id, start, expected);
-
-  registerAutoCorrect();
-
-  renderMessage();
-  finalizeIfDone();
-}
-
 
 function onLockedTextClick(){
   openModal({
@@ -585,52 +508,11 @@ function markCorrected(ruleId, start, newText){
   correctedSegmentsByRule.set(ruleId, { start, lenNew: newText.length });
 }
 
-function onErrorClick(errSpan, rule){
-  if (levelLocked){
-    onLockedTextClick();
-    return;
-  }
-
-  const wrongText = errSpan.textContent || "";
-  const expected = rule.correct;
-
-  if (expected === "" && wrongText === ","){
-    openModal({
-      title: "Remover vírgula",
-      bodyHTML: `<p>Você quer <strong>remover</strong> esta vírgula?</p>`,
-      buttons: [
-        { label:"Cancelar", variant:"ghost", onClick: closeModal },
-        { label:"Remover", onClick: () => { closeModal(); confirmCommaRemoval(errSpan, rule); } }
-      ]
-    });
-    return;
-  }
-
-  openModal({
-    title: `Corrigir (${rule.label})`,
-    bodyHTML: `
-      <p>Trecho selecionado:</p>
-      <p style="margin:8px 0 0"><strong>${escapeHtml(wrongText)}</strong></p>
-
-      <p style="margin:12px 0 6px">Digite a forma correta:</p>
-      <input class="input" id="fixInput" type="text" autocomplete="off" placeholder="${expected === "" ? "Deixe em branco para remover" : "Digite aqui..."}" />
-
-      <p class="muted" style="margin:10px 0 0">Erros podem ser de acentuação, ortografia, gramática, pontuação etc.</p>
-    `,
-    buttons: [
-      { label:"Confirmar correção", onClick: () => confirmTyped(errSpan, rule) }
-    ]
-  });
-
-  setTimeout(() => document.getElementById("fixInput")?.focus(), 30);
-}
-
 function confirmCommaRemoval(errSpan, rule){
   const start = Number(errSpan.dataset.start);
   const len = Number(errSpan.dataset.len);
 
   applyReplacementAt(start, len, "");
-
   fixedRuleIds.add(rule.id);
   registerCorrect();
 
@@ -674,6 +556,46 @@ function confirmTyped(errSpan, rule){
   finalizeIfDone();
 }
 
+function onErrorClick(errSpan, rule){
+  if (levelLocked){
+    onLockedTextClick();
+    return;
+  }
+
+  const wrongText = errSpan.textContent || "";
+  const expected = rule.correct;
+
+  if (expected === "" && wrongText === ","){
+    openModal({
+      title: "Remover vírgula",
+      bodyHTML: `<p>Você quer <strong>remover</strong> esta vírgula?</p>`,
+      buttons: [
+        { label:"Cancelar", variant:"ghost", onClick: closeModal },
+        { label:"Remover", onClick: () => { closeModal(); confirmCommaRemoval(errSpan, rule); } }
+      ]
+    });
+    return;
+  }
+
+  openModal({
+    title: `Corrigir (${rule.label})`,
+    bodyHTML: `
+      <p>Trecho selecionado:</p>
+      <p style="margin:8px 0 0"><strong>${escapeHtml(wrongText)}</strong></p>
+
+      <p style="margin:12px 0 6px">Digite a forma correta:</p>
+      <input class="input" id="fixInput" type="text" autocomplete="off" placeholder="${expected === "" ? "Deixe em branco para remover" : "Digite aqui..."}" />
+
+      <p class="muted" style="margin:10px 0 0">Erros podem ser de acentuação, ortografia, gramática, pontuação etc.</p>
+    `,
+    buttons: [
+      { label:"Confirmar correção", onClick: () => confirmTyped(errSpan, rule) }
+    ]
+  });
+
+  setTimeout(() => document.getElementById("fixInput")?.focus(), 30);
+}
+
 function finalizeIfDone(){
   updateHUD();
 
@@ -687,8 +609,67 @@ function finalizeIfDone(){
 }
 
 /** =========================
- *  Botão “Próximo nível / Finalizar”
- *  ========================= */
+ * Auto-fix (1 correção por clique)
+ * ========================= */
+function autoFixOne(){
+  if (levelLocked){
+    onLockedTextClick();
+    return;
+  }
+
+  const rule = currentRules.find(r => !fixedRuleIds.has(r.id));
+  if (!rule){
+    openModal({
+      title: "Tudo certo!",
+      bodyHTML: `<p>Você já corrigiu tudo neste nível ✅</p>`,
+      buttons: [{ label:"Fechar", onClick: closeModal }]
+    });
+    return;
+  }
+
+  const m = findNextMatch(currentText, 0, rule);
+  if (!m){
+    fixedRuleIds.add(rule.id);
+    finalizeIfDone();
+    return;
+  }
+
+  const start = m.index;
+  const len = m.len;
+  const expected = rule.correct;
+
+  applyReplacementAt(start, len, expected);
+  fixedRuleIds.add(rule.id);
+  if (expected !== "") markCorrected(rule.id, start, expected);
+
+  registerAutoCorrect();
+  renderMessage();
+  finalizeIfDone();
+}
+
+// ✅ listener no botão CERTO (autoFixBtn)
+autoFixBtn?.addEventListener("click", () => {
+  if (levelLocked){
+    onLockedTextClick();
+    return;
+  }
+
+  openModal({
+    title: "Correção automática",
+    bodyHTML: `
+      <p>Se você usar a correção automática, você perde <strong>${Math.abs(SCORE_RULES.auto)}</strong> pontos.</p>
+      <p class="muted" style="margin-top:10px">Deseja continuar?</p>
+    `,
+    buttons: [
+      { label:"Cancelar", variant:"ghost", onClick: closeModal },
+      { label:"Sim, corrigir", onClick: () => { closeModal(); autoFixOne(); } }
+    ]
+  });
+});
+
+/** =========================
+ * Próximo nível / Finalizar
+ * ========================= */
 nextLevelBtn?.addEventListener("click", async () => {
   const done = fixedRuleIds.size >= currentRules.length;
   const isLast = levelIndex === (levels.length - 1);
@@ -706,7 +687,6 @@ nextLevelBtn?.addEventListener("click", async () => {
   }
 
   currentTextByLevel[levelIndex] = currentText;
-  correctedHTMLByLevel[levelIndex] = highlightCorrections(levels[levelIndex], currentText);
 
   if (isLast){
     await finishMission();
@@ -717,35 +697,9 @@ nextLevelBtn?.addEventListener("click", async () => {
   startLevel();
 });
 
-if (autoBtn){
-  autoBtn.addEventListener("click", () => {
-    if (levelLocked){
-      onLockedTextClick();
-      return;
-    }
-
-    openModal({
-      title: "Correção automática",
-      bodyHTML: `
-        <p>Se você usar a correção automática, você perde <strong>${Math.abs(SCORE_RULES.auto)}</strong> pontos.</p>
-        <p class="muted" style="margin-top:10px">Deseja continuar?</p>
-      `,
-      buttons: [
-        { label:"Cancelar", variant:"ghost", onClick: closeModal },
-        { label:"Sim, corrigir", onClick: () => { closeModal(); autoFixOne(); } }
-      ]
-    });
-  });
-}
-
-
 async function skipLevel(){
-  missionValidForRanking = false;
   addScore(SCORE_RULES.skip);
-
   currentTextByLevel[levelIndex] = currentText;
-  correctedHTMLByLevel[levelIndex] = highlightCorrections(levels[levelIndex], currentText);
-
   await goNext();
 }
 
@@ -775,8 +729,8 @@ async function goNext(){
 }
 
 /** =========================
- *  Cola
- *  ========================= */
+ * Cola
+ * ========================= */
 hintBtn?.addEventListener("click", () => {
   if (levelLocked){
     onLockedTextClick();
@@ -811,19 +765,8 @@ hintBtn?.addEventListener("click", () => {
 });
 
 /** =========================
- *  Final — destaques (verde/vermelho)
- *  ========================= */
-function highlightCorrections(levelDef, correctedText){
-  let html = correctedText;
-  for (const rule of levelDef.rules){
-    const c = String(rule.correct);
-    if (!c) continue;
-    const safe = c.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    html = html.replace(new RegExp(safe, "g"), `@@${c}@@`);
-  }
-  return html.replaceAll(/@@(.*?)@@/g, `<span class="final-highlight">$1</span>`);
-}
-
+ * Final
+ * ========================= */
 function buildFinalColoredHTML(levelDef, userText){
   const text = String(userText ?? "");
   let html = escapeHtml(text);
@@ -847,7 +790,6 @@ function buildFinalColoredHTML(levelDef, userText){
 
 function showFinal(){
   const name = getUserName();
-
   const finalStatGrid = document.getElementById("finalStatGrid");
   const epigraphBox = document.getElementById("epigraphBox");
 
@@ -868,12 +810,13 @@ function showFinal(){
       `Parabéns, ${name}! Você ajudou o editor-chefe a publicar a mensagem de Natal no prazo!`;
   }
 
+  const optOut = localStorage.getItem("mission_optout_ranking") === "1";
   if (finalStatGrid){
     finalStatGrid.innerHTML = `
       <div class="stat-card"><p class="stat-k">Pontos</p><p class="stat-v">${score}</p></div>
       <div class="stat-card"><p class="stat-k">Acertos</p><p class="stat-v">${correctCount}</p></div>
       <div class="stat-card"><p class="stat-k">Erros</p><p class="stat-v">${wrongCount}</p></div>
-      <div class="stat-card"><p class="stat-k">Ranking</p><p class="stat-v">${missionValidForRanking ? "Sim" : "Não"}</p></div>
+      <div class="stat-card"><p class="stat-k">Ranking</p><p class="stat-v">${optOut ? "Não" : "Sim"}</p></div>
     `;
   } else if (finalStats){
     finalStats.textContent = `Pontos: ${score} | Acertos: ${correctCount} | Erros: ${wrongCount}`;
@@ -888,10 +831,9 @@ function showFinal(){
 }
 
 restartBtn?.addEventListener("click", () => showOnly(screenForm));
-
 /** =========================
- *  Início / nível
- *  ========================= */
+ * Início / nível
+ * ========================= */
 startBtn?.addEventListener("click", () => {
   const name = getUserName();
   const sector = getUserSector();
@@ -909,20 +851,17 @@ startBtn?.addEventListener("click", () => {
   localStorage.setItem("mission_sector", sector);
 
   levelIndex = 0;
-  missionValidForRanking = true;
 
   score = 0;
   wrongCount = 0;
   correctCount = 0;
   hintsUsed = 0;
-
   autoUsed = 0;
 
   taskScore[0]=taskScore[1]=taskScore[2]=0;
   taskCorrect[0]=taskCorrect[1]=taskCorrect[2]=0;
   taskWrong[0]=taskWrong[1]=taskWrong[2]=0;
 
-  correctedHTMLByLevel.length = 0;
   currentTextByLevel[0] = currentTextByLevel[1] = currentTextByLevel[2] = "";
 
   openModal({
@@ -933,6 +872,7 @@ startBtn?.addEventListener("click", () => {
         <li>Correção incorreta: <strong>${SCORE_RULES.wrong}</strong></li>
         <li>Avançar sem concluir: <strong>${SCORE_RULES.skip}</strong></li>
         <li>Colas utilizadas: <strong>${SCORE_RULES.hint}</strong></li>
+        <li>Correção automática: <strong>${SCORE_RULES.auto}</strong></li>
       </ul>
     `,
     buttons: [{ label:"Começar", onClick: () => { closeModal(); showOnly(screenGame); startLevel(); } }]
@@ -973,61 +913,46 @@ function startLevel(){
 }
 
 /** =========================
- *  Ranking (robusto)
- *  ========================= */
+ * Ranking
+ * ========================= */
 rankingBtn?.addEventListener("click", () => openRankingModal());
 finalRankingBtn?.addEventListener("click", () => openRankingModal());
 
 async function maybeCommitMissionToRanking(){
-  // ✅ Se usuário optou por NÃO participar, não salva nada
   const optOut = localStorage.getItem("mission_optout_ranking") === "1";
   if (optOut) return;
 
   const sector = getUserSector();
   if (!sector) return;
 
-  // ✅ Conta participação MESMO sem concluir tudo:
-  // (removemos a trava missionValidForRanking)
-  // Se quiser manter a info de "missão completa", dá pra salvar também (abaixo).
-
   const ref = doc(db, "sectorStats", sector);
-
-  // define se a missão foi "completa" (terminou com tudo corrigido)
-  // (opcional, mas útil para estatística)
-  const missionComplete = (levelIndex >= levels.length - 1) && (fixedRuleIds.size >= currentRules.length);
 
   await runTransaction(db, async (tx) => {
     const snap = await tx.get(ref);
     const d = snap.exists() ? snap.data() : {
-      missions: 0,               // participações totais (completa ou não)
-      missionsComplete: 0,       // (opcional) completas
+      missions: 0,
       totalOverall: 0,
       totalT1: 0,
       totalT2: 0,
       totalT3: 0,
       totalCorrect: 0,
       totalWrong: 0,
-      totalAuto: 0              // (se você está usando autoUsed)
+      totalAuto: 0
     };
 
     tx.set(ref, {
       missions: (d.missions || 0) + 1,
-      missionsComplete: (d.missionsComplete || 0) + (missionComplete ? 1 : 0),
-
       totalOverall: (d.totalOverall || 0) + score,
       totalT1: (d.totalT1 || 0) + (taskScore?.[0] || 0),
       totalT2: (d.totalT2 || 0) + (taskScore?.[1] || 0),
       totalT3: (d.totalT3 || 0) + (taskScore?.[2] || 0),
-
       totalCorrect: (d.totalCorrect || 0) + correctCount,
       totalWrong: (d.totalWrong || 0) + wrongCount,
       totalAuto: (d.totalAuto || 0) + (autoUsed || 0),
-
       updatedAt: serverTimestamp()
     }, { merge:true });
   });
 }
-
 
 async function openRankingModal(){
   try {
@@ -1114,8 +1039,8 @@ async function openRankingModal(){
 }
 
 /** =========================
- *  Personalização + renas + CORES
- *  ========================= */
+ * Personalização
+ * ========================= */
 customizeBtn?.addEventListener("click", openCustomizeModal);
 openCustomizeInline?.addEventListener("click", openCustomizeModal);
 
@@ -1137,6 +1062,32 @@ function loadTheme(){
   } catch {
     return { snow:true, lights:false, reindeer:true, preset:"classic", intensity: 1 };
   }
+}
+
+function ensureLightsBulbs(){
+  if (!lightsEl) return;
+  if (lightsEl.querySelector(".bulb")) return;
+  const bulbs = 18;
+  for (let i=0;i<bulbs;i++){
+    const b = document.createElement("span");
+    b.className = "bulb";
+    lightsEl.appendChild(b);
+  }
+}
+
+function toggleHTML(id, title, subtitle, checked){
+  return `
+    <div class="toggle-row">
+      <div class="toggle-text">
+        <b>${escapeHtml(title)}</b>
+        <small class="muted">${escapeHtml(subtitle)}</small>
+      </div>
+      <label class="switch" aria-label="${escapeHtml(title)}">
+        <input type="checkbox" id="${id}" ${checked ? "checked":""}/>
+        <span class="slider"></span>
+      </label>
+    </div>
+  `;
 }
 
 function openCustomizeModal(){
@@ -1205,27 +1156,9 @@ function openCustomizeModal(){
   }, 0);
 }
 
-function toggleHTML(id, title, subtitle, checked){
-  return `
-    <div class="toggle-row">
-      <div class="toggle-text">
-        <b>${escapeHtml(title)}</b>
-        <small class="muted">${escapeHtml(subtitle)}</small>
-      </div>
-
-      <label class="switch" aria-label="${escapeHtml(title)}">
-        <input type="checkbox" id="${id}" ${checked ? "checked":""}/>
-        <span class="slider"></span>
-      </label>
-    </div>
-  `;
-}
-
-
 let reindeerTimer = null;
 
 function applyTheme({ snow, lights, reindeer, preset="classic", intensity=1 }){
-  // aplica variáveis de cor (CSS deve usar, mas mesmo sem, não quebra)
   const p = THEME_PRESETS[preset] || THEME_PRESETS.classic;
   const root = document.documentElement;
   root.style.setProperty("--accent", p.accent);
@@ -1236,7 +1169,10 @@ function applyTheme({ snow, lights, reindeer, preset="classic", intensity=1 }){
   const snowCanvas = document.getElementById("snow");
   if (snowCanvas) snowCanvas.style.display = snow ? "block" : "none";
 
-  if (lightsEl) lightsEl.classList.toggle("hidden", !lights);
+  if (lightsEl){
+    ensureLightsBulbs();
+    lightsEl.classList.toggle("hidden", !lights);
+  }
 
   if (reindeer){
     reindeerLayer?.classList.remove("hidden");
@@ -1278,8 +1214,8 @@ function spawnReindeerWave(){
 }
 
 /** =========================
- *  Neve
- *  ========================= */
+ * Neve
+ * ========================= */
 (function snowInit(){
   const canvas = document.getElementById("snow");
   if (!canvas) return;
@@ -1330,30 +1266,27 @@ function spawnReindeerWave(){
 })();
 
 /** =========================
- *  Setores + boot
- *  ========================= */
+ * Setores + optRanking + boot
+ * ========================= */
 function populateSectors(){
+  if (!userSectorEl) return;
   userSectorEl.innerHTML = "";
-
   for (const s of SECTORS){
     const opt = document.createElement("option");
     opt.value = s === "Selecione…" ? "" : s;
     opt.textContent = s;
     userSectorEl.appendChild(opt);
   }
+}
 
-  // ✅ Ranking opt-out (switch na tela inicial)
-  // HTML esperado:
-  // <input type="checkbox" id="optRanking" checked>
-  const optRankingEl = document.getElementById("optRanking");
-  if (optRankingEl){
-    const savedOptOut = localStorage.getItem("mission_optout_ranking") === "1";
-    optRankingEl.checked = !savedOptOut;
+function setupRankingToggle(){
+  if (!optRankingEl) return;
+  const savedOptOut = localStorage.getItem("mission_optout_ranking") === "1";
+  optRankingEl.checked = !savedOptOut;
 
-    optRankingEl.addEventListener("change", () => {
-      localStorage.setItem("mission_optout_ranking", optRankingEl.checked ? "0" : "1");
-    });
-  }
+  optRankingEl.addEventListener("change", () => {
+    localStorage.setItem("mission_optout_ranking", optRankingEl.checked ? "0" : "1");
+  });
 }
 
 function getUserName(){
@@ -1370,7 +1303,9 @@ function showOnly(screen){
   }
 }
 
+// Boot
 populateSectors();
+setupRankingToggle();
 applyTheme(loadTheme());
 
 showOnly(screenLoading);
