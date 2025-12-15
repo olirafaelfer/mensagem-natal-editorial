@@ -179,27 +179,28 @@ let __scrollY = 0;
 function openModal({ title, bodyHTML, buttons=[] }){
   if (!overlay) return;
 
-  // ✅ trava o scroll no mobile (evita “pular” pro topo)
-  __scrollY = window.scrollY || 0;
-  document.body.classList.add("modal-open");
-  document.body.style.top = `-${__scrollY}px`;
+  // 🔒 trava o fundo exatamente onde o usuário está
+  const scrollY = window.scrollY;
+  document.body.style.position = "fixed";
+  document.body.style.top = `-${scrollY}px`;
+  document.body.dataset.scrollY = scrollY;
 
-  if (modalTitle) modalTitle.textContent = title;
-  if (modalBody) modalBody.innerHTML = bodyHTML;
-  if (modalFoot) modalFoot.innerHTML = "";
+  modalTitle.textContent = title;
+  modalBody.innerHTML = bodyHTML;
+  modalFoot.innerHTML = "";
 
   for (const btn of buttons){
     const b = document.createElement("button");
     b.className = "btn" + (btn.variant ? ` ${btn.variant}` : "");
     b.textContent = btn.label;
-    b.disabled = !!btn.disabled;
     b.addEventListener("click", btn.onClick);
-    modalFoot?.appendChild(b);
+    modalFoot.appendChild(b);
   }
 
   overlay.classList.remove("hidden");
   requestAnimationFrame(() => overlay.classList.add("show"));
 }
+
 
 function closeModal(){
   if (!overlay) return;
@@ -207,10 +208,24 @@ function closeModal(){
   overlay.classList.remove("show");
   setTimeout(() => overlay.classList.add("hidden"), 180);
 
-  // ✅ destrava o scroll e volta pra posição anterior
-  document.body.classList.remove("modal-open");
+  // 🔓 restaura scroll exatamente onde estava
+  const scrollY = Number(document.body.dataset.scrollY || 0);
+  document.body.style.position = "";
   document.body.style.top = "";
-  window.scrollTo(0, __scrollY);
+  window.scrollTo(0, scrollY);
+}
+
+function showScoreFloat(value){
+  const el = document.createElement("div");
+  el.className = `score-float ${value > 0 ? "plus" : "minus"}`;
+  el.textContent = (value > 0 ? "+" : "") + value;
+
+  el.style.left = "50%";
+  el.style.top = "50%";
+  el.style.transform = "translate(-50%, -50%)";
+
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 900);
 }
 
 
@@ -456,8 +471,9 @@ function renderMessage(){
 function addScore(delta){
   score += delta;
   taskScore[levelIndex] += delta;
-  showScoreFloat(delta);
+  showScoreFloat(delta); // 🎯 aqui
 }
+
 
 
 function showScoreFloat(delta){
