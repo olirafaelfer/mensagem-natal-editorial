@@ -3,9 +3,7 @@
 // Firebase
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js";
 import {
-  getFirestore,
-  doc, getDoc, runTransaction, serverTimestamp,
-  collection, addDoc, getDocs, query, orderBy, limit
+  getFirestore, doc, getDoc, runTransaction, serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
 
 /* COLE AQUI O SEU firebaseConfig (o seu já está funcionando) */
@@ -21,7 +19,7 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-/** Setores */
+/** Setores*/
 const SECTORS = [
   "Selecione…",
   "Produção (CTP, PCP, Offset, Acabamento...)",
@@ -39,12 +37,8 @@ const SCORE_RULES = {
   hint: -1,
   auto: -2
 };
-
 let autoUsed = 0;
 
-/** =========================
- *  Níveis / Atividades
- *  ========================= */
 const levels = [
   {
     name: "Fácil",
@@ -71,23 +65,20 @@ Ele escreveu tão rápido que acabou deixando três errinhos para trás.`,
       { id:"m5", label:"Concordância", wrong:/\bexige\b/g, correct:"exigem" },
     ]
   },
-
-  // ✅ ATUALIZADO: Nível Difícil com o TEXTO NOVO
-{
-  name: "Difícil",
-  intro: `Nível difícil: desafios reais de edição — colocação pronominal, pontuação e paralelismo.`,
-  instruction: `Erros podem envolver pontuação, gramática e colocação pronominal. Clique no trecho inteiro que precisa ser reescrito.`,
-  raw: `No Natal, se deve pensar no amor ao próximo e na importância da empatia. Aos pais, respeite-os; aos filhos, os ame; aos necessitados, ajude-os. Essas atitudes, reforçam os valores natalinos e mostram que o amor, em todas as suas formas e meios de manifestação, é a peça-chave para uma vida boa, feliz e luz nos tempos de escuridão.
+  {
+    name: "Difícil",
+    intro: `Nível difícil: desafios reais de edição — colocação pronominal, pontuação e paralelismo.`,
+    instruction: `Erros podem envolver pontuação, gramática e colocação pronominal. Clique no trecho inteiro que precisa ser reescrito.`,
+    raw: `No Natal, se deve pensar no amor ao próximo e na importância da empatia. Aos pais, respeite-os; aos filhos, os ame; aos necessitados, ajude-os. Essas atitudes, reforçam os valores natalinos e mostram que o amor, em todas as suas formas e meios de manifestação, é a peça-chave para uma vida boa, feliz e luz nos tempos de escuridão.
 Aos que estão em guerra, peço a paz; aos que não a encontram, que Deus acalme seus corações inquietos; aos que nada disso sirva, ofereço um caloroso abraço, o maior conforto da alma.
 Pensadores cientificistas pensam que o tempo é só um passar, que datas e símbolos são itens meramente psicológicos, que a linearidade intrínseca ao mensurável e durável tempo é uma prisão (ou mesmo um castigo). Chamam este tempo "chronos" e negam que é o "kairós", que é aquele tempo espiritual, profundo, com significado. Aquele tempo em que paramos para respirar e, sim, sentimos que algo está ali presente. Não enxergo um tempo tão "kairós" quanto o Natal e, o mais incrível, isso independe de crenças ou religiões. É época de partilhar, festejar, refletir; é oportunidade para planejar, remodelar e desconstruir.
 Recomece quantas vezes precisar, pois, enquanto estivermos no "kairós", não seremos reféns do "chronos".`,
-  rules: [
-    { id:"d1", label:"Colocação pronominal", wrong:/No Natal,\s*se deve pensar/g, correct:"No Natal, deve-se pensar" },
-    { id:"d2", label:"Colocação pronominal", wrong:/aos filhos,\s*os ame/gi, correct:"aos filhos, ame-os" },
-    { id:"d3", label:"Pontuação", wrong:/(?<=\batitudes),/g, correct:"" }
-  ]
-}
-
+    rules: [
+      { id:"d1", label:"Colocação pronominal", wrong:/No Natal,\s*se deve pensar/g, correct:"No Natal, deve-se pensar" },
+      { id:"d2", label:"Colocação pronominal", wrong:/aos filhos,\s*os ame/gi, correct:"aos filhos, ame-os" },
+      { id:"d3", label:"Pontuação", wrong:/(?<=\batitudes),/g, correct:"" },
+    ]
+  }
 ];
 
 const explanations = [
@@ -106,36 +97,12 @@ const explanations = [
       { wrong: "Os textos natalinos, exige", correct: "Os textos natalinos exigem", reason: "Erro de concordância verbal: sujeito plural exige verbo no plural." }
     ]
   },
-
-  // ✅ ATUALIZADO: justificativas coerentes com o texto novo
   {
     title: "Atividade 3 — Nível Difícil",
     items: [
-      {
-        wrong: "Se deve pensar",
-        correct: "Deve-se pensar",
-        reason: "Colocação pronominal: evita-se iniciar oração com pronome oblíquo átono neste caso; a forma consagrada é a ênclise ('deve-se')."
-      },
-      {
-        wrong: "o amor, em todas as suas formas...",
-        correct: "o amor em todas as suas formas...",
-        reason: "Pontuação: a vírgula foi inserida indevidamente, criando uma quebra desnecessária no sintagma."
-      },
-      {
-        wrong: "calente abraço",
-        correct: "caloroso abraço",
-        reason: "Ortografia/uso vocabular: 'calente' não é forma adequada aqui; 'caloroso' é a opção correta."
-      },
-      {
-        wrong: "negam que e o \"kairós\"",
-        correct: "negam que é o \"kairós\"",
-        reason: "Gramática: ausência do verbo 'ser' com acento (é)."
-      },
-      {
-        wrong: "descontruir",
-        correct: "desconstruir",
-        reason: "Ortografia: a grafia correta é 'desconstruir'."
-      }
+      { wrong: "No Natal, se deve pensar", correct: "No Natal, deve-se pensar", reason: "Colocação pronominal: a forma adequada é 'deve-se'." },
+      { wrong: "aos filhos, os ame", correct: "aos filhos, ame-os", reason: "Colocação pronominal: forma recomendada 'ame-os'." },
+      { wrong: "Essas atitudes, reforçam", correct: "Essas atitudes reforçam", reason: "Vírgula indevida entre sujeito e predicado." }
     ]
   }
 ];
@@ -164,7 +131,6 @@ const messageArea = document.getElementById("messageArea");
 
 const hintBtn = document.getElementById("hintBtn");
 const nextLevelBtn = document.getElementById("nextLevelBtn");
-const autoFixBtn = document.getElementById("autoFixBtn"); // ✅ opcional
 
 const finalCongrats = document.getElementById("finalCongrats");
 const finalStats = document.getElementById("finalStats");
@@ -182,8 +148,6 @@ const lgpdMoreBtn = document.getElementById("lgpdMoreBtn");
 
 const lightsEl = document.getElementById("lights");
 const reindeerLayer = document.getElementById("reindeerLayer");
-
-const optInRankingEl = document.getElementById("optInRanking"); // ✅ opcional
 
 // botão antigo único (se não existir no HTML, não quebra)
 const reviewBtn = document.getElementById("reviewBtn");
@@ -204,21 +168,23 @@ document.addEventListener("keydown", (e) => {
 
 function openModal({ title, bodyHTML, buttons=[] }){
   if (!overlay) return;
+  if (modalTitle) modalTitle.textContent = title;
+  if (modalBody) modalBody.innerHTML = bodyHTML;
+  if (modalFoot) modalFoot.innerHTML = "";
 
-  modalTitle.textContent = title;
-  modalBody.innerHTML = bodyHTML;
-  modalFoot.innerHTML = "";
   for (const btn of buttons){
     const b = document.createElement("button");
     b.className = "btn" + (btn.variant ? ` ${btn.variant}` : "");
     b.textContent = btn.label;
     b.disabled = !!btn.disabled;
     b.addEventListener("click", btn.onClick);
-    modalFoot.appendChild(b);
+    modalFoot?.appendChild(b);
   }
+
   overlay.classList.remove("hidden");
   requestAnimationFrame(() => overlay.classList.add("show"));
 }
+
 function closeModal(){
   if (!overlay) return;
   overlay.classList.remove("show");
@@ -256,36 +222,6 @@ function applyAllFixes(levelDef, text){
 }
 
 /** =========================
- *  Opt-in ranking (se não existir, participa por padrão)
- *  ========================= */
-function isOptInRanking(){
-  if (!optInRankingEl) return true;
-  return !!optInRankingEl.checked;
-}
-function maskName(name){
-  const n = (name || "").trim();
-  if (!n) return "??***";
-  const two = n.slice(0,2);
-  return two + "***";
-}
-
-/** =========================
- *  Pontuação “pulando”
- *  (CSS vem depois — mas JS já fica pronto)
- *  ========================= */
-function showScoreDelta(delta, x=null, y=null){
-  const el = document.createElement("div");
-  el.className = "score-float " + (delta >= 0 ? "pos" : "neg");
-  el.textContent = (delta >= 0 ? `+${delta}` : `${delta}`);
-  const px = x ?? (window.innerWidth * 0.5);
-  const py = y ?? 90;
-  el.style.left = px + "px";
-  el.style.top = py + "px";
-  document.body.appendChild(el);
-  setTimeout(() => el.remove(), 950);
-}
-
-/** =========================
  *  LGPD
  *  ========================= */
 lgpdMoreBtn?.addEventListener("click", () => {
@@ -295,11 +231,11 @@ lgpdMoreBtn?.addEventListener("click", () => {
       <p class="muted">Esta dinâmica é recreativa e foi criada para destacar a importância da revisão editorial.</p>
       <h3 style="margin:14px 0 6px">Quais dados são coletados?</h3>
       <ul style="margin:0; padding-left:18px; color:rgba(255,255,255,.74); line-height:1.6">
-        <li><strong>Nome</strong>: usado para exibir a mensagem de parabéns no final e gerar um apelido mascarado no ranking (ex.: <em>RA***</em>).</li>
-        <li><strong>Setor</strong>: usado para consolidar estatísticas e ranking por setor.</li>
+        <li><strong>Nome</strong>: usado apenas para exibir a mensagem de parabéns no final.</li>
+        <li><strong>Setor</strong>: usado para consolidar o ranking de forma <strong>agregada por setor</strong>.</li>
       </ul>
       <h3 style="margin:14px 0 6px">Compartilhamento</h3>
-      <p class="muted">O ranking pode exibir apelidos mascarados (2 letras + ***), e estatísticas por setor, sem expor nomes completos.</p>
+      <p class="muted">Não há compartilhamento de informações pessoais no ranking. O ranking mostra apenas números por setor.</p>
     `,
     buttons: [{ label: "Fechar", onClick: closeModal }]
   });
@@ -319,17 +255,18 @@ let wrongCount = 0;
 let correctCount = 0;
 let hintsUsed = 0;
 
+let missionValidForRanking = true;
+
 // por tarefa
 const taskScore = [0,0,0];
 const taskCorrect = [0,0,0];
 const taskWrong = [0,0,0];
-const taskDone = [false,false,false];
 
-// guarda texto final do usuário por nível
+// guarda o texto final do usuário por nível
 const currentTextByLevel = ["", "", ""];
 
 const correctedHTMLByLevel = [];
-const correctedSegmentsByRule = new Map(); // ruleId -> {start, lenNew}
+const correctedSegmentsByRule = new Map();
 
 /** =========================
  *  Review por atividade
@@ -367,28 +304,7 @@ reviewBtn1?.addEventListener("click", () => openReviewModal(0));
 reviewBtn2?.addEventListener("click", () => openReviewModal(1));
 reviewBtn3?.addEventListener("click", () => openReviewModal(2));
 
-reviewBtn?.addEventListener("click", () => {
-  let html = "";
-  for (const level of explanations){
-    html += `<h3 style="margin:14px 0 6px">${escapeHtml(level.title)}</h3>`;
-    html += `<ul style="padding-left:18px; line-height:1.6">`;
-    for (const item of level.items){
-      html += `
-        <li style="margin-bottom:8px">
-          <strong>Erro:</strong> ${escapeHtml(item.wrong)}<br>
-          <strong>Correção:</strong> ${escapeHtml(item.correct)}<br>
-          <span class="muted">${escapeHtml(item.reason)}</span>
-        </li>
-      `;
-    }
-    html += `</ul>`;
-  }
-  openModal({
-    title: "Correções e justificativas editoriais",
-    bodyHTML: html,
-    buttons: [{ label:"Fechar", onClick: closeModal }]
-  });
-});
+reviewBtn?.addEventListener("click", () => openReviewModal(levelIndex));
 
 /** =========================
  *  HUD
@@ -558,14 +474,12 @@ function registerWrong(){
   wrongCount += 1;
   taskWrong[levelIndex] += 1;
   addScore(SCORE_RULES.wrong);
-  showScoreDelta(SCORE_RULES.wrong);
 }
 
 function registerCorrect(){
   correctCount += 1;
   taskCorrect[levelIndex] += 1;
   addScore(SCORE_RULES.correct);
-  showScoreDelta(SCORE_RULES.correct);
 }
 
 function onLockedTextClick(){
@@ -622,7 +536,6 @@ function onErrorClick(errSpan, rule){
   const wrongText = errSpan.textContent || "";
   const expected = rule.correct;
 
-  // vírgula indevida: confirmação de remoção
   if (expected === "" && wrongText === ","){
     openModal({
       title: "Remover vírgula",
@@ -642,8 +555,7 @@ function onErrorClick(errSpan, rule){
       <p style="margin:8px 0 0"><strong>${escapeHtml(wrongText)}</strong></p>
 
       <p style="margin:12px 0 6px">Digite a forma correta:</p>
-      <input class="input" id="fixInput" type="text" autocomplete="off"
-        placeholder="${expected === "" ? "Deixe em branco para remover" : "Digite aqui..."}" />
+      <input class="input" id="fixInput" type="text" autocomplete="off" placeholder="${expected === "" ? "Deixe em branco para remover" : "Digite aqui..."}" />
 
       <p class="muted" style="margin:10px 0 0">Erros podem ser de acentuação, ortografia, gramática, pontuação etc.</p>
     `,
@@ -660,6 +572,7 @@ function confirmCommaRemoval(errSpan, rule){
   const len = Number(errSpan.dataset.len);
 
   applyReplacementAt(start, len, "");
+
   fixedRuleIds.add(rule.id);
   registerCorrect();
 
@@ -709,7 +622,6 @@ function finalizeIfDone(){
   const done = fixedRuleIds.size >= currentRules.length;
   if (done){
     levelLocked = true;
-    taskDone[levelIndex] = true;
     renderMessage();
     nextLevelBtn.classList.remove("btn-disabled");
     nextLevelBtn.setAttribute("aria-disabled", "false");
@@ -717,70 +629,9 @@ function finalizeIfDone(){
 }
 
 /** =========================
- *  Correção automática (1 erro por clique) + popup confirmando perda de pontos
- *  ========================= */
-autoFixBtn?.addEventListener("click", () => {
-  if (levelLocked){
-    onLockedTextClick();
-    return;
-  }
-
-  const remaining = currentRules.filter(r => !fixedRuleIds.has(r.id));
-  if (remaining.length === 0){
-    openModal({
-      title: "Correção automática",
-      bodyHTML: `<p>Este nível já está 100% corrigido ✅</p>`,
-      buttons: [{ label:"Ok", onClick: closeModal }]
-    });
-    return;
-  }
-
-  openModal({
-    title: "Correção automática",
-    bodyHTML: `<p>Ao usar a correção automática, você perde <strong>${Math.abs(SCORE_RULES.auto)}</strong> pontos. Deseja continuar?</p>`,
-    buttons: [
-      { label:"Cancelar", variant:"ghost", onClick: closeModal },
-      { label:"Continuar", onClick: () => { closeModal(); applyAutoFixOne(); } }
-    ]
-  });
-});
-
-function applyAutoFixOne(){
-  const remaining = currentRules.filter(r => !fixedRuleIds.has(r.id));
-  if (remaining.length === 0) return;
-
-  // pega o primeiro erro restante e aplica a 1ª ocorrência encontrada no texto
-  const rule = remaining[0];
-  const re = ensureGlobal(rule.wrong);
-  const m = re.exec(currentText);
-  if (!m) {
-    fixedRuleIds.add(rule.id);
-    updateHUD();
-    return;
-  }
-
-  const start = m.index;
-  const len = m[0].length;
-
-  applyReplacementAt(start, len, rule.correct);
-  fixedRuleIds.add(rule.id);
-
-  if (rule.correct !== ""){
-    markCorrected(rule.id, start, rule.correct);
-  }
-
-  autoUsed += 1;
-  addScore(SCORE_RULES.auto);
-  showScoreDelta(SCORE_RULES.auto);
-
-  renderMessage();
-  finalizeIfDone();
-}
-
-/** =========================
  *  Botão “Próximo nível / Finalizar”
  *  ========================= */
-nextLevelBtn.addEventListener("click", async () => {
+nextLevelBtn?.addEventListener("click", async () => {
   const done = fixedRuleIds.size >= currentRules.length;
   const isLast = levelIndex === (levels.length - 1);
 
@@ -796,7 +647,6 @@ nextLevelBtn.addEventListener("click", async () => {
     return;
   }
 
-  // salva texto final do usuário
   currentTextByLevel[levelIndex] = currentText;
   correctedHTMLByLevel[levelIndex] = highlightCorrections(levels[levelIndex], currentText);
 
@@ -810,11 +660,9 @@ nextLevelBtn.addEventListener("click", async () => {
 });
 
 async function skipLevel(){
-  // registra penalidade do pulo
+  missionValidForRanking = false;
   addScore(SCORE_RULES.skip);
-  showScoreDelta(SCORE_RULES.skip);
 
-  // salva texto final mesmo pulando
   currentTextByLevel[levelIndex] = currentText;
   correctedHTMLByLevel[levelIndex] = highlightCorrections(levels[levelIndex], currentText);
 
@@ -823,21 +671,13 @@ async function skipLevel(){
 
 async function finishMission(){
   try {
-    await commitAttempt();                 // grava tentativa (se opt-in)
-    await maybeCommitMissionToSectorStats(); // opcional
+    await maybeCommitMissionToRanking();
   } catch (err) {
-    console.error("Falha ao salvar ranking/attempt:", err);
-    // não trava a missão por causa do ranking
-    openModal({
-      title: "Aviso",
-      bodyHTML: `<p>Não foi possível registrar no ranking agora (erro de conexão/permissão). A missão será finalizada normalmente.</p>`,
-      buttons: [{ label:"Ok", onClick: closeModal }]
-    });
+    console.error("Falha ao salvar ranking:", err);
   } finally {
-    showFinal(); // ✅ GARANTE que vai para a última tela
+    showFinal();
   }
 }
-
 
 async function goNext(){
   levelIndex += 1;
@@ -845,22 +685,19 @@ async function goNext(){
     startLevel();
     return;
   }
-
   try {
-    await commitAttempt();
-    await maybeCommitMissionToSectorStats();
+    await maybeCommitMissionToRanking();
   } catch (err) {
-    console.error("Falha ao salvar ranking/attempt:", err);
+    console.error("Falha ao salvar ranking:", err);
   } finally {
-    showFinal(); // ✅ GARANTE final
+    showFinal();
   }
 }
-
 
 /** =========================
  *  Cola
  *  ========================= */
-hintBtn.addEventListener("click", () => {
+hintBtn?.addEventListener("click", () => {
   if (levelLocked){
     onLockedTextClick();
     return;
@@ -878,7 +715,6 @@ hintBtn.addEventListener("click", () => {
 
   hintsUsed += 1;
   addScore(SCORE_RULES.hint);
-  showScoreDelta(SCORE_RULES.hint);
 
   const pick = remaining[Math.floor(Math.random() * remaining.length)];
   const msg = pick.correct === ""
@@ -914,17 +750,13 @@ function buildFinalColoredHTML(levelDef, userText){
 
   for (const rule of levelDef.rules){
     const reWrong = ensureGlobal(rule.wrong);
-
-    if (rule.correct === ""){
-      html = html.replace(reWrong, (m) => `<span class="final-wrong">${escapeHtml(m)}</span>`);
-      continue;
-    }
     html = html.replace(reWrong, (m) => `<span class="final-wrong">${escapeHtml(m)}</span>`);
   }
 
   for (const rule of levelDef.rules){
     const c = String(rule.correct ?? "");
     if (!c) continue;
+
     const safe = c.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     const reCorrect = new RegExp(safe, "g");
     html = html.replace(reCorrect, (m) => `<span class="final-correct">${escapeHtml(m)}</span>`);
@@ -933,9 +765,6 @@ function buildFinalColoredHTML(levelDef, userText){
   return html;
 }
 
-/** =========================
- *  showFinal()
- *  ========================= */
 function showFinal(){
   const name = getUserName();
 
@@ -954,25 +783,27 @@ function showFinal(){
 
   if (finalRecado) finalRecado.innerHTML = "";
 
-  finalCongrats.textContent =
-    `Parabéns, ${name}! Você ajudou o editor-chefe a publicar a mensagem de Natal no prazo!`;
+  if (finalCongrats){
+    finalCongrats.textContent =
+      `Parabéns, ${name}! Você ajudou o editor-chefe a publicar a mensagem de Natal no prazo!`;
+  }
 
   if (finalStatGrid){
     finalStatGrid.innerHTML = `
       <div class="stat-card"><p class="stat-k">Pontos</p><p class="stat-v">${score}</p></div>
       <div class="stat-card"><p class="stat-k">Acertos</p><p class="stat-v">${correctCount}</p></div>
       <div class="stat-card"><p class="stat-k">Erros</p><p class="stat-v">${wrongCount}</p></div>
-      <div class="stat-card"><p class="stat-k">Auto</p><p class="stat-v">${autoUsed}</p></div>
+      <div class="stat-card"><p class="stat-k">Ranking</p><p class="stat-v">${missionValidForRanking ? "Sim" : "Não"}</p></div>
     `;
   } else if (finalStats){
-    finalStats.textContent = `Pontos: ${score} | Acertos: ${correctCount} | Erros: ${wrongCount} | Auto: ${autoUsed}`;
+    finalStats.textContent = `Pontos: ${score} | Acertos: ${correctCount} | Erros: ${wrongCount}`;
   }
 
-  finalBox1.innerHTML = `<p style="margin:0">${buildFinalColoredHTML(levels[0], currentTextByLevel[0] || levels[0].raw)}</p>`;
-  finalBox2.innerHTML = `<p style="margin:0">${buildFinalColoredHTML(levels[1], currentTextByLevel[1] || levels[1].raw)}</p>`;
-  finalBox3.innerHTML = `<p style="margin:0">${buildFinalColoredHTML(levels[2], currentTextByLevel[2] || levels[2].raw)}</p>`;
+  if (finalBox1) finalBox1.innerHTML = `<p style="margin:0">${buildFinalColoredHTML(levels[0], currentTextByLevel[0] || levels[0].raw)}</p>`;
+  if (finalBox2) finalBox2.innerHTML = `<p style="margin:0">${buildFinalColoredHTML(levels[1], currentTextByLevel[1] || levels[1].raw)}</p>`;
+  if (finalBox3) finalBox3.innerHTML = `<p style="margin:0">${buildFinalColoredHTML(levels[2], currentTextByLevel[2] || levels[2].raw)}</p>`;
 
-  headerTitle.textContent = "Missão concluída 🎄";
+  if (headerTitle) headerTitle.textContent = "Missão concluída 🎄";
   showOnly(screenFinal);
 }
 
@@ -996,21 +827,20 @@ startBtn?.addEventListener("click", () => {
 
   localStorage.setItem("mission_name", name);
   localStorage.setItem("mission_sector", sector);
-  localStorage.setItem("mission_optin", isOptInRanking() ? "1" : "0");
 
   levelIndex = 0;
+  missionValidForRanking = true;
 
   score = 0;
   wrongCount = 0;
   correctCount = 0;
   hintsUsed = 0;
+
   autoUsed = 0;
 
   taskScore[0]=taskScore[1]=taskScore[2]=0;
   taskCorrect[0]=taskCorrect[1]=taskCorrect[2]=0;
   taskWrong[0]=taskWrong[1]=taskWrong[2]=0;
-
-  taskDone[0]=taskDone[1]=taskDone[2]=false;
 
   correctedHTMLByLevel.length = 0;
   currentTextByLevel[0] = currentTextByLevel[1] = currentTextByLevel[2] = "";
@@ -1021,11 +851,9 @@ startBtn?.addEventListener("click", () => {
       <ul style="margin:0; padding-left:18px; color:rgba(255,255,255,.78); line-height:1.7">
         <li>Correção correta: <strong>+${SCORE_RULES.correct}</strong></li>
         <li>Correção incorreta: <strong>${SCORE_RULES.wrong}</strong></li>
-        <li>Correção automática: <strong>${SCORE_RULES.auto}</strong></li>
         <li>Avançar sem concluir: <strong>${SCORE_RULES.skip}</strong></li>
         <li>Colas utilizadas: <strong>${SCORE_RULES.hint}</strong></li>
       </ul>
-      <p class="muted" style="margin-top:10px">Os erros serão explicados e detalhados ao término da atividade.</p>
     `,
     buttons: [{ label:"Começar", onClick: () => { closeModal(); showOnly(screenGame); startLevel(); } }]
   });
@@ -1041,13 +869,15 @@ function startLevel(){
   correctedSegmentsByRule.clear();
   levelLocked = false;
 
-  headerTitle.textContent = `Revisão da Mensagem de Natal — ${lvl.name}`;
-  levelLabel.textContent = lvl.name;
-  instruction.textContent = lvl.instruction;
+  if (headerTitle) headerTitle.textContent = `Revisão da Mensagem de Natal — ${lvl.name}`;
+  if (levelLabel) levelLabel.textContent = lvl.name;
+  if (instruction) instruction.textContent = lvl.instruction;
 
-  nextLevelBtn.textContent = (levelIndex === levels.length - 1)
-    ? "Finalizar tarefa natalina"
-    : "Próximo nível";
+  if (nextLevelBtn){
+    nextLevelBtn.textContent = (levelIndex === levels.length - 1)
+      ? "Finalizar tarefa natalina"
+      : "Próximo nível";
+  }
 
   updateHUD();
   renderMessage();
@@ -1063,41 +893,14 @@ function startLevel(){
 }
 
 /** =========================
- *  Ranking — agora por tentativas (attempts)
+ *  Ranking (robusto)
  *  ========================= */
 rankingBtn?.addEventListener("click", () => openRankingModal());
 finalRankingBtn?.addEventListener("click", () => openRankingModal());
 
-async function commitAttempt(){
-  if (!isOptInRanking()) return;
+async function maybeCommitMissionToRanking(){
+  if (!missionValidForRanking) return;
 
-  const sector = getUserSector();
-  const name = getUserName();
-  if (!sector || !name) return;
-
-  const payload = {
-    sector,
-    masked: maskName(name),
-    scoreOverall: score,
-    correctOverall: correctCount,
-    wrongOverall: wrongCount,
-    autoUsed,
-    hintsUsed,
-    taskScore: [...taskScore],
-    taskCorrect: [...taskCorrect],
-    taskWrong: [...taskWrong],
-    taskDone: [...taskDone],
-    createdAt: serverTimestamp()
-  };
-
-  await addDoc(collection(db, "attempts"), payload);
-}
-
-/**
- * Opcional: mantém o agregado antigo para quem quiser comparar rápido
- * (não é mais a fonte principal do ranking)
- */
-async function maybeCommitMissionToSectorStats(){
   const sector = getUserSector();
   if (!sector) return;
 
@@ -1111,8 +914,7 @@ async function maybeCommitMissionToSectorStats(){
       totalT2: 0,
       totalT3: 0,
       totalCorrect: 0,
-      totalWrong: 0,
-      totalAuto: 0
+      totalWrong: 0
     };
 
     tx.set(ref, {
@@ -1123,13 +925,10 @@ async function maybeCommitMissionToSectorStats(){
       totalT3: (d.totalT3 || 0) + taskScore[2],
       totalCorrect: (d.totalCorrect || 0) + correctCount,
       totalWrong: (d.totalWrong || 0) + wrongCount,
-      totalAuto: (d.totalAuto || 0) + autoUsed,
       updatedAt: serverTimestamp()
     }, { merge:true });
   });
 }
-
-function fmt(n){ return Number(n || 0).toFixed(2); }
 
 async function openRankingModal(){
   try {
@@ -1156,7 +955,6 @@ async function openRankingModal(){
       });
     }
 
-    // ordena por média geral desc
     rows.sort((a,b) => b.avgOverall - a.avgOverall || b.missions - a.missions);
 
     openModal({
@@ -1177,36 +975,18 @@ async function openRankingModal(){
               </tr>
             </thead>
             <tbody>
-              ${
-                rows.map(r => `
-                  <tr>
-                    <td style="padding:8px; border-bottom:1px solid rgba(255,255,255,.08)">
-                      ${escapeHtml(r.sector)}
-                    </td>
-                    <td style="padding:8px; text-align:right; border-bottom:1px solid rgba(255,255,255,.08)">
-                      ${r.missions}
-                    </td>
-                    <td style="padding:8px; text-align:right; border-bottom:1px solid rgba(255,255,255,.08)">
-                      ${r.avgT1.toFixed(2)}
-                    </td>
-                    <td style="padding:8px; text-align:right; border-bottom:1px solid rgba(255,255,255,.08)">
-                      ${r.avgT2.toFixed(2)}
-                    </td>
-                    <td style="padding:8px; text-align:right; border-bottom:1px solid rgba(255,255,255,.08)">
-                      ${r.avgT3.toFixed(2)}
-                    </td>
-                    <td style="padding:8px; text-align:right; border-bottom:1px solid rgba(255,255,255,.08)">
-                      ${r.avgOverall.toFixed(2)}
-                    </td>
-                    <td style="padding:8px; text-align:right; border-bottom:1px solid rgba(255,255,255,.08)">
-                      ${r.avgCorrect.toFixed(2)}
-                    </td>
-                    <td style="padding:8px; text-align:right; border-bottom:1px solid rgba(255,255,255,.08)">
-                      ${r.avgWrong.toFixed(2)}
-                    </td>
-                  </tr>
-                `).join("")
-              }
+              ${rows.map(r => `
+                <tr>
+                  <td style="padding:8px; border-bottom:1px solid rgba(255,255,255,.08)">${escapeHtml(r.sector)}</td>
+                  <td style="padding:8px; text-align:right; border-bottom:1px solid rgba(255,255,255,.08)">${r.missions}</td>
+                  <td style="padding:8px; text-align:right; border-bottom:1px solid rgba(255,255,255,.08)">${r.avgT1.toFixed(2)}</td>
+                  <td style="padding:8px; text-align:right; border-bottom:1px solid rgba(255,255,255,.08)">${r.avgT2.toFixed(2)}</td>
+                  <td style="padding:8px; text-align:right; border-bottom:1px solid rgba(255,255,255,.08)">${r.avgT3.toFixed(2)}</td>
+                  <td style="padding:8px; text-align:right; border-bottom:1px solid rgba(255,255,255,.08)">${r.avgOverall.toFixed(2)}</td>
+                  <td style="padding:8px; text-align:right; border-bottom:1px solid rgba(255,255,255,.08)">${r.avgCorrect.toFixed(2)}</td>
+                  <td style="padding:8px; text-align:right; border-bottom:1px solid rgba(255,255,255,.08)">${r.avgWrong.toFixed(2)}</td>
+                </tr>
+              `).join("")}
             </tbody>
           </table>
         </div>
@@ -1225,29 +1005,105 @@ async function openRankingModal(){
       bodyHTML: `
         <p>O ranking não pôde ser carregado.</p>
         <p class="muted" style="margin-top:10px">
-          Possíveis causas: regras do Firestore bloqueando leitura,
-          falta de conexão ou coleção vazia.
+          Possíveis causas: regras do Firestore bloqueando leitura, falta de conexão ou coleção vazia.
         </p>
-        <p class="muted">
-          <code>${escapeHtml(err?.message || String(err))}</code>
-        </p>
+        <p class="muted"><code>${escapeHtml(err?.message || String(err))}</code></p>
       `,
       buttons: [{ label:"Fechar", onClick: closeModal }]
     });
   }
 }
 
-
 /** =========================
- *  Personalização + renas
+ *  Personalização + renas + CORES
  *  ========================= */
 customizeBtn?.addEventListener("click", openCustomizeModal);
 openCustomizeInline?.addEventListener("click", openCustomizeModal);
 
+const THEME_PRESETS = {
+  classic: { name:"Clássico", accent:"#e53935", bgA:"#0b1020", bgB:"#1a2d5a" },
+  candy:   { name:"Candy Cane", accent:"#ff2e63", bgA:"#240024", bgB:"#001a33" },
+  neon:    { name:"Neon Noel", accent:"#00ffd5", bgA:"#001016", bgB:"#06223a" },
+  aurora:  { name:"Aurora", accent:"#7c4dff", bgA:"#001b2e", bgB:"#0b3d2e" },
+  gold:    { name:"Dourado", accent:"#ffcc00", bgA:"#1a1200", bgB:"#3b2a00" },
+};
+
 function saveTheme(obj){ localStorage.setItem("mission_theme", JSON.stringify(obj)); }
 function loadTheme(){
-  try { return JSON.parse(localStorage.getItem("mission_theme")||"null") || { snow:true, lights:false, reindeer:true }; }
-  catch { return { snow:true, lights:false, reindeer:true }; }
+  try {
+    return JSON.parse(localStorage.getItem("mission_theme")||"null") || {
+      snow:true, lights:false, reindeer:true,
+      preset:"classic", intensity: 1
+    };
+  } catch {
+    return { snow:true, lights:false, reindeer:true, preset:"classic", intensity: 1 };
+  }
+}
+
+function openCustomizeModal(){
+  const saved = loadTheme();
+
+  const presetOptions = Object.entries(THEME_PRESETS).map(([k,v]) =>
+    `<option value="${k}" ${saved.preset === k ? "selected":""}>${escapeHtml(v.name)}</option>`
+  ).join("");
+
+  openModal({
+    title: "⚙️ Personalizar página",
+    bodyHTML: `
+      <p class="muted">As alterações são aplicadas imediatamente.</p>
+
+      <div style="display:grid; gap:10px; margin-top:12px">
+        ${toggleHTML("optSnow","Neve","Clima clássico de Natal", saved.snow)}
+        ${toggleHTML("optLights","Pisca-pisca","Mais brilho e energia", saved.lights)}
+        ${toggleHTML("optReindeer","Renas","Várias renas passando", saved.reindeer)}
+      </div>
+
+      <hr style="border:0; border-top:1px solid rgba(255,255,255,.12); margin:14px 0"/>
+
+      <div style="display:grid; gap:10px">
+        <div>
+          <b>Tema de cores</b>
+          <div class="muted" style="margin:2px 0 8px">Escolha um visual mais vivo.</div>
+          <select class="input" id="optPreset">${presetOptions}</select>
+        </div>
+
+        <div>
+          <b>Intensidade</b>
+          <div class="muted" style="margin:2px 0 8px">Quanto mais alto, mais chamativo.</div>
+          <input id="optIntensity" type="range" min="0.8" max="1.6" step="0.05" value="${saved.intensity ?? 1}" style="width:100%"/>
+        </div>
+      </div>
+    `,
+    buttons: [{ label:"Fechar", onClick: closeModal }]
+  });
+
+  setTimeout(() => {
+    const optSnow = document.getElementById("optSnow");
+    const optLights = document.getElementById("optLights");
+    const optReindeer = document.getElementById("optReindeer");
+    const optPreset = document.getElementById("optPreset");
+    const optIntensity = document.getElementById("optIntensity");
+
+    const applyNow = () => {
+      const cfg = {
+        snow: !!optSnow?.checked,
+        lights: !!optLights?.checked,
+        reindeer: !!optReindeer?.checked,
+        preset: optPreset?.value || "classic",
+        intensity: Number(optIntensity?.value || 1),
+      };
+      applyTheme(cfg);
+      saveTheme(cfg);
+    };
+
+    optSnow?.addEventListener("change", applyNow);
+    optLights?.addEventListener("change", applyNow);
+    optReindeer?.addEventListener("change", applyNow);
+    optPreset?.addEventListener("change", applyNow);
+    optIntensity?.addEventListener("input", applyNow);
+
+    applyNow();
+  }, 0);
 }
 
 function toggleHTML(id, title, subtitle, checked){
@@ -1267,43 +1123,18 @@ function toggleHTML(id, title, subtitle, checked){
 
 let reindeerTimer = null;
 
-function openCustomizeModal(){
-  const saved = loadTheme();
+function applyTheme({ snow, lights, reindeer, preset="classic", intensity=1 }){
+  // aplica variáveis de cor (CSS deve usar, mas mesmo sem, não quebra)
+  const p = THEME_PRESETS[preset] || THEME_PRESETS.classic;
+  const root = document.documentElement;
+  root.style.setProperty("--accent", p.accent);
+  root.style.setProperty("--bgA", p.bgA);
+  root.style.setProperty("--bgB", p.bgB);
+  root.style.setProperty("--intensity", String(intensity));
 
-  openModal({
-    title: "⚙️ Personalizar página",
-    bodyHTML: `
-      <p class="muted">As alterações são aplicadas imediatamente.</p>
-      <div style="display:grid; gap:10px; margin-top:12px">
-        ${toggleHTML("optSnow","Neve","Clima clássico de Natal", saved.snow)}
-        ${toggleHTML("optLights","Pisca-pisca","Mais brilho e energia", saved.lights)}
-        ${toggleHTML("optReindeer","Renas","Várias renas passando", saved.reindeer)}
-      </div>
-    `,
-    buttons: [{ label:"Fechar", onClick: closeModal }]
-  });
-
-  setTimeout(() => {
-    const optSnow = document.getElementById("optSnow");
-    const optLights = document.getElementById("optLights");
-    const optReindeer = document.getElementById("optReindeer");
-
-    const applyNow = () => {
-      const cfg = { snow: !!optSnow.checked, lights: !!optLights.checked, reindeer: !!optReindeer.checked };
-      applyTheme(cfg);
-      saveTheme(cfg);
-    };
-
-    optSnow?.addEventListener("change", applyNow);
-    optLights?.addEventListener("change", applyNow);
-    optReindeer?.addEventListener("change", applyNow);
-    applyNow();
-  }, 0);
-}
-
-function applyTheme({ snow, lights, reindeer }){
   const snowCanvas = document.getElementById("snow");
   if (snowCanvas) snowCanvas.style.display = snow ? "block" : "none";
+
   if (lightsEl) lightsEl.classList.toggle("hidden", !lights);
 
   if (reindeer){
@@ -1352,6 +1183,8 @@ function spawnReindeerWave(){
   const canvas = document.getElementById("snow");
   if (!canvas) return;
   const ctx = canvas.getContext("2d");
+  if (!ctx) return;
+
   let w, h, dpr;
   const flakes = [];
   const FLAKES = 160;
@@ -1399,6 +1232,7 @@ function spawnReindeerWave(){
  *  Setores + boot
  *  ========================= */
 function populateSectors(){
+  if (!userSectorEl) return;
   userSectorEl.innerHTML = "";
   for (const s of SECTORS){
     const opt = document.createElement("option");
@@ -1409,14 +1243,15 @@ function populateSectors(){
 }
 
 function getUserName(){
-  return (userNameEl.value || localStorage.getItem("mission_name") || "").trim();
+  return (userNameEl?.value || localStorage.getItem("mission_name") || "").trim();
 }
 function getUserSector(){
-  return (userSectorEl.value || localStorage.getItem("mission_sector") || "").trim();
+  return (userSectorEl?.value || localStorage.getItem("mission_sector") || "").trim();
 }
 
 function showOnly(screen){
   for (const el of [screenLoading, screenForm, screenGame, screenFinal]){
+    if (!el) continue;
     el.classList.toggle("hidden", el !== screen);
   }
 }
@@ -1427,10 +1262,6 @@ applyTheme(loadTheme());
 showOnly(screenLoading);
 setTimeout(() => {
   showOnly(screenForm);
-  userNameEl.value = localStorage.getItem("mission_name") || "";
-  userSectorEl.value = localStorage.getItem("mission_sector") || "";
-  if (optInRankingEl){
-    const v = localStorage.getItem("mission_optin");
-    if (v === "0") optInRankingEl.checked = false;
-  }
+  if (userNameEl) userNameEl.value = localStorage.getItem("mission_name") || "";
+  if (userSectorEl) userSectorEl.value = localStorage.getItem("mission_sector") || "";
 }, 1100);
