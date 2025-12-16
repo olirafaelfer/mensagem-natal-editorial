@@ -187,9 +187,11 @@ function individualDocId(name, sector){
 ========================= */
 const dom = {
   screenLoading: document.getElementById("screenLoading"),
+  screenAuth: document.getElementById("screenAuth"), // ✅ NOVO
   screenForm: document.getElementById("screenForm"),
   screenGame: document.getElementById("screenGame"),
   screenFinal: document.getElementById("screenFinal"),
+
 
   headerTitle: document.getElementById("headerTitle"),
   rankingBtn: document.getElementById("rankingBtn"),
@@ -212,9 +214,15 @@ const dom = {
    Helpers UI
 ========================= */
 function showOnly(screen){
-  [dom.screenLoading, dom.screenForm, dom.screenGame, dom.screenFinal]
-    .forEach(el => el && el.classList.toggle("hidden", el !== screen));
+  [
+    dom.screenLoading,
+    dom.screenAuth,   // ✅ NOVO
+    dom.screenForm,
+    dom.screenGame,
+    dom.screenFinal
+  ].forEach(el => el && el.classList.toggle("hidden", el !== screen));
 }
+
 
 function getUserName(){
   return clampName((dom.userNameEl?.value || localStorage.getItem("mission_name") || "").trim());
@@ -304,5 +312,6 @@ async function bootAll(){
 }
 
 bootAll();
+
 
 
