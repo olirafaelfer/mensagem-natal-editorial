@@ -1,8 +1,10 @@
-/* css/lgpd.css — LGPD abaixo do box principal (fluxo normal) */
-
 .lgpd-below{
-  margin-top: 14px;
-  padding-bottom: 22px;
+  margin-top: 18px;
+  padding-bottom: 24px;
+}
+
+.lgpd-footer{
+  position: static;
 }
 
 .lgpd-footer-card{
@@ -11,33 +13,4 @@
   border-radius: var(--radius);
   box-shadow: var(--shadow);
   padding: 14px 16px;
-  backdrop-filter: blur(6px);
-}
-
-.lgpd-footer-title{
-  margin: 0;
-  letter-spacing: .2px;
-}
-
-/* LGPD acompanha o fluxo da página */
-.lgpd-below {
-  margin-top: 16px;
-  padding-bottom: 24px;
-}
-
-/* cartão */
-.lgpd-footer-card {
-  background: var(--cardBg);
-  border: 1px solid var(--stroke);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow);
-  padding: 14px 16px;
-}
-
-/* GARANTE que não fique fixo */
-.lgpd-below,
-.lgpd-footer-card,
-footer,
-.site-footer {
-  position: static !important;
 }
