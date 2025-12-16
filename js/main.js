@@ -226,14 +226,7 @@ const app = {
   firebase,
   dom,
   data: { SECTORS, SCORE_RULES, levels },
-  utils: {
-    escapeHtml,
-    normalize,
-    ensureGlobal,
-    clampName,
-    medalFor,
-    individualDocId
-  },
+  utils: { escapeHtml, normalize, ensureGlobal, clampName, medalFor, individualDocId },
   user: { getUserName, getUserSector },
   ui: { showOnly }
 };
@@ -242,14 +235,61 @@ const app = {
 window.__MISSION_APP__ = app;
 
 /* =========================
-   Boot dos módulos
+   Boot robusto dos módulos
 ========================= */
-const { bootModal }   = await import("./ui-modal.js");
-const { bootThemeFx } = await import("./theme-fx.js");
-const { bootRanking } = await import("./ranking.js");
-const { bootGame }    = await import("./game-core.js");
 
-bootModal(app);
-bootThemeFx(app);
-bootRanking(app);
-bootGame(app);
+// Mostra loading imediatamente (caso algo dê erro, não fica tela vazia)
+showOnly(dom.screenLoading);
+
+/**
+ * Tenta importar um módulo por múltiplos caminhos (evita travar se você moveu arquivos)
+ */
+async function importWithFallback(paths){
+  let lastErr = null;
+  for (const p of paths){
+    try {
+      return await import(p);
+    } catch (e){
+      lastErr = e;
+      // tenta o próximo
+    }
+  }
+  throw lastErr;
+}
+
+(async function bootAll(){
+  try {
+    // Caminhos mais comuns:
+    // 1) mesma pasta do main.js: ./ui-modal.js
+    // 2) pasta modules: ./modules/ui-modal.js
+    const modalMod = await importWithFallback(["./ui-modal.js", "./modules/ui-modal.js"]);
+    const themeMod = await importWithFallback(["./theme-fx.js", "./modules/theme-fx.js"]);
+    const rankMod  = await importWithFallback(["./ranking.js", "./modules/ranking.js"]);
+    const gameMod  = await importWithFallback(["./game-core.js", "./modules/game-core.js"]);
+
+    const bootModal  = modalMod.bootModal  || modalMod.default;
+    const bootTheme  = themeMod.bootThemeFx || themeMod.default;
+    const bootRank   = rankMod.bootRanking || rankMod.default;
+    const bootGame   = gameMod.bootGame || gameMod.default;
+
+    if (typeof bootModal !== "function") throw new Error("bootModal não encontrado em ui-modal.js");
+    if (typeof bootTheme !== "function") throw new Error("bootThemeFx não encontrado em theme-fx.js");
+    if (typeof bootRank  !== "function") throw new Error("bootRanking não encontrado em ranking.js");
+    if (typeof bootGame  !== "function") throw new Error("bootGame não encontrado em game-core.js");
+
+    // Boots
+    bootModal(app);
+    bootTheme(app);
+    bootRank(app);
+    bootGame(app);
+
+  } catch (err) {
+    console.error("❌ Falha no boot dos módulos:", err);
+
+    // Fallback: pelo menos não trava no loading
+    // (assim você consegue usar o form e ver console)
+    setTimeout(() => {
+      showOnly(dom.screenForm);
+    }, 50);
+  }
+})();
