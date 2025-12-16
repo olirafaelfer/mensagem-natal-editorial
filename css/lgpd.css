@@ -19,13 +19,25 @@
   letter-spacing: .2px;
 }
 
-/* força LGPD a ficar no fluxo normal (não fixo no rodapé) */
+/* LGPD acompanha o fluxo da página */
+.lgpd-below {
+  margin-top: 16px;
+  padding-bottom: 24px;
+}
+
+/* cartão */
+.lgpd-footer-card {
+  background: var(--cardBg);
+  border: 1px solid var(--stroke);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 14px 16px;
+}
+
+/* GARANTE que não fique fixo */
 .lgpd-below,
 .lgpd-footer-card,
 footer,
-.site-footer{
+.site-footer {
   position: static !important;
-  bottom: auto !important;
-  left: auto !important;
-  right: auto !important;
 }
