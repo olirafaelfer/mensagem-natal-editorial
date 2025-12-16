@@ -281,18 +281,21 @@ async function bootAll(){
     const rankingMod = await import("./ranking.js");
     const gameMod    = await import("./game-core.js");
     const adminMod   = await import("./admin.js");
+    const authMod    = await import("./auth.js"); // ✅ novo
 
     const bootModal   = pickBoot(modalMod,   ["bootModal", "boot", "init"]);
     const bootThemeFx = pickBoot(themeMod,   ["bootThemeFx", "bootTheme", "boot", "init"]);
     const bootRanking = pickBoot(rankingMod, ["bootRanking", "boot", "init"]);
     const bootGame    = pickBoot(gameMod,    ["bootGame", "bootGameCore", "boot", "init"]);
     const bootAdmin   = pickBoot(adminMod,   ["bootAdmin", "boot", "init"]);
+    const bootAuth    = pickBoot(authMod,    ["bootAuth", "boot", "init"]); // ✅ novo
 
     bootModal?.(app);
     bootThemeFx?.(app);
     bootRanking?.(app);
     bootGame?.(app);
     bootAdmin?.(app);
+    bootAuth?.(app); // ✅ novo
 
   } catch (err) {
     console.error("❌ Falha no boot dos módulos:", err);
@@ -301,3 +304,5 @@ async function bootAll(){
 }
 
 bootAll();
+
+
