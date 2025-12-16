@@ -2,6 +2,34 @@
 // js/game-core.js — núcleo do jogo (níveis, render, correções, final interativo)
 
 export function bootGameCore(app){
+  function populateSectors(){
+  const select = app.dom?.userSectorEl;
+  const sectors = app.data?.SECTORS;
+
+  if (!select) return;
+  if (!Array.isArray(sectors)) return;
+
+  select.innerHTML = "";
+  for (const s of sectors){
+    const opt = document.createElement("option");
+    opt.value = (s === "Selecione…") ? "" : s;
+    opt.textContent = s;
+    select.appendChild(opt);
+  }
+
+  // tenta restaurar valor salvo
+  const saved = localStorage.getItem("mission_sector") || "";
+  if (saved && !select.value) select.value = saved;
+}
+
+// ✅ chama no boot
+populateSectors();
+
+// (opcional) salva em tempo real
+app.dom?.userSectorEl?.addEventListener("change", () => {
+  localStorage.setItem("mission_sector", app.dom.userSectorEl.value || "");
+});
+
   const { openModal, closeModal } = app.modal;
 
   /** Pontuação */
