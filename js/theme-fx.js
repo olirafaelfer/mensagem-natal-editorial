@@ -6,6 +6,17 @@
 // - app.theme-fx: efeitos visuais e personalização do tema
 
 export function bootThemeFx(app) {
+  const PRESETS =
+  app?.data?.THEME_PRESETS ||
+  app?.themePresets ||
+  {
+    classic: { name:"Clássico", accent:"#e53935", bg:"#0b1020" },
+    candy:   { name:"Candy Cane", accent:"#ff2e63", bg:"#140a12" },
+    neon:    { name:"Neon Noel", accent:"#00ffd5", bg:"#001016" },
+    aurora:  { name:"Aurora", accent:"#7c4dff", bg:"#071022" },
+    gold:    { name:"Dourado", accent:"#ffcc00", bg:"#140f02" },
+  };
+
   const { openModal, closeModal } = app.modal;
   const fb = app.firebase;
   const THEME_PRESETS = app.THEME_PRESETS;
