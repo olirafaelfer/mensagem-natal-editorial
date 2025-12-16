@@ -116,6 +116,10 @@ export function bootGameCore(app){
   const currentTextByLevel = ["", "", ""];
   const correctedSegmentsByRule = new Map(); // ruleId -> {start, lenNew}
 
+  // ✅ NOVO: misclick persistente (para o vermelho NÃO sumir após re-render)
+  // guarda ranges no TEXTO atual (start/len). Quando texto muda, reposiciona.
+  const misclickRanges = []; // { start:number, len:number }
+
   /** =========================
    * Utils
    * ========================= */
@@ -180,6 +184,32 @@ export function bootGameCore(app){
   }
 
   /** =========================
+   * Misclick persistente (helpers)
+   * ========================= */
+  function hasMisclickAt(start, len){
+    return misclickRanges.some(r => r.start === start && r.len === len);
+  }
+
+  function addMisclickAt(start, len){
+    if (!Number.isFinite(start) || !Number.isFinite(len) || len <= 0) return;
+    if (hasMisclickAt(start, len)) return;
+    misclickRanges.push({ start, len });
+  }
+
+  function shiftMisclickRanges(afterIndex, delta){
+    if (!delta) return;
+    for (const r of misclickRanges){
+      if (r.start > afterIndex){
+        r.start += delta;
+      }
+    }
+  }
+
+  function resetMisclickRanges(){
+    misclickRanges.length = 0;
+  }
+
+  /** =========================
    * Render (mensagem clicável)
    * ========================= */
   function findNextMatch(text, pos, rule){
@@ -190,22 +220,34 @@ export function bootGameCore(app){
     return { index: m.index, text: m[0], len: m[0].length };
   }
 
-  function tokenize(seg){
+  // tokens com índice absoluto no texto
+  function tokenizeWithIndex(seg, absStart){
     const out = [];
     let buf = "";
-    const flush = () => { if (buf){ out.push({t:"w", v:buf}); buf=""; } };
+    let bufStart = absStart;
 
-    for (let i=0;i<seg.length;i++){
+    const flush = () => {
+      if (!buf) return;
+      out.push({ t:"w", v:buf, start: bufStart, len: buf.length });
+      buf = "";
+    };
+
+    for (let i = 0; i < seg.length; i++){
       const ch = seg[i];
+      const absPos = absStart + i;
+
       if (ch === " " || ch === "\n" || ch === "\t"){
         flush();
-        out.push({t:"s", v:ch});
+        out.push({ t:"s", v:ch });
         continue;
       }
       if (",.;:!?".includes(ch)){
         flush();
-        out.push({t:"p", v:ch});
+        out.push({ t:"p", v:ch });
         continue;
+      }
+      if (!buf){
+        bufStart = absPos;
       }
       buf += ch;
     }
@@ -213,8 +255,8 @@ export function bootGameCore(app){
     return out;
   }
 
-  function appendPlain(frag, seg){
-    const tokens = tokenize(seg);
+  function appendPlain(frag, seg, absStart){
+    const tokens = tokenizeWithIndex(seg, absStart);
     for (const t of tokens){
       if (t.t === "s" || t.t === "p"){
         frag.appendChild(document.createTextNode(t.v));
@@ -224,13 +266,22 @@ export function bootGameCore(app){
       span.className = "token";
       span.textContent = t.v;
       span.dataset.kind = "plain";
+      span.dataset.start = String(t.start);
+      span.dataset.len = String(t.len);
+
+      // ✅ reaplica vermelho persistente
+      if (hasMisclickAt(t.start, t.len)){
+        span.classList.add("error");
+        span.dataset.misclick = "1";
+      }
+
       span.addEventListener("click", () => onPlainClick(span));
       frag.appendChild(span);
     }
   }
 
-  function appendCorrected(frag, seg){
-    const tokens = tokenize(seg);
+  function appendCorrected(frag, seg, absStart){
+    const tokens = tokenizeWithIndex(seg, absStart);
     for (const t of tokens){
       if (t.t === "s" || t.t === "p"){
         frag.appendChild(document.createTextNode(t.v));
@@ -266,7 +317,7 @@ export function bootGameCore(app){
       const cseg = nextCorrected(pos);
 
       if (cseg && cseg.start === pos){
-        appendCorrected(frag, text.slice(cseg.start, cseg.end));
+        appendCorrected(frag, text.slice(cseg.start, cseg.end), cseg.start);
         pos = cseg.end;
         continue;
       }
@@ -274,7 +325,7 @@ export function bootGameCore(app){
       const limit = cseg ? cseg.start : text.length;
 
       if (levelLocked){
-        appendPlain(frag, text.slice(pos, limit));
+        appendPlain(frag, text.slice(pos, limit), pos);
         pos = limit;
         continue;
       }
@@ -294,13 +345,13 @@ export function bootGameCore(app){
       }
 
       if (!best){
-        appendPlain(frag, text.slice(pos, limit));
+        appendPlain(frag, text.slice(pos, limit), pos);
         pos = limit;
         continue;
       }
 
       if (best.index > pos){
-        appendPlain(frag, text.slice(pos, best.index));
+        appendPlain(frag, text.slice(pos, best.index), pos);
       }
 
       const span = document.createElement("span");
@@ -363,9 +414,16 @@ export function bootGameCore(app){
       return;
     }
 
+    // ✅ NOVO: persiste o erro (não some após render)
+    const start = Number(span.dataset.start || "NaN");
+    const len = Number(span.dataset.len || "NaN");
+
     if (span.dataset.misclick !== "1"){
       span.dataset.misclick = "1";
       span.classList.add("error");
+
+      addMisclickAt(start, len); // 👈 salva no estado do jogo
+
       registerWrong();
       updateHUD();
     }
@@ -383,11 +441,16 @@ export function bootGameCore(app){
     currentText = before + replacement + after;
 
     const delta = replacement.length - len;
+
+    // move correções “verdes”
     for (const info of correctedSegmentsByRule.values()){
       if (info.start > start){
         info.start += delta;
       }
     }
+
+    // ✅ move misclicks “vermelhos” persistentes
+    shiftMisclickRanges(start, delta);
   }
 
   function markCorrected(ruleId, start, newText){
@@ -829,6 +892,7 @@ export function bootGameCore(app){
     currentRules = Array.isArray(lvl.rules) ? lvl.rules : [];
 
     correctedSegmentsByRule.clear();
+    resetMisclickRanges(); // ✅ reseta misclick por nível
     levelLocked = false;
 
     if (headerTitle) headerTitle.textContent = `Revisão da Mensagem de Natal — ${lvl.name}`;
