@@ -38,3 +38,13 @@
   margin: 0;
   letter-spacing: .2px;
 }
+/* força LGPD a ficar no fluxo normal (não fixo no rodapé) */
+.lgpd-below,
+.lgpd-footer-card,
+footer,
+.site-footer{
+  position: static !important;
+  bottom: auto !important;
+  left: auto !important;
+  right: auto !important;
+}
