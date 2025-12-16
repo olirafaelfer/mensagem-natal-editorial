@@ -18,61 +18,6 @@
 
   --container: 1060px;
 }
-/* ===== Topbar como banner ===== */
-.topbar-banner{
-  display: grid;
-  grid-template-columns: auto 1fr auto;
-  align-items: center;
-  gap: 16px;
-  padding: 14px 18px;
-}
-
-.topbar-left{
-  display:flex;
-  align-items:center;
-}
-
-.topbar-logo{
-  height: 42px;
-  max-width: 180px;
-  object-fit: contain;
-}
-
-.topbar-center{
-  text-align: center;
-}
-
-.topbar-center h1{
-  margin: 4px 0 0;
-}
-
-.topbar-right{
-  display:flex;
-  align-items:center;
-  gap: 12px;
-}
-
-.topbar-santa{
-  font-size: 32px;
-}
-
-/* Mobile */
-@media (max-width: 860px){
-  .topbar-banner{
-    grid-template-columns: 1fr;
-    text-align: center;
-  }
-
-  .topbar-left,
-  .topbar-right{
-    justify-content: center;
-  }
-
-  .topbar-right{
-    flex-direction: column;
-    gap: 6px;
-  }
-}
 
 *{ box-sizing:border-box; }
 html, body{ height:100%; }
@@ -173,6 +118,7 @@ hr{
   display: flex;
   flex-direction: column;
 }
+
 /* wrapper central (igual mobile, mesmo no desktop) */
 .container{
   width: min(560px, calc(100% - 32px)); /* 560px deixa bem “mobile-like” */
@@ -180,53 +126,78 @@ hr{
   margin-right: auto;
 }
 
-/* fallback se NÃO tiver container */
-.app > .topbar,
-.app > .card{
-  width: min(var(--container), calc(100% - 32px));
-  margin-left: auto;
-  margin-right: auto;
-}
-
 /* =========================
-   Topbar (não fixa!)
+   Header / Topbar Banner (único)
+   Estrutura esperada (index):
+   <header class="topbar-banner">
+     <div class="topbar-row topbar-row-1"> ... </div>
+     <div class="topbar-row topbar-row-2"> ... </div>
+   </header>
    ========================= */
-.topbar{
-  display: grid;
-  grid-template-columns: 1fr auto;
-  align-items: center;
-  gap: 12px;
-
-  padding: 14px 0;
+.topbar-banner{
+  width: 100%;
+  padding: 12px 0 14px;
   border-bottom: 1px solid rgba(255,255,255,.10);
   background: transparent;
 }
 
-.brand{
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.badge{
-  display: inline-flex;
+.topbar-row{
+  display: grid;
   align-items: center;
-  gap: 8px;
-  width: fit-content;
-  padding: 7px 10px;
-  border-radius: 999px;
-  border: 1px solid rgba(255,255,255,.12);
-  background: rgba(255,255,255,.04);
-  font-weight: 800;
+  gap: 12px;
 }
 
-#headerTitle{
+.topbar-row-1{
+  grid-template-columns: auto 1fr auto;
+}
+
+.topbar-row-2{
+  grid-template-columns: 1fr auto;
+  margin-top: 6px;
+}
+
+.topbar-left{
+  display:flex;
+  align-items:center;
+}
+
+.topbar-right{
+  display:flex;
+  align-items:center;
+  justify-content:flex-end;
+}
+
+.topbar-logo{
+  height: 40px;
+  max-width: 180px;
+  object-fit: contain;
+  display:block;
+}
+
+.topbar-center{
+  text-align:center;
+}
+
+.topbar-mission{
+  font-weight: 900;
+  letter-spacing: .6px;
+  font-size: 13px;
+  opacity: .95;
+}
+
+.topbar-santa{
+  font-size: 26px;
+  line-height: 1;
+}
+
+.topbar-title{
+  margin: 0;
   font-weight: 900;
   letter-spacing: .2px;
   font-size: clamp(18px, 2.2vw, 22px);
-  margin: 0;
 }
 
+/* botões */
 .top-actions{
   display: flex;
   gap: 10px;
@@ -253,6 +224,13 @@ hr{
   border-color: rgba(255,255,255,.22);
 }
 .icon-btn:active{ transform: translateY(1px); }
+
+/* Mobile header */
+@media (max-width: 860px){
+  .topbar-logo{ max-width: 150px; height: 36px; }
+  .topbar-santa{ font-size: 24px; }
+  .topbar-title{ font-size: 20px; }
+}
 
 /* =========================
    Cards
@@ -316,18 +294,6 @@ hr{
   color: rgba(255,255,255,.78);
   font-weight: 800;
   font-size: 13px;
-}
-
-.lgpd-box{
-  margin-top: 12px;
-  padding: 12px;
-  border-radius: 16px;
-  border: 1px solid rgba(255,255,255,.10);
-  background: rgba(0,0,0,.18);
-}
-.lgpd-title{
-  margin: 0;
-  font-weight: 950;
 }
 
 /* =========================
@@ -642,9 +608,7 @@ select.input option{
   flex-wrap: wrap;
   align-items: center;
 }
-.final-toggle .btn{
-  width: fit-content;
-}
+.final-toggle .btn{ width: fit-content; }
 
 /* =========================
    Modal / Overlay
@@ -868,9 +832,7 @@ body.modal-open #overlay{
   text-align:right;
   font-variant-numeric: tabular-nums;
 }
-.rank-row{
-  animation: rowIn 220ms ease-out both;
-}
+.rank-row{ animation: rowIn 220ms ease-out both; }
 @keyframes rowIn{
   from{ opacity:0; transform: translateY(6px); }
   to{ opacity:1; transform: translateY(0); }
@@ -884,18 +846,14 @@ body.modal-open #overlay{
   font-size: 18px;
   transform-origin: center;
 }
-.medal.top{
-  animation: medalPop 420ms ease-out both;
-}
+.medal.top{ animation: medalPop 420ms ease-out both; }
 @keyframes medalPop{
   0%{ transform: scale(.85); opacity:.7; }
   70%{ transform: scale(1.10); opacity:1; }
   100%{ transform: scale(1.0); }
 }
 
-.rank-name{
-  font-weight: 900;
-}
+.rank-name{ font-weight: 900; }
 .rank-sub{
   display:block;
   font-size: 12px;
@@ -915,8 +873,6 @@ body.modal-open #overlay{
   .stat-grid{ grid-template-columns: 1fr; max-width: 420px; }
   .message{ font-size: 16px; }
   .card{ margin: 14px auto; }
-  .topbar{ padding: 12px 0; }
-
   .message{
     line-height: 1.45;
     font-size: 15.5px;
@@ -935,7 +891,7 @@ body.modal-open #overlay{
 }
 
 /* =========================
-   Tip (seu tooltip)
+   Tip (tooltip)
    ========================= */
 .tip{
   position: fixed;
@@ -967,84 +923,4 @@ body.modal-open #overlay{
   line-height: 1.45;
 }
 
-.tip-muted{
-  color: rgba(255,255,255,.68);
-}
-
-/* ===== Banner do topo ===== */
-.topbar-banner{
-  width: 100%;
-  padding: 12px 18px 14px;
-  border-bottom: 1px solid var(--stroke);
-}
-
-/* linhas */
-.topbar-row{
-  display: grid;
-  grid-template-columns: auto 1fr auto;
-  align-items: center;
-}
-
-.topbar-row-1{
-  margin-bottom: 6px;
-}
-
-.topbar-row-2{
-  margin-top: 2px;
-}
-
-/* logo */
-.topbar-logo{
-  height: 40px;
-  max-width: 180px;
-  object-fit: contain;
-}
-
-/* missão (linha 1 centro) */
-.topbar-center{
-  text-align: center;
-}
-
-.topbar-mission{
-  font-weight: 900;
-  letter-spacing: .6px;
-  font-size: 14px;
-  opacity: .95;
-}
-
-.topbar-santa{
-  margin-left: 6px;
-  font-size: 16px;
-}
-
-/* título (linha 2 esquerda) */
-.topbar-title{
-  margin: 0;
-  font-size: 22px;
-  font-weight: 900;
-}
-
-/* botões */
-.top-actions{
-  display: flex;
-  gap: 8px;
-}
-
-/* ===== Mobile ===== */
-@media (max-width: 860px){
-  .topbar-row{
-    grid-template-columns: 1fr;
-    text-align: center;
-    gap: 6px;
-  }
-
-  .topbar-left,
-  .topbar-right{
-    justify-self: center;
-  }
-
-  .topbar-title{
-    font-size: 20px;
-  }
-}
-
+.tip-muted{ color: rgba(255,255,255,.68); }
