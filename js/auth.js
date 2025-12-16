@@ -58,8 +58,11 @@ export function bootAuth(app) {
   const userSectorEl = dom.userSectorEl || document.getElementById("userSector");
   const optRankingEl = dom.optRankingEl || document.getElementById("optRanking");
 
+  // Lista de setores vem do app.data (mesma do jogo)
+  const SECTORS = app.data?.SECTORS || [];
+
   // ---- DOM do Auth (IDs esperados) ----
-  const $ = (sel) => screenAuth?.querySelector(sel) || document.querySelector(sel);
+  const $ = (sel) => (screenAuth?.querySelector(sel)) || document.querySelector(sel);
 
   const tabLogin = $("#authTabLogin");
   const tabSignup = $("#authTabSignup");
@@ -76,7 +79,7 @@ export function bootAuth(app) {
   const forgotBtn = $("#authForgotBtn");
 
   const signupName = $("#authSignupName");
-  const signupSector = $("#authSignupSector"); // pode ser select ou input
+  const signupSector = $("#authSignupSector"); // select ou input
   const signupEmail = $("#authSignupEmail");
   const signupPass = $("#authSignupPass");
   const signupBtn = $("#authSignupBtn");
@@ -85,10 +88,52 @@ export function bootAuth(app) {
 
   const logoutBtn = $("#authLogoutBtn");
 
+  // =========================
+  // 1) Popula setores no CADASTRO (select)
+  // =========================
+  function populateAuthSectors() {
+    if (!signupSector) return;
+
+    // Só popula se for SELECT
+    const isSelect = signupSector instanceof HTMLSelectElement;
+    if (!isSelect) return;
+
+    if (!Array.isArray(SECTORS) || SECTORS.length === 0) {
+      // fallback se por algum motivo não veio do app.data
+      signupSector.innerHTML = `<option value="">Setor (não carregado)</option>`;
+      return;
+    }
+
+    signupSector.innerHTML = "";
+    for (const s of SECTORS) {
+      const opt = document.createElement("option");
+      opt.value = (s === "Selecione…") ? "" : s;
+      opt.textContent = s;
+      signupSector.appendChild(opt);
+    }
+
+    // tenta restaurar setor salvo/atual
+    const saved =
+      (userSectorEl?.value) ||
+      localStorage.getItem("mission_sector") ||
+      "";
+
+    if (saved) signupSector.value = saved;
+
+    // espelha mudanças para o form principal (opcional, ajuda na consistência)
+    signupSector.addEventListener("change", () => {
+      const v = signupSector.value || "";
+      if (userSectorEl) userSectorEl.value = v;
+      localStorage.setItem("mission_sector", v);
+    });
+  }
+
+  // Chama imediatamente e também quando a aba Signup é aberta
+  populateAuthSectors();
+
   // ---- Helpers UI ----
   function showStatus(kind, msg) {
     if (!statusBox) {
-      // fallback: modal
       openModal({
         title: kind === "error" ? "Erro" : "Info",
         bodyHTML: `<p>${escapeHtml(msg)}</p>`,
@@ -156,6 +201,10 @@ export function bootAuth(app) {
       panelLogin.classList.toggle("hidden", which !== "login");
       panelSignup.classList.toggle("hidden", which !== "signup");
     }
+
+    // ao abrir signup, garante setores populados
+    if (which === "signup") populateAuthSectors();
+
     clearStatus();
   }
 
@@ -163,13 +212,18 @@ export function bootAuth(app) {
     if (userNameEl && profile?.name) userNameEl.value = profile.name;
     if (userSectorEl && profile?.sector) userSectorEl.value = profile.sector;
 
-    // guarda também nos locals que o game-core usa
     if (profile?.name) localStorage.setItem("mission_name", profile.name);
     if (profile?.sector) localStorage.setItem("mission_sector", profile.sector);
+
+    // espelha pro auth também
+    if (signupName && profile?.name) signupName.value = profile.name;
+    if (signupSector && profile?.sector) {
+      if (signupSector instanceof HTMLSelectElement) signupSector.value = profile.sector;
+      else signupSector.value = profile.sector;
+    }
   }
 
   async function fetchUserProfile(uid) {
-    // cache rápido
     try {
       const cached = JSON.parse(localStorage.getItem(USER_CACHE_KEY) || "null");
       if (cached?.uid === uid && cached?.profile) return cached.profile;
@@ -207,7 +261,6 @@ export function bootAuth(app) {
   function enforceRankingRule() {
     if (!optRankingEl) return;
 
-    // Se marcou ranking, precisa estar logado
     optRankingEl.addEventListener("change", () => {
       if (!optRankingEl.checked) return;
 
@@ -244,13 +297,10 @@ export function bootAuth(app) {
     try {
       const cred = await signInWithEmailAndPassword(auth, email, pass);
 
-      // saiu do modo anônimo
       setAnonMode(false);
 
-      // carrega perfil
       const profile = await fetchUserProfile(cred.user.uid);
 
-      // fallback: se não existir profile ainda, cria o mínimo
       if (!profile) {
         const fallbackName = cred.user.displayName || localStorage.getItem("mission_name") || "";
         const fallbackSector = localStorage.getItem("mission_sector") || "";
@@ -266,7 +316,6 @@ export function bootAuth(app) {
       if (finalProfile) setFormFieldsFromProfile(finalProfile);
 
       showStatus("ok", "Login realizado. Você já pode iniciar a missão.");
-      // volta pro form
       goFormScreen();
     } catch (err) {
       console.error("[auth] login error:", err);
@@ -278,7 +327,10 @@ export function bootAuth(app) {
     clearStatus();
 
     const name = String(signupName?.value || "").trim();
+
+    // setor pode vir de select ou input
     const sector = String(signupSector?.value || "").trim();
+
     const email = String(signupEmail?.value || "").trim();
     const pass = String(signupPass?.value || "").trim();
 
@@ -287,7 +339,7 @@ export function bootAuth(app) {
       return;
     }
     if (!sector || sector.length < 2) {
-      showStatus("error", "Informe seu setor.");
+      showStatus("error", "Selecione seu setor.");
       return;
     }
     if (!email) {
@@ -302,7 +354,6 @@ export function bootAuth(app) {
     try {
       const cred = await createUserWithEmailAndPassword(auth, email, pass);
 
-      // define displayName
       try { await updateProfile(cred.user, { displayName: name }); } catch {}
 
       await upsertUserProfile(cred.user.uid, {
@@ -325,8 +376,7 @@ export function bootAuth(app) {
 
   async function handleForgotPassword() {
     clearStatus();
-    const email =
-      String(loginEmail?.value || signupEmail?.value || "").trim();
+    const email = String(loginEmail?.value || signupEmail?.value || "").trim();
 
     if (!email) {
       showStatus("error", "Digite seu e-mail (na aba Login) para recuperar a senha.");
@@ -343,10 +393,8 @@ export function bootAuth(app) {
   }
 
   async function handleAnon() {
-    // mantém como anônimo, mas pode jogar
     setAnonMode(true);
 
-    // garante ranking desligado
     if (optRankingEl) {
       optRankingEl.checked = false;
       localStorage.setItem("mission_optout_ranking", "1");
@@ -360,7 +408,6 @@ export function bootAuth(app) {
     clearStatus();
     try {
       await signOut(auth);
-      // opcional: mantém o nome/setor do form, mas remove cache de usuário
       localStorage.removeItem(USER_CACHE_KEY);
       showStatus("ok", "Você saiu da conta.");
     } catch (err) {
@@ -383,7 +430,6 @@ export function bootAuth(app) {
 
   // ---- Wiring de UI ----
   loginTopBtn?.addEventListener("click", () => {
-    // se estiver logado, abre auth como “perfil”
     goAuthScreen();
     setTab("login");
   });
@@ -405,12 +451,7 @@ export function bootAuth(app) {
       setAnonMode(false);
       const profile = await fetchUserProfile(user.uid);
       if (profile) setFormFieldsFromProfile(profile);
-
-      // se o usuário quiser, ainda pode desligar ranking manualmente.
-      // (não forçamos ligado)
     } else {
-      // deslogado: não mexe no form automaticamente (deixa user decidir)
-      // mas se estiver anônimo, ranking continua proibido
       if (isAnonMode() && optRankingEl) {
         optRankingEl.checked = false;
         localStorage.setItem("mission_optout_ranking", "1");
@@ -418,14 +459,14 @@ export function bootAuth(app) {
     }
   });
 
-  // ---- API exposta pro resto do app (opcional) ----
+  // ---- API exposta ----
   app.auth = {
     auth,
     db,
-    isLoggedIn,
-    isAnonMode,
-    goAuthScreen,
-    goFormScreen,
+    isLoggedIn: () => !!auth.currentUser,
+    isAnonMode: () => localStorage.getItem(ANON_KEY) === "1",
+    goAuthScreen: () => goAuthScreen(),
+    goFormScreen: () => goFormScreen(),
     getCurrentUser: () => auth.currentUser,
   };
 }
