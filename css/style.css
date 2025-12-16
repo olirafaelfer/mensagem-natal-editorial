@@ -116,6 +116,13 @@ hr{
   display: flex;
   flex-direction: column;
 }
+/* wrapper central (igual mobile, mesmo no desktop) */
+.container{
+  width: min(560px, calc(100% - 32px)); /* 560px deixa bem “mobile-like” */
+  margin-left: auto;
+  margin-right: auto;
+}
+
 
 /* fallback se NÃO tiver container */
 .app > .topbar,
@@ -860,3 +867,4 @@ select.input option{
 @supports not (color: color-mix(in srgb, red 50%, white)) {
   a{ color: #ff8a80; }
 }
+
