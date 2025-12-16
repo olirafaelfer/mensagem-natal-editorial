@@ -249,7 +249,19 @@ function getUserSector(){
 const app = {
   firebase,
   dom,
-  data: { SECTORS, SCORE_RULES, levels },
+
+  data: {
+    SECTORS,
+    SCORE_RULES,
+    levels,
+
+    // ✅ para o theme-fx não quebrar em Object.entries(...)
+    THEME_PRESETS
+  },
+
+  // ✅ opcional: alguns módulos podem preferir este nome
+  themePresets: THEME_PRESETS,
+
   utils: {
     escapeHtml,
     normalize,
@@ -258,9 +270,11 @@ const app = {
     medalFor,
     individualDocId
   },
+
   user: { getUserName, getUserSector },
   ui: { showOnly }
 };
+
 
 // opcional para debug
 window.__MISSION_APP__ = app;
@@ -327,4 +341,5 @@ async function bootAll(){
 }
 
 bootAll();
+
 
