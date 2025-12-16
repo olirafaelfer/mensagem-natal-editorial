@@ -123,12 +123,17 @@ export function bootAuth(app) {
             <p>Para participar do ranking, é necessário <strong>criar uma conta</strong> ou <strong>fazer login</strong>.</p>
             <p class="muted" style="margin-top:10px">Você pode continuar no modo anônimo, mas sem ranking.</p>
           `,
-          buttons: [
-            { label: "Ok", onClick: closeModal },
-            { label: "Fazer login", onClick: () => { closeModal(); openAuthGate({ force: true }); } },
-          ],
-        });
-      }
+buttons: [
+  { label: "Ok", onClick: closeModal },
+  {
+    label: "Fazer login",
+    onClick: () => {
+      closeModal();
+      // ✅ importante: esperar o modal fechar de verdade antes de abrir o gate
+      setTimeout(() => openAuthGate({ force: true }), 120);
+    }
+  },
+],
       return;
     }
 
