@@ -10,6 +10,8 @@
 
   <link rel="stylesheet" href="css/style.css" />
   <link rel="stylesheet" href="css/admin.css" />
+  <!-- ✅ novo: estilos da área de login/cadastro -->
+  <link rel="stylesheet" href="css/auth.css" />
 </head>
 
 <body>
@@ -30,11 +32,89 @@
         </div>
 
         <div class="top-actions">
+          <!-- ✅ novo: login/cadastro de usuários -->
+          <button class="icon-btn" id="loginBtn" title="Entrar / Conta" type="button">👤</button>
+
           <button class="icon-btn" id="customizeBtn" title="Personalizar" type="button">⚙️</button>
           <button class="icon-btn" id="rankingBtn" title="Ranking" type="button">🏆</button>
           <button class="icon-btn admin-btn" id="adminBtn" title="Admin" type="button">🔒</button>
         </div>
       </header>
+
+      <!-- ✅ novo: Tela de Login/Cadastro (fica dentro do fluxo do app) -->
+      <section class="card hidden" id="screenAuth">
+        <div class="card-inner">
+          <div class="center" style="margin-bottom:12px">
+            <h2 class="h2" style="margin-bottom:6px">Acesso à plataforma</h2>
+            <p class="muted" style="margin:0">
+              Para entrar no ranking e ver seu histórico, faça login ou crie sua conta.
+              Se preferir, você ainda pode jogar sem cadastro (sem contabilizar no ranking).
+            </p>
+          </div>
+
+          <div class="auth-tabs">
+            <button class="auth-tab active" id="tabLogin" type="button">Entrar</button>
+            <button class="auth-tab" id="tabRegister" type="button">Criar conta</button>
+          </div>
+
+          <!-- LOGIN -->
+          <div id="authLogin">
+            <div class="form-grid" style="margin-top:12px">
+              <label class="field" style="grid-column: 1 / -1;">
+                <span>E-mail</span>
+                <input class="input" id="loginEmail" type="email" placeholder="seu@email.com" autocomplete="email" />
+              </label>
+
+              <label class="field" style="grid-column: 1 / -1;">
+                <span>Senha</span>
+                <input class="input" id="loginPassword" type="password" placeholder="Sua senha" autocomplete="current-password" />
+              </label>
+            </div>
+
+            <div class="actions" style="justify-content:flex-start; margin-top:12px">
+              <button class="btn" id="loginSubmit" type="button">Entrar</button>
+              <button class="btn ghost" id="forgotPassword" type="button">Esqueci a senha</button>
+              <button class="btn ghost" id="continueNoLogin" type="button">Continuar sem login</button>
+            </div>
+          </div>
+
+          <!-- CADASTRO -->
+          <div id="authRegister" class="hidden">
+            <div class="form-grid" style="margin-top:12px">
+              <label class="field">
+                <span>Nome</span>
+                <input class="input" id="regName" type="text" placeholder="Seu nome" autocomplete="name" maxlength="60" />
+              </label>
+
+              <label class="field">
+                <span>Setor</span>
+                <select class="input" id="regSector"></select>
+              </label>
+
+              <label class="field" style="grid-column: 1 / -1;">
+                <span>E-mail</span>
+                <input class="input" id="regEmail" type="email" placeholder="seu@email.com" autocomplete="email" />
+              </label>
+
+              <label class="field" style="grid-column: 1 / -1;">
+                <span>Senha</span>
+                <input class="input" id="regPassword" type="password" placeholder="Crie uma senha" autocomplete="new-password" />
+              </label>
+            </div>
+
+            <div class="actions" style="justify-content:flex-start; margin-top:12px">
+              <button class="btn" id="registerSubmit" type="button">Criar conta</button>
+              <button class="btn ghost" id="backToLogin" type="button">Voltar</button>
+            </div>
+
+            <div class="hintbar" style="margin-top:12px">
+              ✅ Depois do cadastro, você poderá acompanhar seus resultados e participar do ranking.
+            </div>
+          </div>
+
+          <div id="authStatus" class="hintbar hidden" style="margin-top:12px"></div>
+        </div>
+      </section>
 
       <!-- Loading fake -->
       <section class="card" id="screenLoading">
@@ -209,7 +289,6 @@
   </main>
 
   <!-- Modal -->
-  <!-- ✅ mantém id="overlay" (JS/CSS usam). Classe "overlay" não é necessária. -->
   <div class="hidden" id="overlay" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
     <div class="modal">
       <div class="modal-head">
@@ -220,44 +299,41 @@
       <div class="modal-foot" id="modalFoot"></div>
     </div>
   </div>
-<!-- Tela do Admin -->
-<div id="adminLoginScreen" class="hidden">
-  <div class="modal">
-    <div class="modal-head">
-      <h3 id="modalTitle">Login Admin</h3>
-      <button class="icon-btn" id="closeAdminModal" aria-label="Fechar" type="button">✕</button>
-    </div>
-    <div class="modal-body">
-      <h4>Entre com a senha para acessar a área de administrador</h4>
-      <input type="password" id="adminPasswordInput" placeholder="Digite a senha" class="input" />
-    </div>
-    <div class="modal-foot">
-      <button id="adminLoginBtn" class="btn" type="button">Entrar</button>
-    </div>
-  </div>
-</div>
 
-<!-- Área do admin quando logado -->
-<div id="adminPanel" class="hidden">
-  <div class="modal">
-    <div class="modal-head">
-      <h3 id="adminPanelTitle">Painel do Administrador</h3>
-      <button class="icon-btn" id="closeAdminPanel" aria-label="Fechar" type="button">✕</button>
-    </div>
-    <div class="modal-body">
-      <h4>Bem-vindo, Administrador!</h4>
-      <p>Escolha uma opção abaixo:</p>
-      <button id="resetRankingBtn" class="btn">Zerar Ranking</button>
-    </div>
-    <div class="modal-foot">
-      <button id="closeAdminPanelBtn" class="btn" type="button">Fechar</button>
+  <!-- Tela do Admin (mantido) -->
+  <div id="adminLoginScreen" class="hidden">
+    <div class="modal">
+      <div class="modal-head">
+        <h3 id="modalTitle">Login Admin</h3>
+        <button class="icon-btn" id="closeAdminModal" aria-label="Fechar" type="button">✕</button>
+      </div>
+      <div class="modal-body">
+        <h4>Entre com a senha para acessar a área de administrador</h4>
+        <input type="password" id="adminPasswordInput" placeholder="Digite a senha" class="input" />
+      </div>
+      <div class="modal-foot">
+        <button id="adminLoginBtn" class="btn" type="button">Entrar</button>
+      </div>
     </div>
   </div>
-</div>
+
+  <div id="adminPanel" class="hidden">
+    <div class="modal">
+      <div class="modal-head">
+        <h3 id="adminPanelTitle">Painel do Administrador</h3>
+        <button class="icon-btn" id="closeAdminPanel" aria-label="Fechar" type="button">✕</button>
+      </div>
+      <div class="modal-body">
+        <h4>Bem-vindo, Administrador!</h4>
+        <p>Escolha uma opção abaixo:</p>
+        <button id="resetRankingBtn" class="btn">Zerar Ranking</button>
+      </div>
+      <div class="modal-foot">
+        <button id="closeAdminPanelBtn" class="btn" type="button">Fechar</button>
+      </div>
+    </div>
+  </div>
 
   <script type="module" src="js/main.js"></script>
 </body>
 </html>
-
-
-
