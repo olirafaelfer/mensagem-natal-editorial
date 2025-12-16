@@ -3,20 +3,11 @@
 export function bootGameCore(app){
 
   /* =========================
-     Compat: pega dados do app
-  ========================= */
-  const DATA = app?.data || {};
-  const dom = app?.dom || {};
-  const modalApi = app?.modal || {};
-  const openModal = modalApi.openModal;
-  const closeModal = modalApi.closeModal;
-
-  /* =========================
-     Sectors: popula select
+     Setores (preenche o select)
   ========================= */
   function populateSectors(){
-    const select = dom.userSectorEl || document.getElementById("userSector");
-    const sectors = DATA.SECTORS;
+    const select = app.dom?.userSectorEl || document.getElementById("userSector");
+    const sectors = app.data?.SECTORS || app?.data?.SECTORS;
 
     if (!select) return;
     if (!Array.isArray(sectors)) return;
@@ -30,82 +21,83 @@ export function bootGameCore(app){
     }
 
     const saved = localStorage.getItem("mission_sector") || "";
-    if (saved && !select.value) select.value = saved;
+    if (saved) select.value = saved;
   }
 
   populateSectors();
 
-  (dom.userSectorEl || document.getElementById("userSector"))?.addEventListener("change", () => {
-    const el = dom.userSectorEl || document.getElementById("userSector");
-    localStorage.setItem("mission_sector", (el?.value || "").trim());
+  // salva setor em tempo real
+  const sectorElLive = app.dom?.userSectorEl || document.getElementById("userSector");
+  sectorElLive?.addEventListener("change", () => {
+    localStorage.setItem("mission_sector", sectorElLive.value || "");
   });
 
-  /* =========================
-     Pontuação (usa a do main.js se existir)
-  ========================= */
-  const SCORE_RULES = DATA.SCORE_RULES || {
+  const { openModal, closeModal } = app.modal;
+
+  /** Pontuação */
+  const SCORE_RULES = app.data?.SCORE_RULES || {
     correct: +5,
     wrong: -3,
     skip: -5,
     hint: -1,
     auto: -2
   };
+  app.SCORE_RULES = SCORE_RULES;
 
   let autoUsed = 0;
 
-  /* =========================
-     Levels (usa os do main.js)
-  ========================= */
-  const levels = Array.isArray(DATA.levels) ? DATA.levels : (app.levels || []);
-  if (!Array.isArray(levels) || levels.length === 0){
-    console.error("[game-core] levels não encontrados em app.data.levels");
-  }
+  /** Levels */
+  const levels = app.data?.levels || app.levels || [];
+  app.levels = levels;
 
-  /* =========================
-     Elementos (preferência: app.dom)
-  ========================= */
-  const screenLoading = dom.screenLoading || document.getElementById("screenLoading");
-  const screenForm    = dom.screenForm    || document.getElementById("screenForm");
-  const screenGame    = dom.screenGame    || document.getElementById("screenGame");
-  const screenFinal   = dom.screenFinal   || document.getElementById("screenFinal");
+  /** =========================
+   * Elementos
+   * ========================= */
+  const screenLoading = document.getElementById("screenLoading");
+  const screenForm = document.getElementById("screenForm");
+  const screenGame = document.getElementById("screenGame");
+  const screenFinal = document.getElementById("screenFinal");
 
-  const headerTitle   = dom.headerTitle   || document.getElementById("headerTitle");
-  const userNameEl    = dom.userNameEl    || document.getElementById("userName");
-  const userSectorEl  = dom.userSectorEl  || document.getElementById("userSector");
-  const startBtn      = dom.startBtn      || document.getElementById("startBtn");
+  const headerTitle = document.getElementById("headerTitle");
+  const userNameEl = document.getElementById("userName");
+  const userSectorEl = document.getElementById("userSector");
+  const startBtn = document.getElementById("startBtn");
 
-  const levelLabel     = dom.levelLabel     || document.getElementById("levelLabel");
-  const remainingCount = dom.remainingCount || document.getElementById("remainingCount");
-  const totalFixEl     = dom.totalFixEl     || document.getElementById("totalFix");
-  const wrongCountEl   = dom.wrongCountEl   || document.getElementById("wrongCount");
-  const scoreCountEl   = dom.scoreCountEl   || document.getElementById("scoreCount");
+  const levelLabel = document.getElementById("levelLabel");
+  const remainingCount = document.getElementById("remainingCount");
+  const totalFixEl = document.getElementById("totalFix");
+  const wrongCountEl = document.getElementById("wrongCount");
+  const scoreCountEl = document.getElementById("scoreCount");
 
-  const instruction = dom.instruction || document.getElementById("instruction");
-  const messageArea = dom.messageArea || document.getElementById("messageArea");
+  const instruction = document.getElementById("instruction");
+  const messageArea = document.getElementById("messageArea");
 
-  const hintBtn      = dom.hintBtn      || document.getElementById("hintBtn");
-  const nextLevelBtn = dom.nextLevelBtn || document.getElementById("nextLevelBtn");
-  const autoFixBtn   = dom.autoFixBtn   || document.getElementById("autoFixBtn");
+  const hintBtn = document.getElementById("hintBtn");
+  const nextLevelBtn = document.getElementById("nextLevelBtn");
+  const autoFixBtn = document.getElementById("autoFixBtn");
 
-  const finalCongrats = dom.finalCongrats || document.getElementById("finalCongrats");
-  const finalStats    = dom.finalStats    || document.getElementById("finalStats");
-  const finalRecado   = dom.finalRecado   || document.getElementById("finalRecado");
-  const finalBox1     = dom.finalBox1     || document.getElementById("finalBox1");
-  const finalBox2     = dom.finalBox2     || document.getElementById("finalBox2");
-  const finalBox3     = dom.finalBox3     || document.getElementById("finalBox3");
-  const restartBtn    = dom.restartBtn    || document.getElementById("restartBtn");
+  const finalCongrats = document.getElementById("finalCongrats");
+  const finalStats = document.getElementById("finalStats");
+  const finalRecado = document.getElementById("finalRecado");
+  const finalBox1 = document.getElementById("finalBox1");
+  const finalBox2 = document.getElementById("finalBox2");
+  const finalBox3 = document.getElementById("finalBox3");
+  const restartBtn = document.getElementById("restartBtn");
 
-  const reviewBtn1 = dom.reviewBtn1 || document.getElementById("reviewBtn1");
-  const reviewBtn2 = dom.reviewBtn2 || document.getElementById("reviewBtn2");
-  const reviewBtn3 = dom.reviewBtn3 || document.getElementById("reviewBtn3");
+  const reviewBtn1 = document.getElementById("reviewBtn1");
+  const reviewBtn2 = document.getElementById("reviewBtn2");
+  const reviewBtn3 = document.getElementById("reviewBtn3");
 
-  // ✅ ids do seu index.html atual:
-  const toggleFinalMsgsBtn = dom.toggleFinalMsgsBtn || document.getElementById("toggleFinalMsgs");
-  const finalMsgsWrap      = dom.finalMsgsWrap      || document.getElementById("finalMsgsWrap");
+  const finalStatGrid = document.getElementById("finalStatGrid");
+  const epigraphBox = document.getElementById("epigraphBox");
 
-  /* =========================
-     Estado
-  ========================= */
+  // ✅ IDs do seu HTML atual
+  const toggleFinalMsgsBtn = document.getElementById("toggleFinalMsgs");
+  const finalMsgsWrap = document.getElementById("finalMsgsWrap");
+
+  /** =========================
+   * Estado
+   * ========================= */
   let levelIndex = 0;
   let fixedRuleIds = new Set();
   let currentText = "";
@@ -117,16 +109,16 @@ export function bootGameCore(app){
   let correctCount = 0;
   let hintsUsed = 0;
 
-  const taskScore   = [0,0,0];
+  const taskScore = [0,0,0];
   const taskCorrect = [0,0,0];
-  const taskWrong   = [0,0,0];
+  const taskWrong = [0,0,0];
 
   const currentTextByLevel = ["", "", ""];
   const correctedSegmentsByRule = new Map(); // ruleId -> {start, lenNew}
 
-  /* =========================
-     Utils
-  ========================= */
+  /** =========================
+   * Utils
+   * ========================= */
   function escapeHtml(s){
     return String(s)
       .replaceAll("&","&amp;")
@@ -158,6 +150,10 @@ export function bootGameCore(app){
     return clampName((userNameEl?.value || localStorage.getItem("mission_name") || "").trim());
   }
 
+  function getUserSector(){
+    return (userSectorEl?.value || localStorage.getItem("mission_sector") || "").trim();
+  }
+
   function showOnly(screen){
     for (const el of [screenLoading, screenForm, screenGame, screenFinal]){
       if (!el) continue;
@@ -165,9 +161,9 @@ export function bootGameCore(app){
     }
   }
 
-  /* =========================
-     HUD
-  ========================= */
+  /** =========================
+   * HUD
+   * ========================= */
   function updateHUD(){
     const total = currentRules.length;
     const done = fixedRuleIds.size;
@@ -183,9 +179,9 @@ export function bootGameCore(app){
     nextLevelBtn?.setAttribute("aria-disabled", String(!isDone));
   }
 
-  /* =========================
-     Render (mensagem clicável)
-  ========================= */
+  /** =========================
+   * Render (mensagem clicável)
+   * ========================= */
   function findNextMatch(text, pos, rule){
     const re = ensureGlobal(rule.wrong);
     re.lastIndex = pos;
@@ -326,9 +322,9 @@ export function bootGameCore(app){
     requestAnimationFrame(() => messageArea.classList.add("show"));
   }
 
-  /* =========================
-     Pontuação
-  ========================= */
+  /** =========================
+   * Pontuação + feedback simples
+   * ========================= */
   function addScore(delta){
     score += delta;
     taskScore[levelIndex] += delta;
@@ -354,7 +350,6 @@ export function bootGameCore(app){
   }
 
   function onLockedTextClick(){
-    if (!openModal) return;
     openModal({
       title: "Tudo certinho!",
       bodyHTML: `<p>A tarefa já foi finalizada e o texto está todo certinho! Parabéns! Avance para a próxima tarefa para continuar a sua missão natalina.</p>`,
@@ -375,7 +370,6 @@ export function bootGameCore(app){
       updateHUD();
     }
 
-    if (!openModal) return;
     openModal({
       title: "Revisão",
       bodyHTML: `<p><strong>Hmmm…</strong> Esse trecho já está correto.</p>`,
@@ -424,7 +418,6 @@ export function bootGameCore(app){
       registerWrong();
       updateHUD();
 
-      if (!openModal) return;
       openModal({
         title: "Ops!",
         bodyHTML: `<p>Ops, você errou. O correto seria <strong>${escapeHtml(expected === "" ? "(remover)" : expected)}</strong>.</p>`,
@@ -441,7 +434,8 @@ export function bootGameCore(app){
 
     if (expected !== "") markCorrected(rule.id, start, expected);
 
-    closeModal?.();
+    registerCorrect();
+    closeModal();
     renderMessage();
     finalizeIfDone();
   }
@@ -456,19 +450,17 @@ export function bootGameCore(app){
     const expected = rule.correct;
 
     if (expected === "" && wrongText === ","){
-      if (!openModal) return;
       openModal({
         title: "Remover vírgula",
         bodyHTML: `<p>Você quer <strong>remover</strong> esta vírgula?</p>`,
         buttons: [
           { label:"Cancelar", variant:"ghost", onClick: closeModal },
-          { label:"Remover", onClick: () => { closeModal?.(); confirmCommaRemoval(errSpan, rule); } }
+          { label:"Remover", onClick: () => { closeModal(); confirmCommaRemoval(errSpan, rule); } }
         ]
       });
       return;
     }
 
-    if (!openModal) return;
     openModal({
       title: `Corrigir (${rule.label})`,
       bodyHTML: `
@@ -500,9 +492,9 @@ export function bootGameCore(app){
     }
   }
 
-  /* =========================
-     Auto-fix
-  ========================= */
+  /** =========================
+   * Auto-fix (1 correção por clique)
+   * ========================= */
   function autoFixOne(){
     if (levelLocked){
       onLockedTextClick();
@@ -511,7 +503,6 @@ export function bootGameCore(app){
 
     const rule = currentRules.find(r => !fixedRuleIds.has(r.id));
     if (!rule){
-      if (!openModal) return;
       openModal({
         title: "Tudo certo!",
         bodyHTML: `<p>Você já corrigiu tudo neste nível ✅</p>`,
@@ -546,7 +537,6 @@ export function bootGameCore(app){
       return;
     }
 
-    if (!openModal) return;
     openModal({
       title: "Correção automática",
       bodyHTML: `
@@ -555,14 +545,14 @@ export function bootGameCore(app){
       `,
       buttons: [
         { label:"Cancelar", variant:"ghost", onClick: closeModal },
-        { label:"Sim, corrigir", onClick: () => { closeModal?.(); autoFixOne(); } }
+        { label:"Sim, corrigir", onClick: () => { closeModal(); autoFixOne(); } }
       ]
     });
   });
 
-  /* =========================
-     Cola
-  ========================= */
+  /** =========================
+   * Cola
+   * ========================= */
   hintBtn?.addEventListener("click", () => {
     if (levelLocked){
       onLockedTextClick();
@@ -571,7 +561,6 @@ export function bootGameCore(app){
 
     const remaining = currentRules.filter(r => !fixedRuleIds.has(r.id));
     if (remaining.length === 0){
-      if (!openModal) return;
       openModal({
         title: "Cola",
         bodyHTML: `<p>Você já corrigiu tudo neste nível! ✅</p>`,
@@ -588,7 +577,6 @@ export function bootGameCore(app){
       ? `Procure um sinal que deve ser removido (pontuação indevida).`
       : `Procure um trecho que deve virar: <strong>${escapeHtml(pick.correct)}</strong>.`;
 
-    if (!openModal) return;
     openModal({
       title: "Me dê uma cola!",
       bodyHTML: `<p>${msg}</p><p class="muted" style="margin-top:10px">Colas têm custo de ${SCORE_RULES.hint} ponto.</p>`,
@@ -598,26 +586,26 @@ export function bootGameCore(app){
     updateHUD();
   });
 
-  /* =========================
-     Próximo nível
-  ========================= */
+  /** =========================
+   * Próximo nível / Final
+   * ========================= */
   nextLevelBtn?.addEventListener("click", async () => {
     const done = fixedRuleIds.size >= currentRules.length;
     const isLast = levelIndex === (levels.length - 1);
 
     if (!done){
-      if (!openModal) return;
       openModal({
         title: "Você ainda não concluiu o nível",
         bodyHTML: `<p>Você ainda não concluiu o nível. Se avançar sem concluí-lo perderá <strong>5</strong> pontos. Tem certeza que deseja prosseguir?</p>`,
         buttons: [
           { label:"Cancelar", variant:"ghost", onClick: closeModal },
-          { label:"Prosseguir", onClick: async () => { closeModal?.(); await skipLevel(); } }
+          { label:"Prosseguir", onClick: async () => { closeModal(); await skipLevel(); } }
         ]
       });
       return;
     }
 
+    // ✅ guarda SEMPRE o texto do nível atual (mesmo com correções)
     currentTextByLevel[levelIndex] = currentText;
 
     if (isLast){
@@ -644,9 +632,9 @@ export function bootGameCore(app){
     showFinal();
   }
 
-  /* =========================
-     Final interativo
-  ========================= */
+  /** =========================
+   * Final interativo
+   * ========================= */
   function getRuleById(levelIdx, ruleId){
     return levels[levelIdx]?.rules?.find(r => r.id === ruleId) || null;
   }
@@ -656,14 +644,12 @@ export function bootGameCore(app){
     if (!r) return null;
 
     const correct = String(r.correct ?? "");
-    const reason =
-      String(r.explain || r.reason || "").trim() ||
-      "Correção aplicada conforme regra de revisão do exercício.";
+    const reason = String(r.reason || r.explain || "").trim();
 
     return {
       title: `${levels[levelIdx]?.name || "Atividade"} — ${r.label || "Revisão"}`,
       correct,
-      reason
+      reason: reason || "Correção aplicada conforme regra de revisão do exercício."
     };
   }
 
@@ -672,16 +658,18 @@ export function bootGameCore(app){
     const text = String(userText ?? "");
     let html = escapeHtml(text);
 
-    // marca erros (vermelho)
-    for (const rule of (levelDef?.rules || [])){
+    if (!levelDef?.rules?.length) return html;
+
+    // marca "erros" (vermelho) se ainda existirem no texto final
+    for (const rule of levelDef.rules){
       const reWrong = ensureGlobal(rule.wrong);
       html = html.replace(reWrong, (m) => {
         return `<span class="final-wrong final-mark" data-level="${levelIdx}" data-rule="${escapeHtml(rule.id)}">${escapeHtml(m)}</span>`;
       });
     }
 
-    // marca correções (verde) se houver correct
-    for (const rule of (levelDef?.rules || [])){
+    // marca "correções" (verde) se existirem no texto final
+    for (const rule of levelDef.rules){
       const c = String(rule.correct ?? "");
       if (!c) continue;
 
@@ -712,11 +700,10 @@ export function bootGameCore(app){
       const ex = explainFor(levelIdx, ruleId);
       if (!ex) return;
 
-      openModal?.({
+      openModal({
         title: "Explicação",
         bodyHTML: `
           <p style="margin:0 0 10px"><strong>${escapeHtml(ex.title)}</strong></p>
-          <p style="margin:0 0 8px"><span class="muted">Regra:</span> <strong>${escapeHtml(ruleId)}</strong></p>
           ${ex.correct ? `<p style="margin:0 0 8px"><span class="muted">Forma correta:</span> <strong>${escapeHtml(ex.correct)}</strong></p>` : `<p style="margin:0 0 8px"><span class="muted">Ação:</span> <strong>Remover</strong></p>`}
           <p class="muted" style="margin:0; line-height:1.6">${escapeHtml(ex.reason)}</p>
         `,
@@ -727,10 +714,8 @@ export function bootGameCore(app){
 
   function showFinal(){
     const name = getUserName();
-    const finalStatGrid = document.getElementById("finalStatGrid");
-    const epigraphBox = document.getElementById("epigraphBox");
 
-    // ✅ garante a citação do Monteiro Lobato
+    // ✅ epígrafe Monteiro Lobato (sempre)
     if (epigraphBox){
       epigraphBox.innerHTML = `
         <blockquote>
@@ -742,8 +727,7 @@ export function bootGameCore(app){
     }
 
     if (finalCongrats){
-      finalCongrats.textContent =
-        `Parabéns, ${name}! Você ajudou o editor-chefe a publicar a mensagem de Natal no prazo!`;
+      finalCongrats.textContent = `Parabéns, ${name}! Você ajudou o editor-chefe a publicar a mensagem de Natal no prazo!`;
     }
 
     const optOut = localStorage.getItem("mission_optout_ranking") === "1";
@@ -758,70 +742,71 @@ export function bootGameCore(app){
       finalStats.textContent = `Pontos: ${score} | Acertos: ${correctCount} | Erros: ${wrongCount}`;
     }
 
-    // ✅ preenche as 3 atividades (no seu HTML elas ficam dentro de #finalMsgsWrap)
-    const t0 = currentTextByLevel[0] || levels?.[0]?.raw || "";
-    const t1 = currentTextByLevel[1] || levels?.[1]?.raw || "";
-    const t2 = currentTextByLevel[2] || levels?.[2]?.raw || "";
-
-    if (finalBox1) finalBox1.innerHTML = `<p style="margin:0">${buildFinalInteractiveHTML(0, t0)}</p>`;
-    if (finalBox2) finalBox2.innerHTML = `<p style="margin:0">${buildFinalInteractiveHTML(1, t1)}</p>`;
-    if (finalBox3) finalBox3.innerHTML = `<p style="margin:0">${buildFinalInteractiveHTML(2, t2)}</p>`;
+    // ✅ Preenche as caixas com o texto FINAL de cada atividade (corrigido ou não)
+    if (finalBox1) finalBox1.innerHTML = `<p style="margin:0">${buildFinalInteractiveHTML(0, currentTextByLevel[0] || levels[0]?.raw || "")}</p>`;
+    if (finalBox2) finalBox2.innerHTML = `<p style="margin:0">${buildFinalInteractiveHTML(1, currentTextByLevel[1] || levels[1]?.raw || "")}</p>`;
+    if (finalBox3) finalBox3.innerHTML = `<p style="margin:0">${buildFinalInteractiveHTML(2, currentTextByLevel[2] || levels[2]?.raw || "")}</p>`;
 
     attachFinalExplainClicks(finalBox1);
     attachFinalExplainClicks(finalBox2);
     attachFinalExplainClicks(finalBox3);
 
-    // ✅ usa o botão REAL do seu index.html (toggleFinalMsgs) pra abrir/fechar o wrapper (finalMsgsWrap)
-    if (toggleFinalMsgsBtn && finalMsgsWrap){
-      // estado inicial: fechado
-      finalMsgsWrap.classList.add("hidden");
+    // ✅ O seu HTML que manda: abre/fecha o WRAP das mensagens
+    if (finalMsgsWrap) finalMsgsWrap.classList.add("hidden");
+    if (toggleFinalMsgsBtn){
       toggleFinalMsgsBtn.textContent = "Ver mensagens corrigidas";
       toggleFinalMsgsBtn.setAttribute("aria-expanded", "false");
 
-      // remove handlers antigos se recarregar
-      toggleFinalMsgsBtn.onclick = null;
+      toggleFinalMsgsBtn.onclick = () => {
+        const isHidden = finalMsgsWrap?.classList.contains("hidden");
+        if (!finalMsgsWrap) return;
 
-      toggleFinalMsgsBtn.addEventListener("click", () => {
-        const isHidden = finalMsgsWrap.classList.contains("hidden");
         if (isHidden){
           finalMsgsWrap.classList.remove("hidden");
-          toggleFinalMsgsBtn.textContent = "Ocultar mensagens corrigidas";
+          toggleFinalMsgsBtn.textContent = "Ocultar mensagens";
           toggleFinalMsgsBtn.setAttribute("aria-expanded", "true");
         } else {
           finalMsgsWrap.classList.add("hidden");
           toggleFinalMsgsBtn.textContent = "Ver mensagens corrigidas";
           toggleFinalMsgsBtn.setAttribute("aria-expanded", "false");
         }
-      });
+      };
+    }
+
+    if (finalRecado){
+      finalRecado.innerHTML = `
+        <p class="muted" style="margin:0">
+          Dica: nas mensagens abaixo, clique nos trechos <span class="final-correct">verdes</span> e <span class="final-wrong">vermelhos</span> para ver a explicação.
+        </p>
+      `;
     }
 
     if (headerTitle) headerTitle.textContent = "Missão concluída 🎄";
     showOnly(screenFinal);
   }
 
-  /* =========================
-     Review (botões finais)
-  ========================= */
+  /** =========================
+   * Review (botões finais)
+   * ========================= */
   function openReviewModal(levelIdx){
     const lvl = levels[levelIdx];
     if (!lvl) return;
 
-    let html = `<h3 style="margin:0 0 10px">Atividade ${levelIdx+1} — ${escapeHtml(lvl.name)}</h3>
+    let html = `<h3 style="margin:0 0 10px">Atividade ${levelIdx+1} — ${escapeHtml(lvl.name || "")}</h3>
                 <ul style="padding-left:18px; line-height:1.6">`;
 
     for (const r of (lvl.rules || [])){
-      const reason = String(r.explain || r.reason || "—");
       html += `
         <li style="margin-bottom:10px">
           <strong>${escapeHtml(r.label || "Regra")}:</strong><br>
           <span class="muted">Correção:</span> <strong>${escapeHtml(String(r.correct ?? "(remover)"))}</strong><br>
-          <span class="muted">${escapeHtml(reason)}</span>
+          <span class="muted">${escapeHtml(String(r.reason || r.explain || "—"))}</span>
         </li>
       `;
     }
     html += `</ul>`;
 
-    openModal?.({
+    openModal({
       title: "Correções e justificativas",
       bodyHTML: html,
       buttons: [{ label:"Fechar", onClick: closeModal }]
@@ -832,23 +817,23 @@ export function bootGameCore(app){
   reviewBtn2?.addEventListener("click", () => openReviewModal(1));
   reviewBtn3?.addEventListener("click", () => openReviewModal(2));
 
-  /* =========================
-     Início / nível
-  ========================= */
+  /** =========================
+   * Início / nível
+   * ========================= */
   function startLevel(){
     const lvl = levels[levelIndex];
     if (!lvl) return;
 
     fixedRuleIds = new Set();
-    currentText = lvl.raw;
-    currentRules = lvl.rules || [];
+    currentText = String(lvl.raw || "");
+    currentRules = Array.isArray(lvl.rules) ? lvl.rules : [];
 
     correctedSegmentsByRule.clear();
     levelLocked = false;
 
     if (headerTitle) headerTitle.textContent = `Revisão da Mensagem de Natal — ${lvl.name}`;
     if (levelLabel) levelLabel.textContent = lvl.name;
-    if (instruction) instruction.textContent = lvl.instruction;
+    if (instruction) instruction.textContent = lvl.instruction || "";
 
     if (nextLevelBtn){
       nextLevelBtn.textContent = (levelIndex === levels.length - 1)
@@ -859,10 +844,10 @@ export function bootGameCore(app){
     updateHUD();
     renderMessage();
 
-    openModal?.({
+    openModal({
       title: `🎅 ${lvl.name}`,
       bodyHTML: `
-        <p style="white-space:pre-line">${escapeHtml(lvl.intro)}</p>
+        <p style="white-space:pre-line">${escapeHtml(lvl.intro || "")}</p>
         <p class="muted" style="margin-top:12px">Os erros serão explicados e detalhados ao término da atividade.</p>
       `,
       buttons: [{ label:"Entendi", onClick: closeModal }]
@@ -871,21 +856,20 @@ export function bootGameCore(app){
 
   startBtn?.addEventListener("click", () => {
     const name = getUserName();
-    const sector = (userSectorEl?.value || "").trim();
+    const sector = getUserSector();
 
     if (!name){
-      openModal?.({ title:"Atenção", bodyHTML:`<p>Por favor, informe seu nome.</p>`, buttons:[{label:"Ok", onClick: closeModal}] });
+      openModal({ title:"Atenção", bodyHTML:`<p>Por favor, informe seu nome.</p>`, buttons:[{label:"Ok", onClick: closeModal}] });
       return;
     }
     if (!sector){
-      openModal?.({ title:"Atenção", bodyHTML:`<p>Por favor, selecione seu setor.</p>`, buttons:[{label:"Ok", onClick: closeModal}] });
+      openModal({ title:"Atenção", bodyHTML:`<p>Por favor, selecione seu setor.</p>`, buttons:[{label:"Ok", onClick: closeModal}] });
       return;
     }
 
     localStorage.setItem("mission_name", name);
     localStorage.setItem("mission_sector", sector);
 
-    // reset
     levelIndex = 0;
     score = 0;
     wrongCount = 0;
@@ -896,9 +880,12 @@ export function bootGameCore(app){
     taskScore[0]=taskScore[1]=taskScore[2]=0;
     taskCorrect[0]=taskCorrect[1]=taskCorrect[2]=0;
     taskWrong[0]=taskWrong[1]=taskWrong[2]=0;
-    currentTextByLevel[0] = currentTextByLevel[1] = currentTextByLevel[2] = "";
 
-    openModal?.({
+    currentTextByLevel[0] = "";
+    currentTextByLevel[1] = "";
+    currentTextByLevel[2] = "";
+
+    openModal({
       title: "Pontuação da missão",
       bodyHTML: `
         <ul style="margin:0; padding-left:18px; color:rgba(255,255,255,.78); line-height:1.7">
@@ -909,15 +896,15 @@ export function bootGameCore(app){
           <li>Correção automática: <strong>${SCORE_RULES.auto}</strong></li>
         </ul>
       `,
-      buttons: [{ label:"Começar", onClick: () => { closeModal?.(); showOnly(screenGame); startLevel(); } }]
+      buttons: [{ label:"Começar", onClick: () => { closeModal(); showOnly(screenGame); startLevel(); } }]
     });
   });
 
   restartBtn?.addEventListener("click", () => showOnly(screenForm));
 
-  /* =========================
-     Boot visual
-  ========================= */
+  /** =========================
+   * Boot visual
+   * ========================= */
   showOnly(screenLoading);
   setTimeout(() => {
     showOnly(screenForm);
@@ -925,7 +912,7 @@ export function bootGameCore(app){
     if (userSectorEl) userSectorEl.value = localStorage.getItem("mission_sector") || "";
   }, 1100);
 
-  // expõe estado para o ranking
+  // expõe estado necessário pros outros módulos (ranking)
   app.gameState = {
     get score(){ return score; },
     get correctCount(){ return correctCount; },
@@ -935,6 +922,6 @@ export function bootGameCore(app){
     get taskWrong(){ return taskWrong; },
     get autoUsed(){ return autoUsed; },
     getUserName,
-    getUserSector: () => (userSectorEl?.value || localStorage.getItem("mission_sector") || "").trim(),
+    getUserSector,
   };
 }
