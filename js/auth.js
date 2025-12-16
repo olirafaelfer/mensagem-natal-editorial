@@ -1,9 +1,13 @@
 // js/auth.js — Login/Cadastro/Anônimo + Perfil (Sair / Deletar conta)
-// Requer:
-// - app.firebase.db (Firestore)
-// - app.modal (openModal/closeModal)
-// - Inputs do form principal: #userName, #userSector, #optRanking
-// - Botão topo: #authBtn
+// - Gate abre automaticamente no início (sem botão fechar)
+// - Tabs e botões funcionam via delegação dentro do #modalBody (ui-modal)
+// - Logado trava nome/setor
+// - Anônimo não participa do ranking
+//
+// Correções importantes:
+// ✅ evita listeners duplicados (handler fixo + root.onclick)
+// ✅ evita double click (busy lock)
+// ✅ evita boot duplicado (app.__AUTH_BOOTED__)
 
 import {
   getAuth,
@@ -37,10 +41,10 @@ export function bootAuth(app) {
     return;
   }
 
-  const auth = getAuth(); // usa default app já inicializado no main.js
+  const auth = getAuth();
+
   const { openModal, closeModal } = app.modal || {};
-  const hasModal = typeof openModal === "function" && typeof closeModal === "function";
-  if (!hasModal) {
+  if (typeof openModal !== "function" || typeof closeModal !== "function") {
     console.warn("[auth] app.modal não disponível (ui-modal).");
     return;
   }
@@ -49,18 +53,30 @@ export function bootAuth(app) {
   const nameEl = document.getElementById("userName");
   const sectorEl = document.getElementById("userSector");
   const optRankingEl = document.getElementById("optRanking");
-  const authBtn = document.getElementById("authBtn");
 
-  // Estado
+  // botão do topo (se você tiver)
+  const authBtn =
+    document.getElementById("authBtn") ||
+    document.getElementById("loginBtn") ||
+    document.getElementById("userBtn") ||
+    document.getElementById("accountBtn");
+
   let currentUser = null;
   let currentProfile = null;
+  let gateOpen = false;
+  let busy = false; // ✅ trava para evitar clique duplo
 
-  // trava para impedir double click / múltiplas ações simultâneas
-  let busy = false;
+  // API p/ outros módulos
+  app.auth = {
+    isLogged: () => !!currentUser,
+    getProfile: () => currentProfile,
+    openGate: () => openAuthGate({ force: false }),
+    openAccount: () => (currentUser ? openAccountPanel() : openAuthGate({ force: false })),
+  };
 
   authBtn?.addEventListener("click", () => {
     if (currentUser) openAccountPanel();
-    else openAuthGate({ forceNoClose: false });
+    else openAuthGate({ force: false });
   });
 
   onAuthStateChanged(auth, async (user) => {
@@ -68,119 +84,74 @@ export function bootAuth(app) {
     currentProfile = null;
 
     if (currentUser) {
-      try {
-        currentProfile = await fetchOrCreateProfile(currentUser);
-        if (currentProfile) applyLoggedProfileToForm(currentProfile);
-        else lockIdentityFields(true);
-      } catch (e) {
+      currentProfile = await fetchOrCreateProfile(currentUser).catch((e) => {
         console.warn("[auth] falha ao carregar/criar profile:", e);
-        lockIdentityFields(true);
+        return null;
+      });
+
+      if (currentProfile) applyLoggedProfileToForm(currentProfile);
+      else lockIdentityFields(true);
+
+      // se gate estava aberto, fecha
+      if (gateOpen) {
+        gateOpen = false;
+        unlockModalCloseUI();
+        closeModal();
       }
     } else {
       lockIdentityFields(false);
-      // mantém o que usuário digitou/localStorage no modo anônimo
     }
   });
 
-  // -----------------------------
-  // Profile: carregar/criar
-  // -----------------------------
-  async function fetchOrCreateProfile(user) {
-    const ref = doc(db, "users", user.uid);
-    const snap = await getDoc(ref);
+  // bloqueia ranking no anônimo
+  optRankingEl?.addEventListener("change", () => {
+    if (!optRankingEl) return;
+    if (optRankingEl.checked && !currentUser) {
+      optRankingEl.checked = false;
+      localStorage.setItem("mission_optout_ranking", "1");
 
-    if (snap.exists()) {
-      const data = snap.data() || {};
-      return {
-        uid: user.uid,
-        email: user.email || data.email || "",
-        name: data.name || "",
-        sector: data.sector || "",
-      };
+      openModal({
+        title: "Ranking requer cadastro",
+        bodyHTML: `
+          <p>Para participar do ranking, é necessário <strong>criar uma conta</strong> ou <strong>fazer login</strong>.</p>
+          <p class="muted" style="margin-top:10px">Você pode continuar no modo anônimo, mas sem ranking.</p>
+        `,
+        buttons: [
+          { label: "Ok", onClick: closeModal },
+          { label: "Fazer login", onClick: () => { closeModal(); openAuthGate({ force: true }); } },
+        ],
+      });
+    }
+  });
+
+  // =============================
+  // GATE
+  // =============================
+  function openAuthGate({ force } = { force: false }) {
+    if (currentUser && !force) {
+      openAccountPanel();
+      return;
     }
 
-    // cria profile com fallback do form/localStorage
-    const fallbackName = (nameEl?.value || localStorage.getItem("mission_name") || "").trim();
-    const fallbackSector = (sectorEl?.value || localStorage.getItem("mission_sector") || "").trim();
-
-    const payload = {
-      uid: user.uid,
-      email: user.email || "",
-      name: clampLen(fallbackName, 60) || "(Sem nome)",
-      sector: clampLen(fallbackSector, 120) || "(Sem setor)",
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
-    };
-
-    await setDoc(ref, payload, { merge: true });
-
-    return {
-      uid: payload.uid,
-      email: payload.email,
-      name: payload.name,
-      sector: payload.sector,
-    };
-  }
-
-  // -----------------------------
-  // Aplicar perfil no form e travar
-  // -----------------------------
-  function applyLoggedProfileToForm(profile) {
-    if (nameEl) nameEl.value = profile.name || "";
-    if (sectorEl) sectorEl.value = profile.sector || "";
-
-    if (profile.name) localStorage.setItem("mission_name", profile.name);
-    if (profile.sector) localStorage.setItem("mission_sector", profile.sector);
-
-    lockIdentityFields(true);
-  }
-
-  function lockIdentityFields(locked) {
-    if (nameEl) {
-      if (locked) {
-        nameEl.setAttribute("disabled", "disabled");
-        nameEl.classList.add("auth-locked");
-        nameEl.title = "Você está logado — nome vem do seu perfil.";
-      } else {
-        nameEl.removeAttribute("disabled");
-        nameEl.classList.remove("auth-locked");
-        nameEl.title = "";
-      }
-    }
-
-    if (sectorEl) {
-      if (locked) {
-        sectorEl.setAttribute("disabled", "disabled");
-        sectorEl.classList.add("auth-locked");
-        sectorEl.title = "Você está logado — setor vem do seu perfil.";
-      } else {
-        sectorEl.removeAttribute("disabled");
-        sectorEl.classList.remove("auth-locked");
-        sectorEl.title = "";
-      }
-    }
-  }
-
-  // -----------------------------
-  // Gate principal (login/cadastro/anon)
-  // -----------------------------
-  function openAuthGate({ forceNoClose } = { forceNoClose: true }) {
+    gateOpen = true;
     busy = false;
 
     openModal({
       title: "🔐 Entrar ou criar conta",
-      bodyHTML: renderAuthHTML({ noClose: !!forceNoClose }),
-      buttons: forceNoClose
-        ? [] // sem botão fechar quando for o primeiro modal do app
-        : [{ label: "Fechar", onClick: closeModal }],
+      bodyHTML: renderAuthHTML(),
+      buttons: [], // sem fechar no gate inicial
     });
 
-    wireAuthModalHandlers();
+    lockModalCloseUI();
+
+    afterModalPaint(() => {
+      wireAuthDelegationHandlers();
+      focusInGate();
+    });
   }
 
-  function renderAuthHTML({ noClose }) {
+  function renderAuthHTML() {
     const sectorsHTML = buildSectorOptionsHTML();
-
     return `
       <div class="auth-head">
         <h4 class="auth-title" style="margin:0">Acesse para entrar no ranking</h4>
@@ -190,55 +161,55 @@ export function bootAuth(app) {
       </div>
 
       <div class="auth-tabs" role="tablist" aria-label="Autenticação">
-        <div class="auth-tab active" id="authTabLogin" role="tab" aria-selected="true">Login</div>
-        <div class="auth-tab" id="authTabSignup" role="tab" aria-selected="false">Criar conta</div>
+        <div class="auth-tab active" data-tab="login" role="tab" aria-selected="true">Login</div>
+        <div class="auth-tab" data-tab="signup" role="tab" aria-selected="false">Criar conta</div>
       </div>
 
-      <div id="authStatus" class="auth-status"></div>
+      <div data-auth="status" class="auth-status"></div>
 
-      <div id="authPaneLogin">
+      <div data-pane="login">
         <div class="auth-grid onecol">
           <label class="field">
             <span>E-mail</span>
-            <input class="input" id="authLoginEmail" type="email" autocomplete="email" placeholder="seu@email.com"/>
+            <input class="input" data-auth="loginEmail" type="email" autocomplete="email" placeholder="seu@email.com"/>
           </label>
           <label class="field">
             <span>Senha</span>
-            <input class="input" id="authLoginPass" type="password" autocomplete="current-password" placeholder="••••••••"/>
+            <input class="input" data-auth="loginPass" type="password" autocomplete="current-password" placeholder="••••••••"/>
           </label>
         </div>
 
         <div class="auth-actions">
-          <button class="btn" id="authLoginBtn" type="button">Entrar</button>
-          <button class="btn ghost" id="authForgotBtn" type="button">Esqueci minha senha</button>
+          <button class="btn" data-action="login" type="button">Entrar</button>
+          <button class="btn ghost" data-action="forgot" type="button">Esqueci minha senha</button>
         </div>
       </div>
 
-      <div id="authPaneSignup" class="hidden">
+      <div data-pane="signup" class="hidden">
         <div class="auth-grid">
           <label class="field">
             <span>Nome</span>
-            <input class="input" id="authSignupName" type="text" maxlength="60" placeholder="Seu nome"/>
+            <input class="input" data-auth="signupName" type="text" maxlength="60" placeholder="Seu nome"/>
           </label>
           <label class="field">
             <span>Setor</span>
-            <select class="input" id="authSignupSector">${sectorsHTML}</select>
+            <select class="input" data-auth="signupSector">${sectorsHTML}</select>
           </label>
         </div>
 
         <div class="auth-grid onecol" style="margin-top:12px">
           <label class="field">
             <span>E-mail</span>
-            <input class="input" id="authSignupEmail" type="email" autocomplete="email" placeholder="seu@email.com"/>
+            <input class="input" data-auth="signupEmail" type="email" autocomplete="email" placeholder="seu@email.com"/>
           </label>
           <label class="field">
             <span>Senha</span>
-            <input class="input" id="authSignupPass" type="password" autocomplete="new-password" placeholder="Crie uma senha"/>
+            <input class="input" data-auth="signupPass" type="password" autocomplete="new-password" placeholder="Crie uma senha"/>
           </label>
         </div>
 
         <div class="auth-actions">
-          <button class="btn" id="authSignupBtn" type="button">Criar conta</button>
+          <button class="btn" data-action="signup" type="button">Criar conta</button>
         </div>
       </div>
 
@@ -248,59 +219,112 @@ export function bootAuth(app) {
         <b>Modo anônimo</b><br/>
         Você pode fazer a missão sem cadastro, mas <b>não participa do ranking</b>.
         <div class="auth-actions" style="margin-top:10px">
-          <button class="btn ghost" id="authAnonBtn" type="button">Prefiro não me cadastrar</button>
-          ${noClose ? `<span class="auth-mini">Você poderá logar depois pelo botão do topo.</span>` : ""}
+          <button class="btn ghost" data-action="anon" type="button">Prefiro não me cadastrar</button>
         </div>
       </div>
     `;
   }
 
-  function wireAuthModalHandlers() {
-    const tabLogin = document.getElementById("authTabLogin");
-    const tabSignup = document.getElementById("authTabSignup");
-    const paneLogin = document.getElementById("authPaneLogin");
-    const paneSignup = document.getElementById("authPaneSignup");
+  // ✅ handler fixo (referência estável)
+  function gateClickHandler(ev) {
+    const root = getModalBody();
+    if (!root) return;
 
-    tabLogin?.addEventListener("click", () => {
-      tabLogin.classList.add("active");
-      tabSignup?.classList.remove("active");
-      tabLogin.setAttribute("aria-selected", "true");
-      tabSignup?.setAttribute("aria-selected", "false");
-      paneLogin?.classList.remove("hidden");
-      paneSignup?.classList.add("hidden");
-      clearStatus();
-    });
+    const t = ev.target instanceof HTMLElement ? ev.target : null;
+    if (!t) return;
 
-    tabSignup?.addEventListener("click", () => {
-      tabSignup.classList.add("active");
-      tabLogin?.classList.remove("active");
-      tabSignup.setAttribute("aria-selected", "true");
-      tabLogin?.setAttribute("aria-selected", "false");
-      paneSignup?.classList.remove("hidden");
-      paneLogin?.classList.add("hidden");
-      clearStatus();
-    });
+    // Tabs
+    const tab = t.closest(".auth-tab");
+    if (tab) {
+      const key = tab.getAttribute("data-tab");
+      if (key === "login") setGateTab("login");
+      if (key === "signup") setGateTab("signup");
+      return;
+    }
 
-    document.getElementById("authLoginBtn")?.addEventListener("click", doLogin);
-    document.getElementById("authSignupBtn")?.addEventListener("click", doSignup);
-    document.getElementById("authForgotBtn")?.addEventListener("click", openForgotPassword);
-    document.getElementById("authAnonBtn")?.addEventListener("click", () => {
-      clearStatus();
-      closeModal();
-    });
+    // Actions
+    const actBtn = t.closest("[data-action]");
+    if (actBtn) {
+      const action = actBtn.getAttribute("data-action");
 
-    setTimeout(() => document.getElementById("authLoginEmail")?.focus(), 60);
+      if (action === "login") doLogin();
+      if (action === "signup") doSignup();
+      if (action === "forgot") openForgotPassword();
+      if (action === "anon") enterAnonymous();
+
+      return;
+    }
   }
 
-  // -----------------------------
-  // Login
-  // -----------------------------
+  function wireAuthDelegationHandlers() {
+    const root = getModalBody();
+    if (!root) {
+      console.warn("[auth] #modalBody não encontrado para wire.");
+      return;
+    }
+
+    // ✅ evita acumular listeners: sobrescreve onclick
+    root.onclick = gateClickHandler;
+  }
+
+  function setGateTab(which) {
+    const root = getModalBody();
+    if (!root) return;
+
+    const tabs = Array.from(root.querySelectorAll(".auth-tab"));
+    for (const el of tabs) {
+      const is = el.getAttribute("data-tab") === which;
+      el.classList.toggle("active", is);
+      el.setAttribute("aria-selected", String(is));
+    }
+
+    const paneLogin = root.querySelector('[data-pane="login"]');
+    const paneSignup = root.querySelector('[data-pane="signup"]');
+
+    if (paneLogin) paneLogin.classList.toggle("hidden", which !== "login");
+    if (paneSignup) paneSignup.classList.toggle("hidden", which !== "signup");
+
+    clearStatus();
+
+    if (which === "login") {
+      setTimeout(() => root.querySelector('[data-auth="loginEmail"]')?.focus(), 30);
+    } else {
+      setTimeout(() => root.querySelector('[data-auth="signupName"]')?.focus(), 30);
+    }
+  }
+
+  function enterAnonymous() {
+    if (busy) return;
+    busy = true;
+
+    gateOpen = false;
+    unlockModalCloseUI();
+    closeModal();
+
+    localStorage.setItem("mission_optout_ranking", "1");
+    if (optRankingEl) optRankingEl.checked = false;
+
+    lockIdentityFields(false);
+
+    busy = false;
+  }
+
+  function focusInGate() {
+    const root = getModalBody();
+    if (!root) return;
+    root.querySelector('[data-auth="loginEmail"]')?.focus();
+  }
+
+  // =============================
+  // LOGIN
+  // =============================
   async function doLogin() {
     if (busy) return;
     busy = true;
 
-    const email = (document.getElementById("authLoginEmail")?.value || "").trim();
-    const pass = (document.getElementById("authLoginPass")?.value || "").trim();
+    const root = getModalBody();
+    const email = (root?.querySelector('[data-auth="loginEmail"]')?.value || "").trim();
+    const pass = (root?.querySelector('[data-auth="loginPass"]')?.value || "").trim();
 
     if (!email || !pass) {
       showStatus("Preencha e-mail e senha.", "error");
@@ -311,24 +335,25 @@ export function bootAuth(app) {
     try {
       await signInWithEmailAndPassword(auth, email, pass);
       showStatus("Login realizado ✅", "ok");
-      setTimeout(() => closeModal(), 300);
+      // onAuthStateChanged fecha o gate
     } catch (e) {
       showStatus(humanAuthError(e), "error");
       busy = false;
     }
   }
 
-  // -----------------------------
-  // Cadastro
-  // -----------------------------
+  // =============================
+  // CADASTRO
+  // =============================
   async function doSignup() {
     if (busy) return;
     busy = true;
 
-    const name = (document.getElementById("authSignupName")?.value || "").trim();
-    const sector = (document.getElementById("authSignupSector")?.value || "").trim();
-    const email = (document.getElementById("authSignupEmail")?.value || "").trim();
-    const pass = (document.getElementById("authSignupPass")?.value || "").trim();
+    const root = getModalBody();
+    const name = (root?.querySelector('[data-auth="signupName"]')?.value || "").trim();
+    const sector = (root?.querySelector('[data-auth="signupSector"]')?.value || "").trim();
+    const email = (root?.querySelector('[data-auth="signupEmail"]')?.value || "").trim();
+    const pass = (root?.querySelector('[data-auth="signupPass"]')?.value || "").trim();
 
     if (!name || !sector || !email || !pass) {
       showStatus("Preencha nome, setor, e-mail e senha.", "error");
@@ -348,22 +373,25 @@ export function bootAuth(app) {
         updatedAt: serverTimestamp(),
       };
 
-      // ✅ 1 profile por uid (não duplica)
       await setDoc(doc(db, "users", cred.user.uid), payload, { merge: true });
 
-      showStatus("Conta criada ✅", "ok");
-      setTimeout(() => closeModal(), 300);
+      showStatus("Conta criada ✅ Você já está logado.", "ok");
+      // onAuthStateChanged fecha o gate
     } catch (e) {
       showStatus(humanAuthError(e), "error");
       busy = false;
     }
   }
 
-  // -----------------------------
-  // Esqueci minha senha (SÓ EMAIL)
-  // -----------------------------
+  // =============================
+  // RECUPERAÇÃO (SÓ EMAIL)
+  // =============================
   function openForgotPassword() {
+    if (busy) return;
     busy = false;
+
+    unlockModalCloseUI();
+    gateOpen = false;
 
     openModal({
       title: "🔁 Recuperar senha",
@@ -377,25 +405,20 @@ export function bootAuth(app) {
           <input class="input" id="authResetEmail" type="email" autocomplete="email" placeholder="seu@email.com"/>
         </label>
 
-        <div id="authResetStatus" class="auth-status show" style="display:block"></div>
+        <div id="authResetStatus" class="auth-status show"></div>
       `,
       buttons: [
-        { label: "Voltar", variant: "ghost", onClick: () => { closeModal(); openAuthGate({ forceNoClose: false }); } },
+        { label: "Voltar", variant: "ghost", onClick: () => { closeModal(); openAuthGate({ force: true }); } },
         {
           label: "Enviar link",
           onClick: async () => {
-            if (busy) return;
-            busy = true;
-
             const email = (document.getElementById("authResetEmail")?.value || "").trim();
             const st = document.getElementById("authResetStatus");
-
             if (!email) {
               if (st) {
                 st.className = "auth-status show error";
                 st.textContent = "Digite seu e-mail.";
               }
-              busy = false;
               return;
             }
 
@@ -410,8 +433,6 @@ export function bootAuth(app) {
                 st.className = "auth-status show error";
                 st.textContent = humanAuthError(e);
               }
-            } finally {
-              busy = false;
             }
           },
         },
@@ -421,12 +442,10 @@ export function bootAuth(app) {
     setTimeout(() => document.getElementById("authResetEmail")?.focus(), 60);
   }
 
-  // -----------------------------
-  // Painel de conta (logado)
-  // -----------------------------
+  // =============================
+  // CONTA LOGADA
+  // =============================
   function openAccountPanel() {
-    busy = false;
-
     const name = currentProfile?.name || currentUser?.displayName || "(sem nome)";
     const email = currentProfile?.email || currentUser?.email || "(sem e-mail)";
     const sector = currentProfile?.sector || "(sem setor)";
@@ -448,7 +467,7 @@ export function bootAuth(app) {
         </div>
 
         <p class="auth-mini" style="margin-top:12px">
-          Ao deletar a conta, seu perfil e seu usuário de autenticação serão removidos.
+          Se aparecer erro de segurança ao deletar, faça login novamente e tente de novo.
         </p>
       `,
       buttons: [{ label: "Fechar", onClick: closeModal }],
@@ -483,19 +502,11 @@ export function bootAuth(app) {
       title: "⚠️ Deletar conta",
       bodyHTML: `
         <p><strong>Tem certeza?</strong></p>
-        <p class="muted">
-          Isso remove seu perfil e seu acesso. Você poderá criar outra conta depois.
-        </p>
+        <p class="muted">Isso remove seu perfil e encerra seu acesso.</p>
       `,
       buttons: [
         { label: "Cancelar", variant: "ghost", onClick: closeModal },
-        {
-          label: "Sim, deletar",
-          onClick: async () => {
-            closeModal();
-            await doDeleteAccount();
-          },
-        },
+        { label: "Sim, deletar", onClick: async () => { closeModal(); await doDeleteAccount(); } },
       ],
     });
   }
@@ -506,16 +517,14 @@ export function bootAuth(app) {
     openModal({
       title: "Deletando…",
       bodyHTML: `<p class="muted" style="margin-top:0">Aguarde…</p>`,
-      buttons: [],
+      buttons: [{ label: "Fechar", onClick: closeModal }],
     });
 
     try {
-      // 1) apaga profile no Firestore
       await deleteDoc(doc(db, "users", currentUser.uid));
-
-      // 2) apaga usuário do Auth
       await deleteUser(currentUser);
 
+      closeModal();
       openModal({
         title: "Conta removida ✅",
         bodyHTML: `<p>Conta deletada com sucesso.</p>`,
@@ -528,48 +537,114 @@ export function bootAuth(app) {
         bodyHTML: `
           <p>${escapeHtml(msg)}</p>
           <p class="muted" style="margin-top:10px">
-            Se aparecer <code>requires-recent-login</code>, faça logout, login novamente e tente deletar.
+            Se aparecer <code>requires-recent-login</code>, saia e entre novamente e tente deletar.
           </p>
         `,
         buttons: [{ label: "Ok", onClick: closeModal }],
       });
-    } finally {
-      busy = false;
     }
   }
 
-  // -----------------------------
-  // Ranking toggle: aviso quando anônimo tentar participar
-  // -----------------------------
-  optRankingEl?.addEventListener("change", () => {
-    if (!currentUser && optRankingEl.checked) {
-      optRankingEl.checked = false;
-      localStorage.setItem("mission_optout_ranking", "1");
+  // =============================
+  // PROFILE
+  // =============================
+  async function fetchOrCreateProfile(user) {
+    const ref = doc(db, "users", user.uid);
+    const snap = await getDoc(ref);
 
-      openModal({
-        title: "Ranking requer cadastro",
-        bodyHTML: `
-          <p>Para participar do ranking, é necessário criar uma conta ou fazer login.</p>
-          <p class="muted" style="margin-top:10px">Você pode continuar no modo anônimo, mas sem ranking.</p>
-        `,
-        buttons: [
-          { label: "Ok", onClick: closeModal },
-          { label: "Fazer login", onClick: () => { closeModal(); openAuthGate({ forceNoClose: false }); } }
-        ],
-      });
+    if (snap.exists()) {
+      const data = snap.data() || {};
+      return {
+        uid: user.uid,
+        email: user.email || data.email || "",
+        name: data.name || "",
+        sector: data.sector || "",
+      };
     }
-  });
 
-  // -----------------------------
-  // Helpers
-  // -----------------------------
+    const fallbackName = (nameEl?.value || localStorage.getItem("mission_name") || "").trim();
+    const fallbackSector = (sectorEl?.value || localStorage.getItem("mission_sector") || "").trim();
+
+    const payload = {
+      uid: user.uid,
+      email: user.email || "",
+      name: clampLen(fallbackName, 60) || "(Sem nome)",
+      sector: clampLen(fallbackSector, 120) || "(Sem setor)",
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    };
+
+    await setDoc(ref, payload, { merge: true });
+
+    return {
+      uid: payload.uid,
+      email: payload.email,
+      name: payload.name,
+      sector: payload.sector,
+    };
+  }
+
+  function applyLoggedProfileToForm(profile) {
+    if (nameEl) nameEl.value = profile.name || "";
+    if (sectorEl) sectorEl.value = profile.sector || "";
+
+    if (profile.name) localStorage.setItem("mission_name", profile.name);
+    if (profile.sector) localStorage.setItem("mission_sector", profile.sector);
+
+    lockIdentityFields(true);
+  }
+
+  function lockIdentityFields(locked) {
+    if (nameEl) {
+      if (locked) {
+        nameEl.setAttribute("disabled", "disabled");
+        nameEl.classList.add("auth-locked");
+      } else {
+        nameEl.removeAttribute("disabled");
+        nameEl.classList.remove("auth-locked");
+      }
+    }
+
+    if (sectorEl) {
+      if (locked) {
+        sectorEl.setAttribute("disabled", "disabled");
+        sectorEl.classList.add("auth-locked");
+      } else {
+        sectorEl.removeAttribute("disabled");
+        sectorEl.classList.remove("auth-locked");
+      }
+    }
+  }
+
+  // =============================
+  // STATUS + SETORES
+  // =============================
+  function getModalBody() {
+    return document.getElementById("modalBody");
+  }
+
+  function showStatus(msg, kind) {
+    const root = getModalBody();
+    const box = root?.querySelector('[data-auth="status"]');
+    if (!box) return;
+    box.className = `auth-status show ${kind === "ok" ? "ok" : "error"}`;
+    box.textContent = msg;
+  }
+
+  function clearStatus() {
+    const root = getModalBody();
+    const box = root?.querySelector('[data-auth="status"]');
+    if (!box) return;
+    box.className = "auth-status";
+    box.textContent = "";
+  }
+
   function buildSectorOptionsHTML() {
     const sectors = app.data?.SECTORS;
-
     if (Array.isArray(sectors) && sectors.length) {
       return sectors
         .map((s) => {
-          const v = (s === "Selecione…") ? "" : s;
+          const v = (s === "Selecione…" || s === "Selecione") ? "" : s;
           return `<option value="${escapeHtml(v)}">${escapeHtml(s)}</option>`;
         })
         .join("");
@@ -584,20 +659,6 @@ export function bootAuth(app) {
     return `<option value="">Selecione…</option>`;
   }
 
-  function showStatus(msg, kind) {
-    const box = document.getElementById("authStatus");
-    if (!box) return;
-    box.className = `auth-status show ${kind === "ok" ? "ok" : "error"}`;
-    box.textContent = msg;
-  }
-
-  function clearStatus() {
-    const box = document.getElementById("authStatus");
-    if (!box) return;
-    box.className = "auth-status";
-    box.textContent = "";
-  }
-
   function humanAuthError(e) {
     const code = String(e?.code || "");
     if (code.includes("auth/invalid-email")) return "E-mail inválido.";
@@ -608,6 +669,7 @@ export function bootAuth(app) {
     if (code.includes("auth/weak-password")) return "Senha fraca. Use uma senha mais forte.";
     if (code.includes("auth/too-many-requests")) return "Muitas tentativas. Tente novamente em alguns minutos.";
     if (code.includes("auth/requires-recent-login")) return "Por segurança, faça login novamente e tente deletar a conta.";
+    if (code.includes("permission-denied")) return "Sem permissão no Firestore. Ajuste as rules para /users.";
     return e?.message ? String(e.message) : "Erro inesperado.";
   }
 
@@ -625,12 +687,44 @@ export function bootAuth(app) {
     return v.length > max ? v.slice(0, max) : v;
   }
 
-  // ✅ Se você quiser que o login abra sozinho ao iniciar o app:
-  // chame app.auth.openGate() no final do bootAll() ou aqui:
-  // openAuthGate({ forceNoClose: true });
+  // =============================
+  // MODAL CLOSE LOCK (gate inicial)
+  // =============================
+  function lockModalCloseUI() {
+    const closeX = document.getElementById("closeModal");
+    if (closeX) closeX.style.display = "none";
 
-  // Opcional: expor helpers para outros módulos
-  app.auth = app.auth || {};
-  app.auth.openAuthGate = openAuthGate;
-  app.auth.openAccountPanel = openAccountPanel;
+    window.__AUTH_ESC_BLOCK__ = (ev) => {
+      if (ev.key === "Escape") {
+        ev.preventDefault();
+        ev.stopPropagation();
+      }
+    };
+    document.addEventListener("keydown", window.__AUTH_ESC_BLOCK__, true);
+  }
+
+  function unlockModalCloseUI() {
+    const closeX = document.getElementById("closeModal");
+    if (closeX) closeX.style.display = "";
+
+    if (window.__AUTH_ESC_BLOCK__) {
+      document.removeEventListener("keydown", window.__AUTH_ESC_BLOCK__, true);
+      window.__AUTH_ESC_BLOCK__ = null;
+    }
+  }
+
+  function afterModalPaint(fn) {
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        try { fn(); } catch (e) { console.warn("[auth] afterModalPaint error:", e); }
+      });
+    });
+  }
+
+  // =============================
+  // ABRIR AUTOMÁTICO NO START
+  // =============================
+  setTimeout(() => {
+    if (!currentUser) openAuthGate({ force: true });
+  }, 50);
 }
