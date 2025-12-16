@@ -1,103 +1,54 @@
-
 // js/game-core.js — núcleo do jogo (níveis, render, correções, final interativo)
 
-export function bootGameCore(app){
-  function populateSectors(){
-  const select = app.dom?.userSectorEl;
-  const sectors = app.data?.SECTORS;
-
-  if (!select) return;
-  if (!Array.isArray(sectors)) return;
-
-  select.innerHTML = "";
-  for (const s of sectors){
-    const opt = document.createElement("option");
-    opt.value = (s === "Selecione…") ? "" : s;
-    opt.textContent = s;
-    select.appendChild(opt);
+export function bootGame(app){
+  const { openModal, closeModal } = app.modal || {};
+  if (!openModal || !closeModal) {
+    console.warn("[game-core] modal não inicializado (ui-modal.js precisa bootar antes).");
+    return;
   }
 
-  // tenta restaurar valor salvo
-  const saved = localStorage.getItem("mission_sector") || "";
-  if (saved && !select.value) select.value = saved;
-}
-
-// ✅ chama no boot
-populateSectors();
-
-// (opcional) salva em tempo real
-app.dom?.userSectorEl?.addEventListener("change", () => {
-  localStorage.setItem("mission_sector", app.dom.userSectorEl.value || "");
-});
-
-  const { openModal, closeModal } = app.modal;
-
-  /** Pontuação */
-  const SCORE_RULES = {
+  const SCORE_RULES = app.data?.SCORE_RULES || {
     correct: +5,
     wrong: -3,
     skip: -5,
     hint: -1,
     auto: -2
   };
-  app.SCORE_RULES = SCORE_RULES;
 
-  let autoUsed = 0;
+  const levels = app.data?.levels || [];
 
-  /** Levels (mantém seu formato; pode adicionar/remover regras sem dor) */
-  const levels = app.levels || [
-    {
-      name: "Fácil",
-      intro: `O Papai Noel, editor-chefe, pediu sua ajuda para revisar a Mensagem de Natal.
-Ele escreveu tão rápido que acabou deixando três errinhos para trás.`,
-      instruction: `Os erros podem envolver acentuação, ortografia, gramática etc. Clique nos trechos incorretos para corrigir!`,
-      raw: `Mais do que presentes e refeissões caprichadas, o Natal é a época de lembrar o valor de um abraço apertado e de um sorriso sincero! Que para voces, meus amigos, seja uma época xeia de carinho e amor, preenchida pelo que realmente importa nessa vida!`,
-      rules: [
-        { id:"f1", label:"Ortografia",  wrong:/\brefeissões\b/g, correct:"refeições", reason:"Erro ortográfico. A forma correta do substantivo é “refeições”." },
-        { id:"f2", label:"Acentuação", wrong:/\bvoces\b/g,      correct:"vocês",    reason:"Erro de acentuação gráfica. O pronome “vocês” é acentuado." },
-        { id:"f3", label:"Ortografia", wrong:/\bxeia\b/g,       correct:"cheia",     reason:"Erro ortográfico. A palavra correta é “cheia”, com dígrafo “ch”." },
-      ]
-    },
-    {
-      name: "Médio",
-      intro: `Nível médio: erros editoriais objetivos — vírgulas mal colocadas e concordância.`,
-      instruction: `Atenção: os erros podem envolver pontuação (inclusive vírgulas indevidas), concordância, acentuação e ortografia.`,
-      raw: `O Natal, é um momento especial para celebrar a união e a esperança. As mensagens, que circulam nessa época, precisam transmitir carinho e acolhimento, mas muitas vezes, acabam sendo escritas de forma apressada. Os textos natalinos, exige atenção aos detalhes, para que a mensagem chegue clara ao leitor.`,
-      rules: [
-        { id:"m1", label:"Pontuação",  wrong:/(?<=\bNatal),/g,        correct:"",      reason:"Vírgula indevida separando sujeito e predicado." },
-        { id:"m2", label:"Pontuação",  wrong:/(?<=\bmensagens),/g,    correct:"",      reason:"Vírgula indevida isolando oração restritiva (sem necessidade aqui)." },
-        { id:"m3", label:"Pontuação",  wrong:/(?<=\bvezes),/g,        correct:"",      reason:"Vírgula indevida entre adjunto e verbo." },
-        { id:"m4", label:"Pontuação",  wrong:/(?<=\bnatalinos),/g,    correct:"",      reason:"Vírgula indevida entre sujeito e verbo." },
-        { id:"m5", label:"Concordância", wrong:/\bexige\b/g, correct:"exigem",        reason:"Concordância verbal: sujeito plural pede verbo no plural." },
-      ]
-    },
-    {
-      name: "Difícil",
-      intro: `Nível difícil: desafios reais de edição — colocação pronominal, pontuação e paralelismo.`,
-      instruction: `Erros podem envolver pontuação, gramática e colocação pronominal. Clique no trecho inteiro que precisa ser reescrito.`,
-      raw: `No Natal, se deve pensar no amor ao próximo e na importância da empatia. Aos pais, respeite-os; aos filhos, os ame; aos necessitados, ajude-os. Essas atitudes, reforçam os valores natalinos e mostram que o amor, em todas as suas formas e meios de manifestação, é a peça-chave para uma vida boa, feliz e luz nos tempos de escuridão.
-Aos que estão em guerra, peço a paz; aos que não a encontram, que Deus acalme seus corações inquietos; aos que nada disso sirva, ofereço um caloroso abraço, o maior conforto da alma.
-Pensadores cientificistas pensam que o tempo é só um passar, que datas e símbolos são itens meramente psicológicos, que a linearidade intrínseca ao mensurável e durável tempo é uma prisão (ou mesmo um castigo). Chamam este tempo "chronos" e negam que é o "kairós", que é aquele tempo espiritual, profundo, com significado. Aquele tempo em que paramos para respirar e, sim, sentimos que algo está ali presente. Não enxergo um tempo tão "kairós" quanto o Natal e, o mais incrível, isso independe de crenças ou religiões. É época de partilhar, festejar, refletir; é oportunidade para planejar, remodelar e desconstruir.
-Recomece quantas vezes precisar, pois, enquanto estivermos no "kairós", não seremos reféns do "chronos".`,
-      rules: [
-        { id:"d1", label:"Colocação pronominal", wrong:/No Natal,\s*se deve pensar/g, correct:"No Natal, deve-se pensar", reason:"Colocação pronominal: forma recomendada “deve-se”." },
-        { id:"d2", label:"Colocação pronominal", wrong:/aos filhos,\s*os ame/gi,     correct:"aos filhos, ame-os",     reason:"Colocação pronominal: forma recomendada “ame-os”." },
+  // =========================
+  // POPULA SETORES (fix do seu problema principal)
+  // =========================
+  function populateSectors(){
+    const select = document.getElementById("userSector");
+    const sectors = app.data?.SECTORS;
 
-        { id:"d3", label:"Pontuação", wrong:/(?<=\batitudes),/g, correct:"", reason:"Vírgula indevida entre sujeito e predicado." },
-        { id:"d4", label:"Pontuação", wrong:/o amor,\s*em todas/gi, correct:"o amor em todas", reason:"Vírgula indevida separando termo essencial." },
-        { id:"d5", label:"Pontuação", wrong:/quanto o Natal\s*e,/gi, correct:"quanto o Natal e", reason:"Vírgula indevida quebrando coordenação." },
+    if (!select) return;
+    if (!Array.isArray(sectors)) return;
 
-        { id:"d6", label:"Pontuação", wrong:/ofereço um caloroso abraço,\s*o maior conforto da alma/gi,
-          correct:"ofereço um caloroso abraço: o maior conforto da alma",
-          reason:"Melhoria editorial: dois-pontos para introduzir aposto explicativo." },
-      ]
+    select.innerHTML = "";
+    for (const s of sectors){
+      const opt = document.createElement("option");
+      opt.value = (s === "Selecione…") ? "" : s;
+      opt.textContent = s;
+      select.appendChild(opt);
     }
-  ];
-  app.levels = levels;
 
-  /** =========================
-   * Elementos
-   * ========================= */
+    const saved = localStorage.getItem("mission_sector") || "";
+    if (saved) select.value = saved;
+  }
+
+  populateSectors();
+
+  document.getElementById("userSector")?.addEventListener("change", (e) => {
+    const v = e.target?.value || "";
+    localStorage.setItem("mission_sector", v);
+  });
+
+  // =========================
+  // Elementos
+  // =========================
   const screenLoading = document.getElementById("screenLoading");
   const screenForm = document.getElementById("screenForm");
   const screenGame = document.getElementById("screenGame");
@@ -133,51 +84,12 @@ Recomece quantas vezes precisar, pois, enquanto estivermos no "kairós", não se
   const reviewBtn2 = document.getElementById("reviewBtn2");
   const reviewBtn3 = document.getElementById("reviewBtn3");
 
-  /** =========================
-   * Estado
-   * ========================= */
-  let levelIndex = 0;
-  let fixedRuleIds = new Set();
-  let currentText = "";
-  let currentRules = [];
-  let levelLocked = false;
-
-  let score = 0;
-  let wrongCount = 0;
-  let correctCount = 0;
-  let hintsUsed = 0;
-
-  const taskScore = [0,0,0];
-  const taskCorrect = [0,0,0];
-  const taskWrong = [0,0,0];
-
-  const currentTextByLevel = ["", "", ""];
-  const correctedSegmentsByRule = new Map(); // ruleId -> {start, lenNew}
-
-  /** =========================
-   * Utils
-   * ========================= */
-  function escapeHtml(s){
-    return String(s)
-      .replaceAll("&","&amp;")
-      .replaceAll("<","&lt;")
-      .replaceAll(">","&gt;")
-      .replaceAll('"',"&quot;")
-      .replaceAll("'","&#039;");
-  }
-
-  function normalize(str){
-    return (str || "")
-      .trim()
-      .toLowerCase()
-      .normalize("NFD")
-      .replace(/\p{Diacritic}/gu, "");
-  }
-
-  function ensureGlobal(re){
-    const flags = re.flags.includes("g") ? re.flags : (re.flags + "g");
-    return new RegExp(re.source, flags);
-  }
+  // =========================
+  // Utils
+  // =========================
+  const escapeHtml = app.utils?.escapeHtml || ((s)=>String(s));
+  const normalize = app.utils?.normalize || ((s)=>String(s).toLowerCase());
+  const ensureGlobal = app.utils?.ensureGlobal || ((re)=>re);
 
   function clampName(name){
     const n = (name || "").trim().replace(/\s+/g, " ");
@@ -195,16 +107,37 @@ Recomece quantas vezes precisar, pois, enquanto estivermos no "kairós", não se
     }
   }
 
-  /** =========================
-   * HUD
-   * ========================= */
+  // =========================
+  // Estado
+  // =========================
+  let levelIndex = 0;
+  let fixedRuleIds = new Set();
+  let currentText = "";
+  let currentRules = [];
+  let levelLocked = false;
+
+  let score = 0;
+  let wrongCount = 0;
+  let correctCount = 0;
+  let hintsUsed = 0;
+  let autoUsed = 0;
+
+  const taskScore = [0,0,0];
+  const taskCorrect = [0,0,0];
+  const taskWrong = [0,0,0];
+
+  const currentTextByLevel = ["", "", ""];
+  const correctedSegmentsByRule = new Map();
+
+  // =========================
+  // HUD
+  // =========================
   function updateHUD(){
     const total = currentRules.length;
     const done = fixedRuleIds.size;
 
     if (remainingCount) remainingCount.textContent = String(total - done);
     if (totalFixEl) totalFixEl.textContent = String(total);
-
     if (wrongCountEl) wrongCountEl.textContent = String(wrongCount);
     if (scoreCountEl) scoreCountEl.textContent = String(score);
 
@@ -213,9 +146,9 @@ Recomece quantas vezes precisar, pois, enquanto estivermos no "kairós", não se
     nextLevelBtn?.setAttribute("aria-disabled", String(!isDone));
   }
 
-  /** =========================
-   * Render (mensagem clicável)
-   * ========================= */
+  // =========================
+  // Render
+  // =========================
   function findNextMatch(text, pos, rule){
     const re = ensureGlobal(rule.wrong);
     re.lastIndex = pos;
@@ -340,12 +273,10 @@ Recomece quantas vezes precisar, pois, enquanto estivermos no "kairós", não se
       const span = document.createElement("span");
       span.className = "token" + (",.;:!?".includes(best.text) ? " punct" : "");
       span.textContent = best.text;
-
       span.dataset.kind = "error";
       span.dataset.ruleid = bestRule.id;
       span.dataset.start = String(best.index);
       span.dataset.len = String(best.len);
-
       span.addEventListener("click", () => onErrorClick(span, bestRule));
       frag.appendChild(span);
 
@@ -356,26 +287,23 @@ Recomece quantas vezes precisar, pois, enquanto estivermos no "kairós", não se
     requestAnimationFrame(() => messageArea.classList.add("show"));
   }
 
-  /** =========================
-   * Pontuação + feedback simples
-   * ========================= */
+  // =========================
+  // Pontuação
+  // =========================
   function addScore(delta){
     score += delta;
     taskScore[levelIndex] += delta;
   }
-
   function registerWrong(){
     wrongCount += 1;
     taskWrong[levelIndex] += 1;
     addScore(SCORE_RULES.wrong);
   }
-
   function registerCorrect(){
     correctCount += 1;
     taskCorrect[levelIndex] += 1;
     addScore(SCORE_RULES.correct);
   }
-
   function registerAutoCorrect(){
     correctCount += 1;
     taskCorrect[levelIndex] += 1;
@@ -386,7 +314,7 @@ Recomece quantas vezes precisar, pois, enquanto estivermos no "kairós", não se
   function onLockedTextClick(){
     openModal({
       title: "Tudo certinho!",
-      bodyHTML: `<p>A tarefa já foi finalizada e o texto está todo certinho! Parabéns! Avance para a próxima tarefa para continuar a sua missão natalina.</p>`,
+      bodyHTML: `<p>A tarefa já foi finalizada e o texto está todo certinho! Parabéns! Avance para a próxima tarefa.</p>`,
       buttons: [{ label:"Ok", onClick: closeModal }]
     });
   }
@@ -500,16 +428,12 @@ Recomece quantas vezes precisar, pois, enquanto estivermos no "kairós", não se
       bodyHTML: `
         <p>Trecho selecionado:</p>
         <p style="margin:8px 0 0"><strong>${escapeHtml(wrongText)}</strong></p>
-
         <p style="margin:12px 0 6px">Digite a forma correta:</p>
         <input class="input" id="fixInput" type="text" autocomplete="off"
           placeholder="${expected === "" ? "Deixe em branco para remover" : "Digite aqui..."}" />
-
         <p class="muted" style="margin:10px 0 0">Erros podem ser de acentuação, ortografia, gramática, pontuação etc.</p>
       `,
-      buttons: [
-        { label:"Confirmar correção", onClick: () => confirmTyped(errSpan, rule) }
-      ]
+      buttons: [{ label:"Confirmar correção", onClick: () => confirmTyped(errSpan, rule) }]
     });
 
     setTimeout(() => document.getElementById("fixInput")?.focus(), 30);
@@ -526,9 +450,6 @@ Recomece quantas vezes precisar, pois, enquanto estivermos no "kairós", não se
     }
   }
 
-  /** =========================
-   * Auto-fix (1 correção por clique)
-   * ========================= */
   function autoFixOne(){
     if (levelLocked){
       onLockedTextClick();
@@ -584,9 +505,6 @@ Recomece quantas vezes precisar, pois, enquanto estivermos no "kairós", não se
     });
   });
 
-  /** =========================
-   * Cola
-   * ========================= */
   hintBtn?.addEventListener("click", () => {
     if (levelLocked){
       onLockedTextClick();
@@ -620,9 +538,6 @@ Recomece quantas vezes precisar, pois, enquanto estivermos no "kairós", não se
     updateHUD();
   });
 
-  /** =========================
-   * Próximo nível / (o save do ranking fica no módulo ranking)
-   * ========================= */
   nextLevelBtn?.addEventListener("click", async () => {
     const done = fixedRuleIds.size >= currentRules.length;
     const isLast = levelIndex === (levels.length - 1);
@@ -630,7 +545,7 @@ Recomece quantas vezes precisar, pois, enquanto estivermos no "kairós", não se
     if (!done){
       openModal({
         title: "Você ainda não concluiu o nível",
-        bodyHTML: `<p>Você ainda não concluiu o nível. Se avançar sem concluí-lo perderá <strong>5</strong> pontos. Tem certeza que deseja prosseguir?</p>`,
+        bodyHTML: `<p>Você ainda não concluiu o nível. Se avançar sem concluí-lo perderá <strong>5</strong> pontos. Tem certeza?</p>`,
         buttons: [
           { label:"Cancelar", variant:"ghost", onClick: closeModal },
           { label:"Prosseguir", onClick: async () => { closeModal(); await skipLevel(); } }
@@ -642,7 +557,6 @@ Recomece quantas vezes precisar, pois, enquanto estivermos no "kairós", não se
     currentTextByLevel[levelIndex] = currentText;
 
     if (isLast){
-      // ranking/salvamento será chamado por app.finishMission (módulo ranking)
       await app.finishMission?.({ score, correctCount, wrongCount, taskScore, taskCorrect, taskWrong, autoUsed });
       showFinal();
       return;
@@ -666,105 +580,12 @@ Recomece quantas vezes precisar, pois, enquanto estivermos no "kairós", não se
     showFinal();
   }
 
-  /** =========================
-   * Final interativo
-   * ========================= */
-  function getRuleById(levelIdx, ruleId){
-    return levels[levelIdx]?.rules?.find(r => r.id === ruleId) || null;
-  }
-
-  function explainFor(levelIdx, ruleId){
-    const r = getRuleById(levelIdx, ruleId);
-    if (!r) return null;
-
-    const wrongSample = (r.wrong instanceof RegExp) ? r.wrong.toString() : "";
-    const correct = String(r.correct ?? "");
-    const reason = String(r.reason || "").trim();
-
-    return {
-      title: `${levels[levelIdx]?.name || "Atividade"} — ${r.label || "Revisão"}`,
-      wrongSample,
-      correct,
-      reason: reason || "Correção aplicada conforme regra de revisão do exercício."
-    };
-  }
-
-  function buildFinalInteractiveHTML(levelIdx, userText){
-    const levelDef = levels[levelIdx];
-    const text = String(userText ?? "");
-    let html = escapeHtml(text);
-
-    // marca erros (vermelho) com data-ruleid
-    for (const rule of levelDef.rules){
-      const reWrong = ensureGlobal(rule.wrong);
-      html = html.replace(reWrong, (m) => {
-        return `<span class="final-wrong final-mark" data-level="${levelIdx}" data-rule="${escapeHtml(rule.id)}">${escapeHtml(m)}</span>`;
-      });
-    }
-
-    // marca correções (verde) com data-ruleid (se houver correct)
-    for (const rule of levelDef.rules){
-      const c = String(rule.correct ?? "");
-      if (!c) continue;
-
-      const safe = c.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-      const reCorrect = new RegExp(safe, "g");
-
-      html = html.replace(reCorrect, (m) => {
-        return `<span class="final-correct final-mark" data-level="${levelIdx}" data-rule="${escapeHtml(rule.id)}">${escapeHtml(m)}</span>`;
-      });
-    }
-
-    return html;
-  }
-
-  function attachFinalExplainClicks(boxEl){
-    if (!boxEl) return;
-
-    boxEl.addEventListener("click", (ev) => {
-      const t = ev.target;
-      if (!(t instanceof HTMLElement)) return;
-
-      const mark = t.closest(".final-mark");
-      if (!mark) return;
-
-      const levelIdx = Number(mark.getAttribute("data-level") || "0");
-      const ruleId = String(mark.getAttribute("data-rule") || "");
-
-      const ex = explainFor(levelIdx, ruleId);
-      if (!ex) return;
-
-      openModal({
-        title: "Explicação",
-        bodyHTML: `
-          <p style="margin:0 0 10px"><strong>${escapeHtml(ex.title)}</strong></p>
-          <p style="margin:0 0 8px"><span class="muted">Regra:</span> <strong>${escapeHtml(ruleId)}</strong></p>
-          ${ex.correct ? `<p style="margin:0 0 8px"><span class="muted">Forma correta:</span> <strong>${escapeHtml(ex.correct)}</strong></p>` : `<p style="margin:0 0 8px"><span class="muted">Ação:</span> <strong>Remover</strong></p>`}
-          <p class="muted" style="margin:0; line-height:1.6">${escapeHtml(ex.reason)}</p>
-        `,
-        buttons: [{ label:"Fechar", onClick: closeModal }]
-      });
-    });
-  }
-
   function showFinal(){
     const name = getUserName();
     const finalStatGrid = document.getElementById("finalStatGrid");
-    const epigraphBox = document.getElementById("epigraphBox");
-
-    if (epigraphBox){
-      epigraphBox.innerHTML = `
-        <blockquote>
-          “A luta contra o erro tipográfico tem algo de homérico. Durante a revisão os erros se escondem, fazem-se positivamente invisíveis.
-          Mas, assim que o texto é publicado, tornam-se visibilíssimos, verdadeiros sacis a nos botar a língua em todas as páginas.”
-        </blockquote>
-        <div class="who">Monteiro Lobato</div>
-      `;
-    }
 
     if (finalCongrats){
-      finalCongrats.textContent =
-        `Parabéns, ${name}! Você ajudou o editor-chefe a publicar a mensagem de Natal no prazo!`;
+      finalCongrats.textContent = `Parabéns, ${name}! Você ajudou o editor-chefe a publicar a mensagem de Natal no prazo!`;
     }
 
     const optOut = localStorage.getItem("mission_optout_ranking") === "1";
@@ -779,68 +600,10 @@ Recomece quantas vezes precisar, pois, enquanto estivermos no "kairós", não se
       finalStats.textContent = `Pontos: ${score} | Acertos: ${correctCount} | Erros: ${wrongCount}`;
     }
 
-    // textos finais (interativos)
-    if (finalBox1) finalBox1.innerHTML = `<p style="margin:0">${buildFinalInteractiveHTML(0, currentTextByLevel[0] || levels[0].raw)}</p>`;
-    if (finalBox2) finalBox2.innerHTML = `<p style="margin:0">${buildFinalInteractiveHTML(1, currentTextByLevel[1] || levels[1].raw)}</p>`;
-    if (finalBox3) finalBox3.innerHTML = `<p style="margin:0">${buildFinalInteractiveHTML(2, currentTextByLevel[2] || levels[2].raw)}</p>`;
-
-    // clique nas marcações abre explicação
-    attachFinalExplainClicks(finalBox1);
-    attachFinalExplainClicks(finalBox2);
-    attachFinalExplainClicks(finalBox3);
-
-    // esconder por padrão + botão
-    finalBox1?.classList.add("hidden");
-    finalBox2?.classList.add("hidden");
-    finalBox3?.classList.add("hidden");
-
-    if (finalRecado){
-      finalRecado.innerHTML = `
-        <div class="actions center-actions" style="margin-top:8px">
-          <button class="btn" id="toggleFinalBoxes" type="button" aria-expanded="false">
-            Ver as mensagens que você corrigiu
-          </button>
-          <button class="btn ghost" id="hideFinalBoxes" type="button" aria-expanded="true" style="display:none">
-            Ocultar mensagens
-          </button>
-        </div>
-        <p class="muted" style="margin:10px 0 0">
-          Dica: no texto abaixo, toque nos trechos <span class="final-correct">verdes</span> e <span class="final-wrong">vermelhos</span> para ver a explicação.
-        </p>
-      `;
-
-      setTimeout(() => {
-        const btnShow = document.getElementById("toggleFinalBoxes");
-        const btnHide = document.getElementById("hideFinalBoxes");
-
-        const showBoxes = () => {
-          finalBox1?.classList.remove("hidden");
-          finalBox2?.classList.remove("hidden");
-          finalBox3?.classList.remove("hidden");
-          btnShow?.setAttribute("aria-expanded","true");
-          if (btnHide) btnHide.style.display = "inline-flex";
-        };
-
-        const hideBoxes = () => {
-          finalBox1?.classList.add("hidden");
-          finalBox2?.classList.add("hidden");
-          finalBox3?.classList.add("hidden");
-          btnShow?.setAttribute("aria-expanded","false");
-          if (btnHide) btnHide.style.display = "none";
-        };
-
-        btnShow?.addEventListener("click", showBoxes);
-        btnHide?.addEventListener("click", hideBoxes);
-      }, 0);
-    }
-
     if (headerTitle) headerTitle.textContent = "Missão concluída 🎄";
     showOnly(screenFinal);
   }
 
-  /** =========================
-   * Review (botões finais)
-   * ========================= */
   function openReviewModal(levelIdx){
     const lvl = levels[levelIdx];
     if (!lvl) return;
@@ -870,16 +633,13 @@ Recomece quantas vezes precisar, pois, enquanto estivermos no "kairós", não se
   reviewBtn2?.addEventListener("click", () => openReviewModal(1));
   reviewBtn3?.addEventListener("click", () => openReviewModal(2));
 
-  /** =========================
-   * Início / nível
-   * ========================= */
   function startLevel(){
     const lvl = levels[levelIndex];
+    if (!lvl) return;
 
     fixedRuleIds = new Set();
     currentText = lvl.raw;
-    currentRules = lvl.rules;
-
+    currentRules = lvl.rules || [];
     correctedSegmentsByRule.clear();
     levelLocked = false;
 
@@ -900,7 +660,7 @@ Recomece quantas vezes precisar, pois, enquanto estivermos no "kairós", não se
       title: `🎅 ${lvl.name}`,
       bodyHTML: `
         <p style="white-space:pre-line">${escapeHtml(lvl.intro)}</p>
-        <p class="muted" style="margin-top:12px">Os erros serão explicados e detalhados ao término da atividade.</p>
+        <p class="muted" style="margin-top:12px">Os erros serão explicados ao término da atividade.</p>
       `,
       buttons: [{ label:"Entendi", onClick: closeModal }]
     });
@@ -922,7 +682,6 @@ Recomece quantas vezes precisar, pois, enquanto estivermos no "kairós", não se
     localStorage.setItem("mission_name", name);
     localStorage.setItem("mission_sector", sector);
 
-    // reset
     levelIndex = 0;
     score = 0;
     wrongCount = 0;
@@ -952,17 +711,15 @@ Recomece quantas vezes precisar, pois, enquanto estivermos no "kairós", não se
 
   restartBtn?.addEventListener("click", () => showOnly(screenForm));
 
-  /** =========================
-   * Boot visual
-   * ========================= */
+  // Boot visual
   showOnly(screenLoading);
   setTimeout(() => {
     showOnly(screenForm);
     if (userNameEl) userNameEl.value = localStorage.getItem("mission_name") || "";
     if (userSectorEl) userSectorEl.value = localStorage.getItem("mission_sector") || "";
-  }, 1100);
+  }, 300);
 
-  // expõe estado necessário pros outros módulos (ranking)
+  // expõe estado pros outros módulos (ranking)
   app.gameState = {
     get score(){ return score; },
     get correctCount(){ return correctCount; },
@@ -975,3 +732,4 @@ Recomece quantas vezes precisar, pois, enquanto estivermos no "kairós", não se
     getUserSector: () => (userSectorEl?.value || localStorage.getItem("mission_sector") || "").trim(),
   };
 }
+
