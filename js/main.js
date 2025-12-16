@@ -290,7 +290,9 @@ async function bootAll(){
     const gameMod    = await import("./game-core.js");
     const adminMod   = await import("./admin.js");
     const authMod    = await import("./auth.js"); // ✅ auth
+    const lgpdMod   = await import("./lgpd.js");
 
+    const bootLgpd   = pickBoot(lgpdMod,   ["bootLgpd", "boot", "init"]);
     const bootModal   = pickBoot(modalMod,   ["bootModal", "boot", "init"]);
     const bootThemeFx = pickBoot(themeMod,   ["bootThemeFx", "bootTheme", "boot", "init"]);
     const bootRanking = pickBoot(rankingMod, ["bootRanking", "boot", "init"]);
@@ -298,6 +300,7 @@ async function bootAll(){
     const bootAdmin   = pickBoot(adminMod,   ["bootAdmin", "boot", "init"]);
     const bootAuth    = pickBoot(authMod,    ["bootAuth", "boot", "init"]); // ✅ auth
 
+    bootLgpd?.(app);
     bootModal?.(app);
     bootThemeFx?.(app);
     bootRanking?.(app);
@@ -327,6 +330,7 @@ async function bootAll(){
 }
 
 bootAll();
+
 
 
 
