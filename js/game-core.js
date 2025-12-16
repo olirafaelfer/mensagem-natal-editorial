@@ -949,20 +949,28 @@ export function bootGameCore(app){
     currentTextByLevel[1] = "";
     currentTextByLevel[2] = "";
 
-    openModal({
-      title: "Pontuação da missão",
-      bodyHTML: `
-        <ul style="margin:0; padding-left:18px; color:rgba(255,255,255,.78); line-height:1.7">
-          <li>Correção correta: <strong>+${SCORE_RULES.correct}</strong></li>
-          <li>Correção incorreta: <strong>${SCORE_RULES.wrong}</strong></li>
-          <li>Avançar sem concluir: <strong>${SCORE_RULES.skip}</strong></li>
-          <li>Colas utilizadas: <strong>${SCORE_RULES.hint}</strong></li>
-          <li>Correção automática: <strong>${SCORE_RULES.auto}</strong></li>
-        </ul>
-      `,
-      buttons: [{ label:"Começar", onClick: () => { closeModal(); showOnly(screenGame); startLevel(); } }]
-    });
-  });
+openModal({
+  title: "Pontuação da missão",
+  bodyHTML: `
+    <ul style="margin:0; padding-left:18px; color:rgba(255,255,255,.78); line-height:1.7">
+      <li>Correção correta: <strong>+${SCORE_RULES.correct}</strong></li>
+      <li>Correção incorreta: <strong>${SCORE_RULES.wrong}</strong></li>
+      <li>Avançar sem concluir: <strong>${SCORE_RULES.skip}</strong></li>
+      <li>Colas utilizadas: <strong>${SCORE_RULES.hint}</strong></li>
+      <li>Correção automática: <strong>${SCORE_RULES.auto}</strong></li>
+    </ul>
+
+    <hr style="border:0; border-top:1px solid rgba(255,255,255,.10); margin:14px 0">
+
+    <div class="auth-note" style="margin-top:0">
+      <b>Observação</b><br/>
+      Os erros e correções serão apresentados ao final da atividade.
+      Não se preocupe com seu desempenho: esta atividade busca interatividade e curiosidades sobre o trabalho editorial!
+    </div>
+  `,
+  buttons: [{ label:"Começar", onClick: () => { closeModal(); showOnly(screenGame); startLevel(); } }]
+});
+
 
   restartBtn?.addEventListener("click", () => showOnly(screenForm));
 
