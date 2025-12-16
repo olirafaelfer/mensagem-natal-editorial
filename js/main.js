@@ -184,6 +184,9 @@ const optRankingEl = document.getElementById("optRanking");
 /** =========================
  * Modal (FIXED + trava scroll no lugar certo)
  * ========================= */
+// =========================
+// Modal (abre no scroll atual, mobile-safe)
+// =========================
 const overlay = document.getElementById("overlay");
 const modalTitle = document.getElementById("modalTitle");
 const modalBody = document.getElementById("modalBody");
@@ -195,24 +198,16 @@ document.addEventListener("keydown", (e) => {
   if (e.key === "Escape" && overlay && !overlay.classList.contains("hidden")) closeModal();
 });
 
-function lockBodyScroll(){
-  const y = window.scrollY || 0;
-  document.body.dataset.scrollY = String(y);
-  document.body.classList.add("modal-open");
-  document.body.style.top = `-${y}px`;
-}
-
-function unlockBodyScroll(){
-  const y = Number(document.body.dataset.scrollY || "0");
-  document.body.classList.remove("modal-open");
-  document.body.style.top = "";
-  window.scrollTo(0, y);
-}
-
-function openModal({ title, bodyHTML, buttons=[] }){
+function openModal({ title, bodyHTML, buttons = [] }){
   if (!overlay) return;
 
-  lockBodyScroll();
+  // ✅ fixa o overlay na “altura” atual do scroll (não pula para o topo)
+  const y = window.scrollY || 0;
+  overlay.style.position = "absolute";
+  overlay.style.top = `${y}px`;
+  overlay.style.left = "0";
+  overlay.style.right = "0";
+  overlay.style.height = `${window.innerHeight}px`;
 
   if (modalTitle) modalTitle.textContent = title || "";
   if (modalBody) modalBody.innerHTML = bodyHTML || "";
@@ -236,7 +231,9 @@ function closeModal(){
   overlay.classList.remove("show");
   setTimeout(() => {
     overlay.classList.add("hidden");
-    unlockBodyScroll();
+    overlay.style.top = "";
+    overlay.style.height = "";
+    overlay.style.position = "";
   }, 180);
 }
 
@@ -1624,5 +1621,6 @@ setTimeout(() => {
 }, 1100);
 if (finalMsgsWrap) finalMsgsWrap.classList.add("hidden");
 if (toggleFinalMsgsBtn) toggleFinalMsgsBtn.textContent = "Ver mensagens corrigidas";
+
 
 
