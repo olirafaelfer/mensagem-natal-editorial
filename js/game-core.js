@@ -78,7 +78,6 @@ export function bootGameCore(app){
 
   const finalCongrats = document.getElementById("finalCongrats");
   const finalStats = document.getElementById("finalStats");
-  const finalRecado = document.getElementById("finalRecado");
   const finalBox1 = document.getElementById("finalBox1");
   const finalBox2 = document.getElementById("finalBox2");
   const finalBox3 = document.getElementById("finalBox3");
@@ -835,15 +834,6 @@ export function bootGameCore(app){
         }
       };
     }
-
-    if (finalRecado){
-      finalRecado.innerHTML = `
-        <p class="muted" style="margin:0">
-          Dica: nas mensagens abaixo, clique nos trechos <span class="final-correct">verdes</span> e <span class="final-wrong">vermelhos</span> para ver a explicação.
-        </p>
-      `;
-    }
-
     if (headerTitle) headerTitle.textContent = "Missão concluída 🎄";
     showOnly(screenFinal);
   }
