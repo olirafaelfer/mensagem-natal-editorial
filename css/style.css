@@ -36,8 +36,12 @@ body{
 
 /* 🔒 quando modal abre: trava o fundo no lugar correto (mobile-friendly) */
 body.modal-open{
+  position: fixed;          /* ✅ ESSENCIAL pro “não pular” e pro modal não ir pro topo */
+  left: 0;
+  right: 0;
   width: 100%;
   overflow: hidden;
+  overscroll-behavior: contain;
 }
 
 /* =========================
@@ -87,6 +91,15 @@ hr{
   opacity: .22;
 }
 
+/* (opcional) se você usar class="reindeer-layer" no HTML */
+.reindeer-layer{
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  opacity: .22;
+}
+
 .reindeer{
   position: absolute;
   left: -15vw;
@@ -115,13 +128,13 @@ hr{
   display: flex;
   flex-direction: column;
 }
+
 /* wrapper central (igual mobile, mesmo no desktop) */
 .container{
   width: min(560px, calc(100% - 32px)); /* 560px deixa bem “mobile-like” */
   margin-left: auto;
   margin-right: auto;
 }
-
 
 /* fallback se NÃO tiver container */
 .app > .topbar,
@@ -592,17 +605,25 @@ select.input option{
 /* =========================
    Modal / Overlay
    ========================= */
+
+/* (opcional) se você deixou class="overlay" no HTML */
+.overlay{}
+
+/* ✅ overlay sempre preso ao viewport, centralizando o modal */
 #overlay{
   position: fixed;
   inset: 0;
   z-index: 999;
-  display: grid;
-  place-items: center;
+  display: flex;                 /* ✅ flex = central consistente */
+  align-items: center;
+  justify-content: center;
   padding: 18px;
   background: rgba(0,0,0,.55);
   opacity: 0;
   pointer-events: none;
   transition: opacity 180ms ease;
+
+  min-height: 100dvh;            /* ✅ evita bugs em mobile com barra do navegador */
 }
 #overlay.show{
   opacity: 1;
@@ -618,7 +639,7 @@ select.input option{
   overflow: hidden;
 
   /* ✅ evita “modal esquisita” em telas pequenas */
-  max-height: calc(100vh - 36px);
+  max-height: calc(100dvh - 36px);
 
   transform: translateY(10px) scale(.99);
   transition: transform 180ms ease;
@@ -646,7 +667,7 @@ select.input option{
 
   /* ✅ scroll interno (melhora no mobile e evita “pular”) */
   overflow: auto;
-  max-height: calc(100vh - 200px);
+  max-height: calc(100dvh - 200px);
   -webkit-overflow-scrolling: touch;
 }
 
@@ -866,6 +887,10 @@ select.input option{
 @supports not (color: color-mix(in srgb, red 50%, white)) {
   a{ color: #ff8a80; }
 }
+
+/* =========================
+   Tip (tooltip)
+   ========================= */
 .tip{
   position: fixed;
   z-index: 10000;
@@ -899,4 +924,3 @@ select.input option{
 .tip-muted{
   color: rgba(255,255,255,.68);
 }
-
