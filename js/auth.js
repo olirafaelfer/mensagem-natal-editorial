@@ -32,6 +32,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
 
 export function bootAuth(app) {
+  // ✅ blindagem contra boot duplicado
   if (app.__AUTH_BOOTED__ === true) {
     console.warn("[auth] bootAuth já executado. Ignorando segunda inicialização.");
     return;
@@ -52,28 +53,35 @@ export function bootAuth(app) {
     return;
   }
 
+  // --- DOM principal (form do jogo) ---
   const nameEl = document.getElementById("userName");
   const sectorEl = document.getElementById("userSector");
   const optRankingEl = document.getElementById("optRanking");
 
+  // botão do topo (se existir)
   const authBtn =
     document.getElementById("authBtn") ||
     document.getElementById("loginBtn") ||
     document.getElementById("userBtn") ||
     document.getElementById("accountBtn");
 
+  // Estado
   let currentUser = null;
   let currentProfile = null;
   let gateOpen = false;
   let busy = false;
 
+  // API p/ outros módulos
   app.auth = {
     isLogged: () => !!currentUser,
     getProfile: () => currentProfile,
     getUser: () => currentUser,
     openGate: () => openAuthGate({ force: false }),
     openAccount: () => (currentUser ? openAccountPanel() : openAuthGate({ force: false })),
-    canRank: () => !!currentUser && !!optRankingEl?.checked && localStorage.getItem("mission_optout_ranking") !== "1",
+    canRank: () =>
+      !!currentUser &&
+      !!optRankingEl?.checked &&
+      localStorage.getItem("mission_optout_ranking") !== "1",
   };
 
   authBtn?.addEventListener("click", () => {
@@ -81,9 +89,15 @@ export function bootAuth(app) {
     else openAuthGate({ force: false });
   });
 
+  // =============================
+  // Auth state
+  // =============================
   onAuthStateChanged(auth, async (user) => {
     currentUser = user || null;
     currentProfile = null;
+
+    // ✅ evita busy “grudar”
+    busy = false;
 
     if (currentUser) {
       currentProfile = await fetchOrCreateProfile(currentUser).catch((e) => {
@@ -94,10 +108,14 @@ export function bootAuth(app) {
       if (currentProfile) applyLoggedProfileToForm(currentProfile);
       else lockIdentityFields(true);
 
-      // ✅ sincroniza optout com o checkbox
-      if (optRankingEl?.checked) localStorage.setItem("mission_optout_ranking", "0");
-      else localStorage.setItem("mission_optout_ranking", "1");
+      // ✅ sincroniza optout com checkbox quando logado
+      if (optRankingEl) {
+        localStorage.setItem("mission_optout_ranking", optRankingEl.checked ? "0" : "1");
+      } else {
+        localStorage.setItem("mission_optout_ranking", "0");
+      }
 
+      // fecha gate se estava aberto
       if (gateOpen) {
         gateOpen = false;
         unlockModalCloseUI();
@@ -109,41 +127,45 @@ export function bootAuth(app) {
     }
   });
 
-optRankingEl?.addEventListener("change", () => {
-  if (!optRankingEl) return;
+  // =============================
+  // Ranking toggle
+  // =============================
+  optRankingEl?.addEventListener("change", () => {
+    if (!optRankingEl) return;
 
-  // só bloqueia quando está tentando LIGAR o ranking
-  if (!currentUser && optRankingEl.checked) {
-    optRankingEl.checked = false;
-    localStorage.setItem("mission_optout_ranking", "1");
+    // Se NÃO logado e tentou LIGAR ranking -> bloqueia e abre gate
+    if (!currentUser && optRankingEl.checked) {
+      optRankingEl.checked = false;
+      localStorage.setItem("mission_optout_ranking", "1");
 
-    openModal({
-      title: "Ranking requer cadastro",
-      bodyHTML: `
-        <p>Para participar do ranking, é necessário <strong>criar uma conta</strong> ou <strong>fazer login</strong>.</p>
-        <p class="muted" style="margin-top:10px">Você pode continuar no modo anônimo, mas sem ranking.</p>
-      `,
-      buttons: [
-        { label: "Ok", onClick: closeModal },
-        {
-          label: "Fazer login",
-          onClick: () => {
-            closeModal();
-            setTimeout(() => openAuthGate({ force: true }), 120);
+      openModal({
+        title: "Ranking requer cadastro",
+        bodyHTML: `
+          <p>Para participar do ranking, é necessário <strong>criar uma conta</strong> ou <strong>fazer login</strong>.</p>
+          <p class="muted" style="margin-top:10px">Você pode continuar no modo anônimo, mas sem ranking.</p>
+        `,
+        buttons: [
+          { label: "Ok", onClick: closeModal },
+          {
+            label: "Fazer login",
+            onClick: () => {
+              closeModal();
+              // ✅ esperar o modal fechar antes de abrir o gate
+              setTimeout(() => openAuthGate({ force: true }), 160);
+            },
           },
-        },
-      ],
-    });
-  }
-});
+        ],
+      });
 
+      return;
+    }
 
-    // logado: respeita
+    // Logado: respeita toggle
     localStorage.setItem("mission_optout_ranking", optRankingEl.checked ? "0" : "1");
   });
 
   // =============================
-  // GATE
+  // GATE (login/cadastro/anon)
   // =============================
   function openAuthGate({ force } = { force: false }) {
     if (currentUser && !force) {
@@ -157,7 +179,7 @@ optRankingEl?.addEventListener("change", () => {
     openModal({
       title: "🔐 Entrar ou criar conta",
       bodyHTML: renderAuthHTML(),
-      buttons: [],
+      buttons: [], // sem fechar no gate inicial
     });
 
     lockModalCloseUI();
@@ -243,6 +265,15 @@ optRankingEl?.addEventListener("change", () => {
     `;
   }
 
+  function wireAuthDelegationHandlers() {
+    const root = getModalBody();
+    if (!root) {
+      console.warn("[auth] #modalBody não encontrado para wire.");
+      return;
+    }
+    root.onclick = gateClickHandler;
+  }
+
   function gateClickHandler(ev) {
     const root = getModalBody();
     if (!root) return;
@@ -250,6 +281,7 @@ optRankingEl?.addEventListener("change", () => {
     const t = ev.target instanceof HTMLElement ? ev.target : null;
     if (!t) return;
 
+    // Tabs
     const tab = t.closest(".auth-tab");
     if (tab) {
       const key = tab.getAttribute("data-tab");
@@ -258,24 +290,15 @@ optRankingEl?.addEventListener("change", () => {
       return;
     }
 
+    // Actions
     const actBtn = t.closest("[data-action]");
     if (actBtn) {
       const action = actBtn.getAttribute("data-action");
-
       if (action === "login") doLogin();
       if (action === "signup") doSignup();
       if (action === "forgot") openForgotPassword();
       if (action === "anon") enterAnonymous();
     }
-  }
-
-  function wireAuthDelegationHandlers() {
-    const root = getModalBody();
-    if (!root) {
-      console.warn("[auth] #modalBody não encontrado para wire.");
-      return;
-    }
-    root.onclick = gateClickHandler;
   }
 
   function setGateTab(which) {
@@ -304,6 +327,12 @@ optRankingEl?.addEventListener("change", () => {
     }
   }
 
+  function focusInGate() {
+    const root = getModalBody();
+    if (!root) return;
+    root.querySelector('[data-auth="loginEmail"]')?.focus();
+  }
+
   function enterAnonymous() {
     if (busy) return;
     busy = true;
@@ -316,12 +345,6 @@ optRankingEl?.addEventListener("change", () => {
     lockIdentityFields(false);
 
     busy = false;
-  }
-
-  function focusInGate() {
-    const root = getModalBody();
-    if (!root) return;
-    root.querySelector('[data-auth="loginEmail"]')?.focus();
   }
 
   // =============================
@@ -344,6 +367,7 @@ optRankingEl?.addEventListener("change", () => {
     try {
       await signInWithEmailAndPassword(auth, email, pass);
       showStatus("Login realizado ✅", "ok");
+      // fecha via onAuthStateChanged
     } catch (e) {
       showStatus(humanAuthError(e), "error");
       busy = false;
@@ -384,6 +408,7 @@ optRankingEl?.addEventListener("change", () => {
       await setDoc(doc(db, "users", cred.user.uid), payload, { merge: true });
 
       showStatus("Conta criada ✅ Você já está logado.", "ok");
+      // fecha via onAuthStateChanged
     } catch (e) {
       showStatus(humanAuthError(e), "error");
       busy = false;
@@ -396,6 +421,7 @@ optRankingEl?.addEventListener("change", () => {
   function openForgotPassword() {
     unlockModalCloseUI();
     gateOpen = false;
+    busy = false;
 
     openModal({
       title: "🔁 Recuperar senha",
@@ -412,7 +438,7 @@ optRankingEl?.addEventListener("change", () => {
         <div id="authResetStatus" class="auth-status show"></div>
       `,
       buttons: [
-        { label: "Voltar", variant: "ghost", onClick: () => { closeModal(); openAuthGate({ force: true }); } },
+        { label: "Voltar", variant: "ghost", onClick: () => { closeModal(); setTimeout(() => openAuthGate({ force: true }), 80); } },
         {
           label: "Enviar link",
           onClick: async () => {
@@ -486,7 +512,6 @@ optRankingEl?.addEventListener("change", () => {
       document.getElementById("authLogoutBtn")?.addEventListener("click", doLogout);
       document.getElementById("authDeleteBtn")?.addEventListener("click", confirmDeleteAccount);
 
-      // ✅ carrega ranking pessoal e posição
       loadMyRankingIntoAccount().catch((e) => {
         console.warn("[auth] loadMyRankingIntoAccount falhou:", e);
         const el = document.getElementById("myRankLine");
@@ -500,7 +525,6 @@ optRankingEl?.addEventListener("change", () => {
     if (!el) return;
     if (!currentUser) { el.textContent = "Você não está logado."; return; }
 
-    // 1) pega meu doc
     const myRef = doc(db, "individualRanking", currentUser.uid);
     const mySnap = await getDoc(myRef);
 
@@ -512,8 +536,6 @@ optRankingEl?.addEventListener("change", () => {
     const my = mySnap.data() || {};
     const myScore = Number(my.score || 0);
 
-    // 2) calcula minha posição varrendo ranking (projeto interno, ok)
-    // Se ficar pesado depois, a gente otimiza com um índice/consulta.
     const qAll = query(collection(db, "individualRanking"), orderBy("score", "desc"));
     const snap = await getDocs(qAll);
 
@@ -543,7 +565,7 @@ optRankingEl?.addEventListener("change", () => {
       lockIdentityFields(false);
 
       closeModal();
-      setTimeout(() => openAuthGate({ force: true }), 80);
+      setTimeout(() => openAuthGate({ force: true }), 120);
     } catch (e) {
       openModal({
         title: "Erro",
@@ -581,13 +603,8 @@ optRankingEl?.addEventListener("change", () => {
     try {
       const uid = currentUser.uid;
 
-      // profile
       await deleteDoc(doc(db, "users", uid));
-
-      // ✅ ranking individual (docId = uid)
-      await deleteDoc(doc(db, "individualRanking", uid));
-
-      // Auth user
+      await deleteDoc(doc(db, "individualRanking", uid)); // ✅ ranking pessoal
       await deleteUser(currentUser);
 
       gateOpen = false;
@@ -597,8 +614,7 @@ optRankingEl?.addEventListener("change", () => {
       lockIdentityFields(false);
 
       closeModal();
-      setTimeout(() => openAuthGate({ force: true }), 80);
-
+      setTimeout(() => openAuthGate({ force: true }), 120);
     } catch (e) {
       const msg = humanAuthError(e);
       openModal({
@@ -664,10 +680,29 @@ optRankingEl?.addEventListener("change", () => {
   }
 
   function lockIdentityFields(locked) {
-    if (nameEl) locked ? nameEl.setAttribute("disabled","disabled") : nameEl.removeAttribute("disabled");
-    if (sectorEl) locked ? sectorEl.setAttribute("disabled","disabled") : sectorEl.removeAttribute("disabled");
+    if (nameEl) {
+      if (locked) {
+        nameEl.setAttribute("disabled", "disabled");
+        nameEl.classList.add("auth-locked");
+      } else {
+        nameEl.removeAttribute("disabled");
+        nameEl.classList.remove("auth-locked");
+      }
+    }
+    if (sectorEl) {
+      if (locked) {
+        sectorEl.setAttribute("disabled", "disabled");
+        sectorEl.classList.add("auth-locked");
+      } else {
+        sectorEl.removeAttribute("disabled");
+        sectorEl.classList.remove("auth-locked");
+      }
+    }
   }
 
+  // =============================
+  // Helpers
+  // =============================
   function getModalBody() {
     return document.getElementById("modalBody");
   }
@@ -734,6 +769,9 @@ optRankingEl?.addEventListener("change", () => {
     return v.length > max ? v.slice(0, max) : v;
   }
 
+  // =============================
+  // Modal close lock (gate inicial)
+  // =============================
   function lockModalCloseUI() {
     const closeX = document.getElementById("closeModal");
     if (closeX) closeX.style.display = "none";
@@ -770,6 +808,9 @@ optRankingEl?.addEventListener("change", () => {
     if (optRankingEl) optRankingEl.checked = false;
   }
 
+  // =============================
+  // Abrir automático no start
+  // =============================
   setTimeout(() => {
     if (!currentUser) openAuthGate({ force: true });
   }, 50);
