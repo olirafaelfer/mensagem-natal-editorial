@@ -8,6 +8,9 @@ import {
   query, orderBy, limit
 } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
 
+/* =========================
+   THEME PRESETS
+========================= */
 const THEME_PRESETS = {
   classic: { name:"Clássico", accent:"#e53935", bg:"#0b1020" },
   candy:   { name:"Candy Cane", accent:"#ff2e63", bg:"#140a12" },
@@ -15,7 +18,6 @@ const THEME_PRESETS = {
   aurora:  { name:"Aurora", accent:"#7c4dff", bg:"#071022" },
   gold:    { name:"Dourado", accent:"#ffcc00", bg:"#140f02" },
 };
-
 
 /* =========================
    Firebase config
@@ -38,7 +40,7 @@ const db = getFirestore(fbApp);
 const firebase = {
   db,
 
-  // ✅ atalho direto (ranking.js e outros módulos antigos costumam chamar fb.collection, fb.query etc.)
+  // atalhos (módulos chamam fb.collection/fb.query/...)
   doc,
   getDoc,
   runTransaction,
@@ -50,7 +52,7 @@ const firebase = {
   orderBy,
   limit,
 
-  // ✅ mantém também o namespace fs, caso algum módulo use fb.fs.*
+  // mantém também namespace fs (caso algum módulo use fb.fs.*)
   fs: {
     doc,
     getDoc,
@@ -64,7 +66,6 @@ const firebase = {
     limit
   }
 };
-
 
 /* =========================
    Constantes globais
@@ -87,7 +88,7 @@ const SCORE_RULES = {
 };
 
 /* =========================
-   Levels / Conteúdo
+   Levels / Conteúdo (o game-core usa app.data.levels)
 ========================= */
 const levels = [
   {
@@ -97,9 +98,9 @@ Ele escreveu tão rápido que acabou deixando três errinhos para trás.`,
     instruction: `Os erros podem envolver acentuação, ortografia, gramática etc. Clique nos trechos incorretos para corrigir!`,
     raw: `Mais do que presentes e refeissões caprichadas, o Natal é a época de lembrar o valor de um abraço apertado e de um sorriso sincero! Que para voces, meus amigos, seja uma época xeia de carinho e amor, preenchida pelo que realmente importa nessa vida!`,
     rules: [
-      { id:"f1", label:"Ortografia", wrong:/\brefeissões\b/g, correct:"refeições", explain:"Erro ortográfico. A forma correta do substantivo é 'refeições'." },
-      { id:"f2", label:"Acentuação", wrong:/\bvoces\b/g, correct:"vocês", explain:"Erro de acentuação gráfica." },
-      { id:"f3", label:"Ortografia", wrong:/\bxeia\b/g, correct:"cheia", explain:"Erro ortográfico. A palavra correta é 'cheia'." }
+      { id:"f1", label:"Ortografia", wrong:/\brefeissões\b/g, correct:"refeições", reason:"Erro ortográfico. A forma correta do substantivo é 'refeições'." },
+      { id:"f2", label:"Acentuação", wrong:/\bvoces\b/g, correct:"vocês", reason:"Erro de acentuação gráfica." },
+      { id:"f3", label:"Ortografia", wrong:/\bxeia\b/g, correct:"cheia", reason:"Erro ortográfico. A palavra correta é 'cheia'." }
     ]
   },
   {
@@ -108,11 +109,11 @@ Ele escreveu tão rápido que acabou deixando três errinhos para trás.`,
     instruction: `Atenção a vírgulas indevidas e concordância.`,
     raw: `O Natal, é um momento especial para celebrar a união e a esperança. As mensagens, que circulam nessa época, precisam transmitir carinho e acolhimento, mas muitas vezes, acabam sendo escritas de forma apressada. Os textos natalinos, exige atenção aos detalhes, para que a mensagem chegue clara ao leitor.`,
     rules: [
-      { id:"m1", label:"Pontuação", wrong:/(?<=\bNatal),/g, correct:"", explain:"Vírgula indevida entre sujeito e verbo." },
-      { id:"m2", label:"Pontuação", wrong:/(?<=\bmensagens),/g, correct:"", explain:"Vírgula indevida em oração restritiva." },
-      { id:"m3", label:"Pontuação", wrong:/(?<=\bvezes),/g, correct:"", explain:"Vírgula indevida entre adjunto e verbo." },
-      { id:"m4", label:"Pontuação", wrong:/(?<=\bnatalinos),/g, correct:"", explain:"Vírgula indevida separando termos essenciais." },
-      { id:"m5", label:"Concordância", wrong:/\bexige\b/g, correct:"exigem", explain:"Sujeito plural exige verbo no plural." }
+      { id:"m1", label:"Pontuação", wrong:/(?<=\bNatal),/g, correct:"", reason:"Vírgula indevida entre sujeito e verbo." },
+      { id:"m2", label:"Pontuação", wrong:/(?<=\bmensagens),/g, correct:"", reason:"Vírgula indevida em oração restritiva." },
+      { id:"m3", label:"Pontuação", wrong:/(?<=\bvezes),/g, correct:"", reason:"Vírgula indevida entre adjunto e verbo." },
+      { id:"m4", label:"Pontuação", wrong:/(?<=\bnatalinos),/g, correct:"", reason:"Vírgula indevida separando termos essenciais." },
+      { id:"m5", label:"Concordância", wrong:/\bexige\b/g, correct:"exigem", reason:"Sujeito plural exige verbo no plural." }
     ]
   },
   {
@@ -121,9 +122,9 @@ Ele escreveu tão rápido que acabou deixando três errinhos para trás.`,
     instruction: `Pontuação, gramática e colocação pronominal.`,
     raw: `No Natal, se deve pensar no amor ao próximo e na importância da empatia. Aos pais, respeite-os; aos filhos, os ame; aos necessitados, ajude-os. Essas atitudes, reforçam os valores natalinos.`,
     rules: [
-      { id:"d1", label:"Colocação pronominal", wrong:/No Natal,\s*se deve pensar/g, correct:"No Natal, deve-se pensar", explain:"Colocação pronominal correta: deve-se." },
-      { id:"d2", label:"Colocação pronominal", wrong:/aos filhos,\s*os ame/gi, correct:"aos filhos, ame-os", explain:"Colocação pronominal adequada." },
-      { id:"d3", label:"Pontuação", wrong:/(?<=\batitudes),/g, correct:"", explain:"Vírgula indevida entre sujeito e predicado." }
+      { id:"d1", label:"Colocação pronominal", wrong:/No Natal,\s*se deve pensar/g, correct:"No Natal, deve-se pensar", reason:"Colocação pronominal correta: deve-se." },
+      { id:"d2", label:"Colocação pronominal", wrong:/aos filhos,\s*os ame/gi, correct:"aos filhos, ame-os", reason:"Colocação pronominal adequada." },
+      { id:"d3", label:"Pontuação", wrong:/(?<=\batitudes),/g, correct:"", reason:"Vírgula indevida entre sujeito e predicado." }
     ]
   }
 ];
@@ -195,33 +196,8 @@ const dom = {
   optRankingEl: document.getElementById("optRanking"),
   lgpdMoreBtn: document.getElementById("lgpdMoreBtn"),
 
-  levelLabel: document.getElementById("levelLabel"),
-  remainingCount: document.getElementById("remainingCount"),
-  totalFixEl: document.getElementById("totalFix"),
-  wrongCountEl: document.getElementById("wrongCount"),
-  scoreCountEl: document.getElementById("scoreCount"),
-  instruction: document.getElementById("instruction"),
-  messageArea: document.getElementById("messageArea"),
-
-  hintBtn: document.getElementById("hintBtn"),
-  nextLevelBtn: document.getElementById("nextLevelBtn"),
-  autoFixBtn: document.getElementById("autoFixBtn"),
-  openCustomizeInline: document.getElementById("openCustomizeInline"),
-
-  finalCongrats: document.getElementById("finalCongrats"),
-  finalStats: document.getElementById("finalStats"),
-  finalRecado: document.getElementById("finalRecado"),
-  finalBox1: document.getElementById("finalBox1"),
-  finalBox2: document.getElementById("finalBox2"),
-  finalBox3: document.getElementById("finalBox3"),
-  restartBtn: document.getElementById("restartBtn"),
   finalRankingBtn: document.getElementById("finalRankingBtn"),
-  reviewBtn1: document.getElementById("reviewBtn1"),
-  reviewBtn2: document.getElementById("reviewBtn2"),
-  reviewBtn3: document.getElementById("reviewBtn3"),
-
-  toggleFinalMsgsBtn: document.getElementById("toggleFinalMsgs"),
-  finalMsgsWrap: document.getElementById("finalMsgsWrap"),
+  openCustomizeInline: document.getElementById("openCustomizeInline"),
 
   reindeerLayer: document.getElementById("reindeerLayer"),
   snowCanvas: document.getElementById("snow")
@@ -238,7 +214,6 @@ function showOnly(screen){
 function getUserName(){
   return clampName((dom.userNameEl?.value || localStorage.getItem("mission_name") || "").trim());
 }
-
 function getUserSector(){
   return (dom.userSectorEl?.value || localStorage.getItem("mission_sector") || "").trim();
 }
@@ -254,13 +229,8 @@ const app = {
     SECTORS,
     SCORE_RULES,
     levels,
-
-    // ✅ para o theme-fx não quebrar em Object.entries(...)
     THEME_PRESETS
   },
-
-  // ✅ opcional: alguns módulos podem preferir este nome
-  themePresets: THEME_PRESETS,
 
   utils: {
     escapeHtml,
@@ -275,25 +245,21 @@ const app = {
   ui: { showOnly }
 };
 
-
-// opcional para debug
+// debug opcional
 window.__MISSION_APP__ = app;
 
 /* =========================
-   Boot seguro (NÃO trava tudo se um módulo vier com nome diferente)
+   Boot seguro
 ========================= */
 function pickBoot(mod, candidates){
   if (!mod) return null;
 
-  // export nomeado
   for (const k of candidates){
     if (typeof mod[k] === "function") return mod[k];
   }
 
-  // default pode ser função
   if (typeof mod.default === "function") return mod.default;
 
-  // default pode ser objeto com função
   if (mod.default && typeof mod.default === "object"){
     for (const k of candidates){
       if (typeof mod.default[k] === "function") return mod.default[k];
@@ -315,31 +281,15 @@ async function bootAll(){
     const bootRanking = pickBoot(rankingMod, ["bootRanking", "boot", "init"]);
     const bootGame    = pickBoot(gameMod,    ["bootGame", "bootGameCore", "boot", "init"]);
 
-    // chama na ordem
-    if (!bootModal)   console.warn("⚠️ ui-modal.js sem função de boot exportada (esperado: bootModal/boot/init).");
-    else bootModal(app);
-
-    if (!bootThemeFx) console.warn("⚠️ theme-fx.js sem função de boot exportada (esperado: bootThemeFx/bootTheme/boot/init).");
-    else bootThemeFx(app);
-
-    if (!bootRanking) console.warn("⚠️ ranking.js sem função de boot exportada (esperado: bootRanking/boot/init).");
-    else bootRanking(app);
-
-    if (!bootGame) {
-      console.error("❌ game-core.js não exportou função de boot (bootGame/bootGameCore/boot/init).");
-      // não explode tudo: deixa ao menos Form aparecer
-      app.ui.showOnly(app.dom.screenForm);
-      return;
-    }
-    bootGame(app);
+    bootModal?.(app);
+    bootThemeFx?.(app);
+    bootRanking?.(app);
+    bootGame?.(app);
 
   } catch (err) {
     console.error("❌ Falha no boot dos módulos:", err);
-    // fallback mínimo: mostra tela de formulário
     app.ui.showOnly(app.dom.screenForm);
   }
 }
 
 bootAll();
-
-
