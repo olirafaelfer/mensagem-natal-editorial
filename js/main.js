@@ -289,21 +289,36 @@ async function bootAll(){
     const rankingMod = await import("./ranking.js");
     const gameMod    = await import("./game-core.js");
     const adminMod   = await import("./admin.js");
-    const authMod    = await import("./auth.js"); // ✅ novo
+    const authMod    = await import("./auth.js"); // ✅ auth
 
     const bootModal   = pickBoot(modalMod,   ["bootModal", "boot", "init"]);
     const bootThemeFx = pickBoot(themeMod,   ["bootThemeFx", "bootTheme", "boot", "init"]);
     const bootRanking = pickBoot(rankingMod, ["bootRanking", "boot", "init"]);
     const bootGame    = pickBoot(gameMod,    ["bootGame", "bootGameCore", "boot", "init"]);
     const bootAdmin   = pickBoot(adminMod,   ["bootAdmin", "boot", "init"]);
-    const bootAuth    = pickBoot(authMod,    ["bootAuth", "boot", "init"]); // ✅ novo
+    const bootAuth    = pickBoot(authMod,    ["bootAuth", "boot", "init"]); // ✅ auth
 
     bootModal?.(app);
     bootThemeFx?.(app);
     bootRanking?.(app);
     bootGame?.(app);
     bootAdmin?.(app);
-    bootAuth?.(app); // ✅ novo
+    bootAuth?.(app); // ✅ inicializa auth
+
+    /* =========================
+       🔐 ABRIR AUTH AUTOMATICAMENTE
+       ========================= */
+
+    // espera o loading fake terminar
+    setTimeout(() => {
+      if (app.auth?.isLogged?.()) {
+        // usuário já logado → não força auth
+        return;
+      }
+
+      // abre login/cadastro/anônimo automaticamente
+      app.auth?.openAuthGate?.();
+    }, 1200);
 
   } catch (err) {
     console.error("❌ Falha no boot dos módulos:", err);
@@ -312,6 +327,8 @@ async function bootAll(){
 }
 
 bootAll();
+
+
 
 
 
