@@ -970,7 +970,7 @@ openModal({
   `,
   buttons: [{ label:"Começar", onClick: () => { closeModal(); showOnly(screenGame); startLevel(); } }]
 });
-
+});
 
   restartBtn?.addEventListener("click", () => showOnly(screenForm));
 
