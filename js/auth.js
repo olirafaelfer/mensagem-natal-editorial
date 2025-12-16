@@ -8,6 +8,11 @@
 // ✅ evita listeners duplicados (handler fixo + root.onclick)
 // ✅ evita double click (busy lock)
 // ✅ evita boot duplicado (app.__AUTH_BOOTED__)
+//
+// Ajustes solicitados agora:
+// ✅ Logout efetivo + ao sair vira anônimo (desmarca ranking / libera nome+setor)
+// ✅ Ao deletar conta: apaga também ranking individual do usuário (individualRanking)
+// ✅ Ao deslogar (logout/delete): bloqueia ranking e libera nome+setor
 
 import {
   getAuth,
@@ -99,13 +104,19 @@ export function bootAuth(app) {
         closeModal();
       }
     } else {
-      lockIdentityFields(false);
+      // ✅ ao deslogar (logout/delete): volta para anônimo (sem ranking)
+      setAnonymousMode({ reopenGate: false });
     }
+
+    // ✅ garante que não fique "travado" por clique anterior
+    busy = false;
   });
 
   // bloqueia ranking no anônimo
   optRankingEl?.addEventListener("change", () => {
     if (!optRankingEl) return;
+
+    // Se marcou ranking e NÃO está logado -> bloqueia
     if (optRankingEl.checked && !currentUser) {
       optRankingEl.checked = false;
       localStorage.setItem("mission_optout_ranking", "1");
@@ -301,10 +312,7 @@ export function bootAuth(app) {
     unlockModalCloseUI();
     closeModal();
 
-    localStorage.setItem("mission_optout_ranking", "1");
-    if (optRankingEl) optRankingEl.checked = false;
-
-    lockIdentityFields(false);
+    setAnonymousMode({ reopenGate: false });
 
     busy = false;
   }
@@ -467,6 +475,7 @@ export function bootAuth(app) {
         </div>
 
         <p class="auth-mini" style="margin-top:12px">
+          Ao deletar a conta, seu ranking individual será removido.
           Se aparecer erro de segurança ao deletar, faça login novamente e tente de novo.
         </p>
       `,
@@ -486,6 +495,10 @@ export function bootAuth(app) {
     try {
       await signOut(auth);
       closeModal();
+
+      // ✅ reforço (caso onAuthStateChanged demore): já volta anônimo agora
+      setAnonymousMode({ reopenGate: true });
+
     } catch (e) {
       openModal({
         title: "Erro",
@@ -502,7 +515,7 @@ export function bootAuth(app) {
       title: "⚠️ Deletar conta",
       bodyHTML: `
         <p><strong>Tem certeza?</strong></p>
-        <p class="muted">Isso remove seu perfil e encerra seu acesso.</p>
+        <p class="muted">Isso remove seu perfil, seu ranking individual e encerra seu acesso.</p>
       `,
       buttons: [
         { label: "Cancelar", variant: "ghost", onClick: closeModal },
@@ -521,20 +534,26 @@ export function bootAuth(app) {
     });
 
     try {
+      // ✅ 1) apagar ranking individual do usuário (best effort)
+      await deleteMyIndividualRanking().catch((e) => {
+        console.warn("[auth] falha ao apagar individualRanking do usuário:", e);
+      });
+
+      // ✅ 2) apagar profile
       await deleteDoc(doc(db, "users", currentUser.uid));
+
+      // ✅ 3) apagar usuário do Auth
       await deleteUser(currentUser);
 
       // ✅ encerra tudo e volta para modo anônimo, sem ranking
       gateOpen = false;
       unlockModalCloseUI();
 
-      localStorage.setItem("mission_optout_ranking", "1");
-      if (optRankingEl) optRankingEl.checked = false;
-
-      lockIdentityFields(false);
+      setAnonymousMode({ reopenGate: true });
 
       closeModal();
 
+      // opcional: reabrir gate já
       setTimeout(() => {
         openAuthGate({ force: true });
       }, 80);
@@ -554,6 +573,25 @@ export function bootAuth(app) {
     }
   }
 
+  // =============================
+  // Deletar ranking individual do usuário
+  // =============================
+  async function deleteMyIndividualRanking() {
+    // A forma mais confiável no seu projeto atual é pelo docId determinístico:
+    // individualDocId(name, sector) (mesma ideia que você já usa no main/ranking)
+    const name = currentProfile?.name || (nameEl?.value || localStorage.getItem("mission_name") || "").trim();
+    const sector = currentProfile?.sector || (sectorEl?.value || localStorage.getItem("mission_sector") || "").trim();
+    if (!name || !sector) return;
+
+    const makeId = app.utils?.individualDocId;
+    if (typeof makeId !== "function") {
+      console.warn("[auth] app.utils.individualDocId não disponível. Não consegui inferir docId do ranking.");
+      return;
+    }
+
+    const docId = makeId(name, sector);
+    await deleteDoc(doc(db, "individualRanking", docId));
+  }
 
   // =============================
   // PROFILE
@@ -601,6 +639,7 @@ export function bootAuth(app) {
     if (profile.name) localStorage.setItem("mission_name", profile.name);
     if (profile.sector) localStorage.setItem("mission_sector", profile.sector);
 
+    // ✅ logado: pode escolher participar ou não do ranking (mantém toggle)
     lockIdentityFields(true);
   }
 
@@ -623,6 +662,26 @@ export function bootAuth(app) {
         sectorEl.removeAttribute("disabled");
         sectorEl.classList.remove("auth-locked");
       }
+    }
+  }
+
+  // =============================
+  // Modo anônimo (centralizado)
+  // =============================
+  function setAnonymousMode({ reopenGate } = { reopenGate: false }) {
+    // desabilita ranking e marca optout
+    localStorage.setItem("mission_optout_ranking", "1");
+    if (optRankingEl) optRankingEl.checked = false;
+
+    // libera nome / setor
+    lockIdentityFields(false);
+
+    // garante que "user" local do módulo não faça parecer logado
+    currentProfile = null;
+
+    // opcional: reabrir gate (útil no logout/delete)
+    if (reopenGate) {
+      // nada a fazer aqui por enquanto
     }
   }
 
