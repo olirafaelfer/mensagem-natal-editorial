@@ -34,14 +34,13 @@ body{
           contrast(calc(1.01 * var(--intensity)));
 }
 
-/* 🔒 quando modal abre: trava o fundo no lugar correto (mobile-friendly) */
+/* 🔒 quando modal abre: trava o fundo no lugar correto (mobile-friendly)
+   IMPORTANTÍSSIMO: o JS usa body.style.top = -scrollY.
+   Se o body não for fixed, o overlay "herda" o deslocamento e o modal parece abrir "no topo". */
 body.modal-open{
-  position: fixed;          /* ✅ ESSENCIAL pro “não pular” e pro modal não ir pro topo */
-  left: 0;
-  right: 0;
   width: 100%;
   overflow: hidden;
-  overscroll-behavior: contain;
+  position: fixed; /* ✅ corrige o efeito no desktop + mobile */
 }
 
 /* =========================
@@ -91,15 +90,6 @@ hr{
   opacity: .22;
 }
 
-/* (opcional) se você usar class="reindeer-layer" no HTML */
-.reindeer-layer{
-  position: fixed;
-  inset: 0;
-  z-index: 1;
-  pointer-events: none;
-  opacity: .22;
-}
-
 .reindeer{
   position: absolute;
   left: -15vw;
@@ -128,7 +118,6 @@ hr{
   display: flex;
   flex-direction: column;
 }
-
 /* wrapper central (igual mobile, mesmo no desktop) */
 .container{
   width: min(560px, calc(100% - 32px)); /* 560px deixa bem “mobile-like” */
@@ -605,26 +594,28 @@ select.input option{
 /* =========================
    Modal / Overlay
    ========================= */
-
-/* (opcional) se você deixou class="overlay" no HTML */
-.overlay{}
-
-/* ✅ overlay sempre preso ao viewport, centralizando o modal */
 #overlay{
   position: fixed;
   inset: 0;
   z-index: 999;
-  display: flex;                 /* ✅ flex = central consistente */
-  align-items: center;
-  justify-content: center;
+  display: grid;
+  place-items: center;
   padding: 18px;
   background: rgba(0,0,0,.55);
   opacity: 0;
   pointer-events: none;
   transition: opacity 180ms ease;
-
-  min-height: 100dvh;            /* ✅ evita bugs em mobile com barra do navegador */
 }
+
+/* ✅ evita que o overlay "suba pro topo" por causa do body.top=-scrollY */
+body.modal-open #overlay{
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  transform: none !important;
+}
+
 #overlay.show{
   opacity: 1;
   pointer-events: auto;
@@ -639,7 +630,7 @@ select.input option{
   overflow: hidden;
 
   /* ✅ evita “modal esquisita” em telas pequenas */
-  max-height: calc(100dvh - 36px);
+  max-height: calc(100vh - 36px);
 
   transform: translateY(10px) scale(.99);
   transition: transform 180ms ease;
@@ -667,7 +658,7 @@ select.input option{
 
   /* ✅ scroll interno (melhora no mobile e evita “pular”) */
   overflow: auto;
-  max-height: calc(100dvh - 200px);
+  max-height: calc(100vh - 200px);
   -webkit-overflow-scrolling: touch;
 }
 
@@ -889,7 +880,7 @@ select.input option{
 }
 
 /* =========================
-   Tip (tooltip)
+   Tip (seu tooltip)
    ========================= */
 .tip{
   position: fixed;
