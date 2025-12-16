@@ -4,15 +4,10 @@
 // - Logado trava nome/setor
 // - Anônimo não participa do ranking
 //
-// Correções importantes:
-// ✅ evita listeners duplicados (handler fixo + root.onclick)
-// ✅ evita double click (busy lock)
-// ✅ evita boot duplicado (app.__AUTH_BOOTED__)
-// ✅ CORREÇÃO: ranking voltando a funcionar para logados
-//    - limpa mission_optout_ranking ao logar (se optRanking estiver ON)
-//    - ao mudar optRanking logado, sincroniza localStorage
-// ✅ ao sair/deletar: desativa ranking + libera nome/setor
-// ✅ (opcional) ao deletar: apaga ranking individual do usuário (docId = uid)
+// ✅ Fix: ranking para logados volta a funcionar (optout sync)
+// ✅ Fix: ao sair/deletar -> desativa ranking e libera nome/setor
+// ✅ Fix: ao deletar -> apaga também o ranking individual (individualRanking/{uid})
+// ✅ Novo: "Minha conta" mostra pontuação + posição no ranking
 
 import {
   getAuth,
@@ -27,13 +22,16 @@ import {
 import {
   doc,
   getDoc,
+  getDocs,
   setDoc,
   deleteDoc,
   serverTimestamp,
+  collection,
+  query,
+  orderBy,
 } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
 
 export function bootAuth(app) {
-  // ✅ blindagem contra boot duplicado
   if (app.__AUTH_BOOTED__ === true) {
     console.warn("[auth] bootAuth já executado. Ignorando segunda inicialização.");
     return;
@@ -54,12 +52,10 @@ export function bootAuth(app) {
     return;
   }
 
-  // --- DOM principal (form do jogo) ---
   const nameEl = document.getElementById("userName");
   const sectorEl = document.getElementById("userSector");
   const optRankingEl = document.getElementById("optRanking");
 
-  // botão do topo (se você tiver)
   const authBtn =
     document.getElementById("authBtn") ||
     document.getElementById("loginBtn") ||
@@ -69,16 +65,14 @@ export function bootAuth(app) {
   let currentUser = null;
   let currentProfile = null;
   let gateOpen = false;
-  let busy = false; // ✅ trava para evitar clique duplo
+  let busy = false;
 
-  // API p/ outros módulos
   app.auth = {
     isLogged: () => !!currentUser,
     getProfile: () => currentProfile,
     getUser: () => currentUser,
     openGate: () => openAuthGate({ force: false }),
     openAccount: () => (currentUser ? openAccountPanel() : openAuthGate({ force: false })),
-    // helper p/ ranking.js (se quiser)
     canRank: () => !!currentUser && !!optRankingEl?.checked && localStorage.getItem("mission_optout_ranking") !== "1",
   };
 
@@ -100,38 +94,25 @@ export function bootAuth(app) {
       if (currentProfile) applyLoggedProfileToForm(currentProfile);
       else lockIdentityFields(true);
 
-      // ✅ CORREÇÃO: se o usuário está logado e o checkbox está ON,
-      // limpamos o opt-out para permitir gravar no ranking
-      if (optRankingEl?.checked) {
-        localStorage.setItem("mission_optout_ranking", "0");
-      } else {
-        // se ele prefere não participar mesmo logado
-        localStorage.setItem("mission_optout_ranking", "1");
-      }
+      // ✅ sincroniza optout com o checkbox
+      if (optRankingEl?.checked) localStorage.setItem("mission_optout_ranking", "0");
+      else localStorage.setItem("mission_optout_ranking", "1");
 
-      // se gate estava aberto, fecha
       if (gateOpen) {
         gateOpen = false;
         unlockModalCloseUI();
         closeModal();
       }
     } else {
-      // deslogado: libera campos
       lockIdentityFields(false);
-
-      // ✅ se deslogou, por segurança desativa ranking (anônimo não participa)
       forceAnonymousNoRanking();
     }
   });
 
-  // ✅ sincroniza optRanking com localStorage
-  // - logado: respeita checkbox
-  // - deslogado: se tentar ligar, bloqueia e força login
   optRankingEl?.addEventListener("change", () => {
     if (!optRankingEl) return;
 
     if (!currentUser) {
-      // anônimo não participa
       if (optRankingEl.checked) {
         optRankingEl.checked = false;
         localStorage.setItem("mission_optout_ranking", "1");
@@ -151,7 +132,7 @@ export function bootAuth(app) {
       return;
     }
 
-    // logado: atualiza opt-out conforme o checkbox
+    // logado: respeita
     localStorage.setItem("mission_optout_ranking", optRankingEl.checked ? "0" : "1");
   });
 
@@ -170,7 +151,7 @@ export function bootAuth(app) {
     openModal({
       title: "🔐 Entrar ou criar conta",
       bodyHTML: renderAuthHTML(),
-      buttons: [], // sem fechar no gate inicial
+      buttons: [],
     });
 
     lockModalCloseUI();
@@ -256,7 +237,6 @@ export function bootAuth(app) {
     `;
   }
 
-  // ✅ handler fixo (referência estável)
   function gateClickHandler(ev) {
     const root = getModalBody();
     if (!root) return;
@@ -264,7 +244,6 @@ export function bootAuth(app) {
     const t = ev.target instanceof HTMLElement ? ev.target : null;
     if (!t) return;
 
-    // Tabs
     const tab = t.closest(".auth-tab");
     if (tab) {
       const key = tab.getAttribute("data-tab");
@@ -273,7 +252,6 @@ export function bootAuth(app) {
       return;
     }
 
-    // Actions
     const actBtn = t.closest("[data-action]");
     if (actBtn) {
       const action = actBtn.getAttribute("data-action");
@@ -282,8 +260,6 @@ export function bootAuth(app) {
       if (action === "signup") doSignup();
       if (action === "forgot") openForgotPassword();
       if (action === "anon") enterAnonymous();
-
-      return;
     }
   }
 
@@ -293,8 +269,6 @@ export function bootAuth(app) {
       console.warn("[auth] #modalBody não encontrado para wire.");
       return;
     }
-
-    // ✅ evita acumular listeners: sobrescreve onclick
     root.onclick = gateClickHandler;
   }
 
@@ -332,8 +306,7 @@ export function bootAuth(app) {
     unlockModalCloseUI();
     closeModal();
 
-    forceAnonymousNoRanking(); // ✅ padronizado
-
+    forceAnonymousNoRanking();
     lockIdentityFields(false);
 
     busy = false;
@@ -365,7 +338,6 @@ export function bootAuth(app) {
     try {
       await signInWithEmailAndPassword(auth, email, pass);
       showStatus("Login realizado ✅", "ok");
-      // onAuthStateChanged fecha o gate
     } catch (e) {
       showStatus(humanAuthError(e), "error");
       busy = false;
@@ -406,7 +378,6 @@ export function bootAuth(app) {
       await setDoc(doc(db, "users", cred.user.uid), payload, { merge: true });
 
       showStatus("Conta criada ✅ Você já está logado.", "ok");
-      // onAuthStateChanged fecha o gate
     } catch (e) {
       showStatus(humanAuthError(e), "error");
       busy = false;
@@ -417,9 +388,6 @@ export function bootAuth(app) {
   // RECUPERAÇÃO (SÓ EMAIL)
   // =============================
   function openForgotPassword() {
-    if (busy) return;
-    busy = false;
-
     unlockModalCloseUI();
     gateOpen = false;
 
@@ -473,7 +441,7 @@ export function bootAuth(app) {
   }
 
   // =============================
-  // CONTA LOGADA
+  // CONTA LOGADA (com meu ranking)
   // =============================
   function openAccountPanel() {
     const name = currentProfile?.name || currentUser?.displayName || "(sem nome)";
@@ -491,6 +459,11 @@ export function bootAuth(app) {
           </div>
         </div>
 
+        <div class="auth-note" style="margin-top:12px">
+          <b>Meu ranking</b><br/>
+          <div class="auth-mini" id="myRankLine">Carregando…</div>
+        </div>
+
         <div class="auth-actions" style="margin-top:14px">
           <button class="btn ghost" id="authLogoutBtn" type="button">Sair</button>
           <button class="btn" id="authDeleteBtn" type="button">Deletar conta</button>
@@ -506,7 +479,51 @@ export function bootAuth(app) {
     setTimeout(() => {
       document.getElementById("authLogoutBtn")?.addEventListener("click", doLogout);
       document.getElementById("authDeleteBtn")?.addEventListener("click", confirmDeleteAccount);
+
+      // ✅ carrega ranking pessoal e posição
+      loadMyRankingIntoAccount().catch((e) => {
+        console.warn("[auth] loadMyRankingIntoAccount falhou:", e);
+        const el = document.getElementById("myRankLine");
+        if (el) el.textContent = "Não foi possível carregar seu ranking agora.";
+      });
     }, 0);
+  }
+
+  async function loadMyRankingIntoAccount() {
+    const el = document.getElementById("myRankLine");
+    if (!el) return;
+    if (!currentUser) { el.textContent = "Você não está logado."; return; }
+
+    // 1) pega meu doc
+    const myRef = doc(db, "individualRanking", currentUser.uid);
+    const mySnap = await getDoc(myRef);
+
+    if (!mySnap.exists()) {
+      el.innerHTML = `Você ainda não tem pontuação registrada no ranking.`;
+      return;
+    }
+
+    const my = mySnap.data() || {};
+    const myScore = Number(my.score || 0);
+
+    // 2) calcula minha posição varrendo ranking (projeto interno, ok)
+    // Se ficar pesado depois, a gente otimiza com um índice/consulta.
+    const qAll = query(collection(db, "individualRanking"), orderBy("score", "desc"));
+    const snap = await getDocs(qAll);
+
+    let pos = 0;
+    let total = 0;
+    snap.forEach((d) => {
+      total++;
+      if (d.id === currentUser.uid) pos = total;
+    });
+
+    if (!pos) {
+      el.textContent = `Pontuação: ${myScore} — posição indisponível agora.`;
+      return;
+    }
+
+    el.innerHTML = `Pontuação: <b>${myScore}</b> — posição: <b>${pos}º</b> de ${total}.`;
   }
 
   async function doLogout() {
@@ -516,13 +533,10 @@ export function bootAuth(app) {
     try {
       await signOut(auth);
 
-      // ✅ volta para modo anônimo (sem ranking)
       forceAnonymousNoRanking();
       lockIdentityFields(false);
 
       closeModal();
-
-      // abre gate de novo (opcional)
       setTimeout(() => openAuthGate({ force: true }), 80);
     } catch (e) {
       openModal({
@@ -561,22 +575,15 @@ export function bootAuth(app) {
     try {
       const uid = currentUser.uid;
 
-      // remove profile
+      // profile
       await deleteDoc(doc(db, "users", uid));
 
-      // ✅ (opcional) remove ranking pessoal (se seu docId for uid)
-      // Se seu ranking usa outro docId (nome__setor), me diga depois que eu ajusto.
-      try {
-        await deleteDoc(doc(db, "individualRanking", uid));
-      } catch (e) {
-        // não quebra se não existir / rules diferentes
-        console.warn("[auth] não consegui deletar individualRanking/uid (ok se docId não for uid):", e);
-      }
+      // ✅ ranking individual (docId = uid)
+      await deleteDoc(doc(db, "individualRanking", uid));
 
-      // remove usuário do Auth
+      // Auth user
       await deleteUser(currentUser);
 
-      // ✅ encerra tudo e volta para modo anônimo, sem ranking
       gateOpen = false;
       unlockModalCloseUI();
 
@@ -584,10 +591,7 @@ export function bootAuth(app) {
       lockIdentityFields(false);
 
       closeModal();
-
-      setTimeout(() => {
-        openAuthGate({ force: true });
-      }, 80);
+      setTimeout(() => openAuthGate({ force: true }), 80);
 
     } catch (e) {
       const msg = humanAuthError(e);
@@ -654,30 +658,10 @@ export function bootAuth(app) {
   }
 
   function lockIdentityFields(locked) {
-    if (nameEl) {
-      if (locked) {
-        nameEl.setAttribute("disabled", "disabled");
-        nameEl.classList.add("auth-locked");
-      } else {
-        nameEl.removeAttribute("disabled");
-        nameEl.classList.remove("auth-locked");
-      }
-    }
-
-    if (sectorEl) {
-      if (locked) {
-        sectorEl.setAttribute("disabled", "disabled");
-        sectorEl.classList.add("auth-locked");
-      } else {
-        sectorEl.removeAttribute("disabled");
-        sectorEl.classList.remove("auth-locked");
-      }
-    }
+    if (nameEl) locked ? nameEl.setAttribute("disabled","disabled") : nameEl.removeAttribute("disabled");
+    if (sectorEl) locked ? sectorEl.setAttribute("disabled","disabled") : sectorEl.removeAttribute("disabled");
   }
 
-  // =============================
-  // STATUS + SETORES
-  // =============================
   function getModalBody() {
     return document.getElementById("modalBody");
   }
@@ -708,13 +692,11 @@ export function bootAuth(app) {
         })
         .join("");
     }
-
     if (sectorEl && sectorEl.options?.length) {
       return Array.from(sectorEl.options)
         .map((o) => `<option value="${escapeHtml(o.value)}">${escapeHtml(o.textContent || "")}</option>`)
         .join("");
     }
-
     return `<option value="">Selecione…</option>`;
   }
 
@@ -728,7 +710,7 @@ export function bootAuth(app) {
     if (code.includes("auth/weak-password")) return "Senha fraca. Use uma senha mais forte.";
     if (code.includes("auth/too-many-requests")) return "Muitas tentativas. Tente novamente em alguns minutos.";
     if (code.includes("auth/requires-recent-login")) return "Por segurança, faça login novamente e tente deletar a conta.";
-    if (code.includes("permission-denied")) return "Sem permissão no Firestore. Ajuste as rules para /users.";
+    if (code.includes("permission-denied")) return "Sem permissão no Firestore. Ajuste as rules (delete/owner).";
     return e?.message ? String(e.message) : "Erro inesperado.";
   }
 
@@ -746,9 +728,6 @@ export function bootAuth(app) {
     return v.length > max ? v.slice(0, max) : v;
   }
 
-  // =============================
-  // MODAL CLOSE LOCK (gate inicial)
-  // =============================
   function lockModalCloseUI() {
     const closeX = document.getElementById("closeModal");
     if (closeX) closeX.style.display = "none";
@@ -780,15 +759,11 @@ export function bootAuth(app) {
     });
   }
 
-  // ✅ helper: força modo anônimo sem ranking
   function forceAnonymousNoRanking() {
     localStorage.setItem("mission_optout_ranking", "1");
     if (optRankingEl) optRankingEl.checked = false;
   }
 
-  // =============================
-  // ABRIR AUTOMÁTICO NO START
-  // =============================
   setTimeout(() => {
     if (!currentUser) openAuthGate({ force: true });
   }, 50);
