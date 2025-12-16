@@ -130,13 +130,16 @@
           <div class="stat-grid" id="finalStatGrid"></div>
 
           <p class="final-sub" id="finalStats"></p>
-          <p class="final-sub" id="finalRecado"></p>
+
+          <!-- ✅ precisa ser DIV porque o JS injeta botões e HTML -->
+          <div class="final-sub" id="finalRecado"></div>
 
           <br>
           <div class="epigraph" id="epigraphBox"></div>
           <br>
 
-          <p class="final-sub">Veja as mensagens que você acabou de corrigir:</p>
+          <!-- ✅ o JS agora cria um botão pra abrir/ocultar as caixas -->
+          <p class="final-sub">As mensagens corrigidas ficam disponíveis abaixo.</p>
 
           <div class="final-activity">
             <div class="final-activity-head">
@@ -197,6 +200,7 @@
   </main>
 
   <!-- Modal -->
+  <!-- ✅ mantém id="overlay" (JS usa), e classe overlay (CSS pode usar também) -->
   <div class="overlay hidden" id="overlay" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
     <div class="modal">
       <div class="modal-head">
