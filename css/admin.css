@@ -1,5 +1,26 @@
 /* admin.css */
 
+/* =========================
+   Admin UI (isolado do CSS principal)
+   ========================= */
+
+.icon-btn.admin-btn{
+  position: relative;
+}
+
+/* mini “ponto” para indicar modo admin ativo */
+.icon-btn.admin-btn.is-admin::after{
+  content:"";
+  position:absolute;
+  right: 6px;
+  top: 6px;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(0,230,118,.95);
+  box-shadow: 0 0 0 3px rgba(0,0,0,.25);
+}
+
 /* Tela de Login Admin */
 #adminLoginScreen {
   position: fixed;
