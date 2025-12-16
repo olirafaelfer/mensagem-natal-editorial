@@ -20,45 +20,32 @@
 
   <main class="app">
     <div class="container">
-<header class="topbar topbar-banner">
-
-  <!-- LINHA 1 -->
+<header class="topbar-banner">
   <div class="topbar-row topbar-row-1">
     <div class="topbar-left">
-      <img
-        src="img/logo-natal.png"
-        alt="Logo da empresa"
-        class="topbar-logo"
-      />
+      <img class="topbar-logo" src="img/logo-natal.png" alt="Logo de Natal" />
     </div>
 
     <div class="topbar-center">
-      <span class="topbar-mission">
-        MISSÃO DO EDITOR-CHEFE <span class="topbar-santa">🎅</span>
-      </span>
-    </div>
-
-    <div class="topbar-right"></div>
-  </div>
-
-  <!-- LINHA 2 -->
-  <div class="topbar-row topbar-row-2">
-    <div class="topbar-left">
-      <h1 id="headerTitle" class="topbar-title">
-        Revisão da Mensagem de Natal
-      </h1>
+      <div class="topbar-mission">MISSÃO DO EDITOR-CHEFE</div>
     </div>
 
     <div class="topbar-right">
-      <div class="top-actions">
-        <button class="icon-btn" id="customizeBtn" title="Personalizar" type="button">⚙️</button>
-        <button class="icon-btn" id="rankingBtn" title="Ranking" type="button">🏆</button>
-        <button class="icon-btn" id="loginBtn" title="Entrar / Criar conta" type="button">👤</button>
-      </div>
+      <span class="topbar-santa" aria-hidden="true">🎅</span>
     </div>
   </div>
 
+  <div class="topbar-row topbar-row-2">
+    <h1 class="topbar-title" id="headerTitle">Revisão da Mensagem de Natal</h1>
+
+    <div class="top-actions">
+      <button class="icon-btn" id="customizeBtn" title="Personalizar" type="button">⚙️</button>
+      <button class="icon-btn" id="rankingBtn" title="Ranking" type="button">🏆</button>
+      <button class="icon-btn" id="loginBtn" title="Entrar / Criar conta" type="button">👤</button>
+    </div>
+  </div>
 </header>
+
 
 
       <section class="card" id="screenLoading">
@@ -297,6 +284,7 @@
   <script type="module" src="js/main.js"></script>
 </body>
 </html>
+
 
 
 
