@@ -139,31 +139,38 @@
           <br>
 
           <!-- ✅ o JS agora cria um botão pra abrir/ocultar as caixas -->
-          <p class="final-sub">As mensagens corrigidas ficam disponíveis abaixo.</p>
+<p class="final-sub">Veja as mensagens que você acabou de corrigir:</p>
 
-          <div class="final-activity">
-            <div class="final-activity-head">
-              <strong>Atividade 1 — Fácil</strong>
-              <button class="btn mini ghost" id="reviewBtn1" type="button">Correções e justificativas</button>
-            </div>
-            <div class="final-box" id="finalBox1"></div>
-          </div>
+<div class="actions center-actions" style="margin-top:10px">
+  <button class="btn" id="toggleFinalMsgs" type="button">Ver mensagens corrigidas</button>
+</div>
 
-          <div class="final-activity">
-            <div class="final-activity-head">
-              <strong>Atividade 2 — Médio</strong>
-              <button class="btn mini ghost" id="reviewBtn2" type="button">Correções e justificativas</button>
-            </div>
-            <div class="final-box" id="finalBox2"></div>
-          </div>
+<div id="finalMsgsWrap" class="hidden">
+  <div class="final-activity">
+    <div class="final-activity-head">
+      <strong>Atividade 1 — Fácil</strong>
+      <button class="btn mini ghost" id="reviewBtn1" type="button">Correções e justificativas</button>
+    </div>
+    <div class="final-box" id="finalBox1"></div>
+  </div>
 
-          <div class="final-activity">
-            <div class="final-activity-head">
-              <strong>Atividade 3 — Difícil</strong>
-              <button class="btn mini ghost" id="reviewBtn3" type="button">Correções e justificativas</button>
-            </div>
-            <div class="final-box" id="finalBox3"></div>
-          </div>
+  <div class="final-activity">
+    <div class="final-activity-head">
+      <strong>Atividade 2 — Médio</strong>
+      <button class="btn mini ghost" id="reviewBtn2" type="button">Correções e justificativas</button>
+    </div>
+    <div class="final-box" id="finalBox2"></div>
+  </div>
+
+  <div class="final-activity">
+    <div class="final-activity-head">
+      <strong>Atividade 3 — Difícil</strong>
+      <button class="btn mini ghost" id="reviewBtn3" type="button">Correções e justificativas</button>
+    </div>
+    <div class="final-box" id="finalBox3"></div>
+  </div>
+</div>
+
 
           <hr>
 
@@ -215,3 +222,4 @@
   <script type="module" src="js/main.js"></script>
 </body>
 </html>
+
