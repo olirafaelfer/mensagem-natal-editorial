@@ -70,6 +70,7 @@ export function bootAuth(app) {
   let currentProfile = null;
   let gateOpen = false;
   let busy = false;
+  let suppressAutoGate = false;
 
   // API p/ outros módulos
   app.auth = {
@@ -148,11 +149,14 @@ export function bootAuth(app) {
           { label: "Ok", onClick: closeModal },
           {
             label: "Fazer login",
-            onClick: () => {
-              closeModal();
-              // ✅ esperar o modal fechar antes de abrir o gate
-              setTimeout(() => openAuthGate({ force: true }), 160);
-            },
+onClick: () => {
+  suppressAutoGate = true;
+  closeModal();
+  setTimeout(() => {
+    openAuthGate({ force: true });
+    suppressAutoGate = false;
+  }, 200);
+},
           },
         ],
       });
@@ -811,7 +815,9 @@ export function bootAuth(app) {
   // =============================
   // Abrir automático no start
   // =============================
-  setTimeout(() => {
-    if (!currentUser) openAuthGate({ force: true });
-  }, 50);
+setTimeout(() => {
+  if (!currentUser && !suppressAutoGate) {
+    openAuthGate({ force: true });
+  }
+}, 80);
 }
