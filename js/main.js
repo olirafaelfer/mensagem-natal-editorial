@@ -268,23 +268,26 @@ function pickBoot(mod, candidates){
 
   return null;
 }
-
 async function bootAll(){
   try {
     const modalMod   = await import("./ui-modal.js");
     const themeMod   = await import("./theme-fx.js");
     const rankingMod = await import("./ranking.js");
     const gameMod    = await import("./game-core.js");
+    const adminMod   = await import("./admin.js"); // ✅ novo
 
     const bootModal   = pickBoot(modalMod,   ["bootModal", "boot", "init"]);
     const bootThemeFx = pickBoot(themeMod,   ["bootThemeFx", "bootTheme", "boot", "init"]);
     const bootRanking = pickBoot(rankingMod, ["bootRanking", "boot", "init"]);
     const bootGame    = pickBoot(gameMod,    ["bootGame", "bootGameCore", "boot", "init"]);
+    const bootAdmin   = pickBoot(adminMod,   ["bootAdmin", "boot", "init"]); // ✅ novo
 
+    // ✅ ordem importante: modal primeiro (admin usa app.modal)
     bootModal?.(app);
     bootThemeFx?.(app);
     bootRanking?.(app);
     bootGame?.(app);
+    bootAdmin?.(app); // ✅ novo
 
   } catch (err) {
     console.error("❌ Falha no boot dos módulos:", err);
@@ -293,3 +296,5 @@ async function bootAll(){
 }
 
 bootAll();
+
+
