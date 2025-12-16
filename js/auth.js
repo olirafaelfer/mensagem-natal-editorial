@@ -524,12 +524,21 @@ export function bootAuth(app) {
       await deleteDoc(doc(db, "users", currentUser.uid));
       await deleteUser(currentUser);
 
+      // ✅ encerra tudo e volta para modo anônimo, sem ranking
+      gateOpen = false;
+      unlockModalCloseUI();
+
+      localStorage.setItem("mission_optout_ranking", "1");
+      if (optRankingEl) optRankingEl.checked = false;
+
+      lockIdentityFields(false);
+
       closeModal();
-      openModal({
-        title: "Conta removida ✅",
-        bodyHTML: `<p>Conta deletada com sucesso.</p>`,
-        buttons: [{ label: "Ok", onClick: closeModal }],
-      });
+
+      setTimeout(() => {
+        openAuthGate({ force: true });
+      }, 80);
+
     } catch (e) {
       const msg = humanAuthError(e);
       openModal({
@@ -544,6 +553,7 @@ export function bootAuth(app) {
       });
     }
   }
+
 
   // =============================
   // PROFILE
