@@ -1,221 +1,260 @@
-// js/admin.js — Admin login + ações (Firestore)
-// - Não mexe no game-core nem no ranking.js
-// - Usa app.modal (se existir) para UX consistente
-// - Zera ranking apagando docs no Firestore
+// js/admin.js — Admin login + reset ranking (Firestore)
+// Requer:
+// - app.modal: { openModal, closeModal }
+// - app.firebase.db (Firestore instance)
+//
+// Coleções atuais do projeto (conforme ranking.js):
+// - individualRanking
+// - sectorStats
 
 import {
   collection,
   getDocs,
-  deleteDoc,
-  doc
+  writeBatch,
+  doc,
+  setDoc,
+  serverTimestamp,
 } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
 
-export function bootAdmin(app){
-  const adminBtn = document.getElementById("adminBtn");
-  if (!adminBtn) return;
-
-  const fb = app?.firebase;
-  const modal = app?.modal;
-
-  // ✅ senha simples por enquanto (depois você troca por Auth/roles)
+export function bootAdmin(app) {
   const ADMIN_PASSWORD = "admin123";
+  const ADMIN_FLAG_KEY = "mission_admin_logged";
+  const ADMIN_LAST_AT = "mission_admin_last_login_ms";
+  const ADMIN_SESSION_TTL_MS = 12 * 60 * 60 * 1000; // 12h
 
-  // sessão local (não persistente tipo “login de usuário”, só pra admin por sessão)
-  const SESSION_KEY = "mission_admin_session";
-  const isAdmin = () => sessionStorage.getItem(SESSION_KEY) === "1";
-  const setAdmin = (v) => sessionStorage.setItem(SESSION_KEY, v ? "1" : "0");
+  const { openModal, closeModal } = app.modal || {};
+  const db = app.firebase?.db;
 
-  // badge visual
-  function syncBadge(){
-    adminBtn.classList.toggle("is-admin", isAdmin());
+  if (!openModal || !closeModal) {
+    console.warn("[admin] app.modal não disponível. Verifique se ui-modal foi bootado antes.");
+    return;
   }
-  syncBadge();
-
-  // Helpers de modal (usa o seu modal se existir; fallback para prompt/alert)
-  function open({ title, bodyHTML, buttons }){
-    if (modal?.openModal) return modal.openModal({ title, bodyHTML, buttons });
-    // fallback simples
-    alert(title + "\n\n" + bodyHTML.replace(/<[^>]*>/g, ""));
-  }
-  function close(){
-    if (modal?.closeModal) return modal.closeModal();
+  if (!db) {
+    console.warn("[admin] Firestore (app.firebase.db) não disponível.");
+    return;
   }
 
-  function escapeHtml(s){
-    return String(s)
-      .replaceAll("&","&amp;")
-      .replaceAll("<","&lt;")
-      .replaceAll(">","&gt;")
-      .replaceAll('"',"&quot;")
-      .replaceAll("'","&#039;");
-  }
+  // cria/ativa botão de admin no topo, se existir no HTML
+  const btn = document.getElementById("adminBtn");
+  btn?.addEventListener("click", () => openAdminGate());
 
-  // ============
-  // UI: Login
-  // ============
-  function askPassword(){
-    // com seu modal
-    if (modal?.openModal){
-      open({
-        title: "🔒 Admin",
-        bodyHTML: `
-          <p class="muted" style="margin-top:0">Digite a senha de administrador.</p>
-          <input class="input" id="adminPassInput" type="password" autocomplete="current-password" placeholder="Senha" />
-          <p class="muted" style="margin:10px 0 0; font-size:13px">Dica: depois vamos trocar isso por login real.</p>
-        `,
-        buttons: [
-          { label:"Cancelar", variant:"ghost", onClick: close },
-          { label:"Entrar", onClick: () => {
-              const v = document.getElementById("adminPassInput")?.value ?? "";
-              if (v === ADMIN_PASSWORD){
-                setAdmin(true);
-                syncBadge();
-                close();
-                openAdminPanel();
-              } else {
-                close();
-                open({
-                  title: "Senha incorreta",
-                  bodyHTML: `<p>Senha incorreta. Tente novamente.</p>`,
-                  buttons: [{ label:"Ok", onClick: close }]
-                });
-              }
-            }
-          }
-        ]
-      });
+  function isAdminLogged() {
+    const ok = localStorage.getItem(ADMIN_FLAG_KEY) === "1";
+    if (!ok) return false;
 
-      setTimeout(() => document.getElementById("adminPassInput")?.focus(), 30);
-      return;
+    const last = Number(localStorage.getItem(ADMIN_LAST_AT) || "0");
+    if (!last) return false;
+
+    // expira sessão
+    if (Date.now() - last > ADMIN_SESSION_TTL_MS) {
+      localStorage.removeItem(ADMIN_FLAG_KEY);
+      localStorage.removeItem(ADMIN_LAST_AT);
+      return false;
     }
+    return true;
+  }
 
-    // fallback sem modal (não recomendado, mas não quebra)
-    const v = prompt("Senha de administrador:");
-    if (v === ADMIN_PASSWORD){
-      setAdmin(true);
-      syncBadge();
+  function setAdminLogged() {
+    localStorage.setItem(ADMIN_FLAG_KEY, "1");
+    localStorage.setItem(ADMIN_LAST_AT, String(Date.now()));
+  }
+
+  function openAdminGate() {
+    if (isAdminLogged()) {
       openAdminPanel();
-    } else if (v !== null){
-      alert("Senha incorreta.");
-    }
-  }
-
-  // ============
-  // Ação: Zerar ranking (Firestore)
-  // ============
-  async function clearCollection(collName){
-    const db = fb?.db;
-    if (!db) throw new Error("Firebase DB não disponível em app.firebase.db");
-
-    const snap = await getDocs(collection(db, collName));
-    const deletions = [];
-    snap.forEach(d => {
-      deletions.push(deleteDoc(doc(db, collName, d.id)));
-    });
-    await Promise.all(deletions);
-    return deletions.length;
-  }
-
-  async function confirmAndResetRanking(){
-    if (!isAdmin()){
-      askPassword();
       return;
     }
 
-    open({
-      title: "⚠️ Zerar ranking",
+    openModal({
+      title: "🔒 Admin",
       bodyHTML: `
-        <p><strong>Isso vai apagar os dados do ranking no Firestore.</strong></p>
-        <p class="muted" style="margin-top:10px">
-          Coleções afetadas:
-          <br>• <code>individualRanking</code>
-          <br>• <code>sectorStats</code>
-        </p>
-        <p class="muted" style="margin-top:10px">
-          Essa ação não tem “desfazer”.
+        <p class="muted" style="margin-top:0">Digite a senha de administrador.</p>
+        <input class="input" id="adminPassInput" type="password" autocomplete="current-password" placeholder="Senha" />
+        <p class="muted" style="margin:10px 0 0; font-size:13px">
+          Dica: esta sessão expira automaticamente.
         </p>
       `,
       buttons: [
-        { label:"Cancelar", variant:"ghost", onClick: close },
-        { label:"Sim, zerar", onClick: async () => {
-            close();
-            try {
-              // feedback
-              open({
-                title: "Zerando…",
-                bodyHTML: `<p class="muted">Apagando documentos do ranking…</p>`,
-                buttons: []
+        { label: "Cancelar", variant: "ghost", onClick: closeModal },
+        {
+          label: "Entrar",
+          onClick: () => {
+            const v = document.getElementById("adminPassInput")?.value || "";
+            if (v !== ADMIN_PASSWORD) {
+              openModal({
+                title: "Senha incorreta",
+                bodyHTML: `<p>Senha inválida.</p>`,
+                buttons: [{ label: "Ok", onClick: closeModal }],
               });
-
-              const delInd = await clearCollection("individualRanking");
-              const delSec = await clearCollection("sectorStats");
-
-              close();
-              open({
-                title: "✅ Ranking zerado",
-                bodyHTML: `
-                  <p>Pronto! Dados apagados.</p>
-                  <p class="muted" style="margin-top:10px">
-                    individualRanking: <strong>${delInd}</strong> docs<br>
-                    sectorStats: <strong>${delSec}</strong> docs
-                  </p>
-                `,
-                buttons: [{ label:"Ok", onClick: close }]
-              });
-
-            } catch (err) {
-              close();
-              open({
-                title: "❌ Falha ao zerar",
-                bodyHTML: `<p class="muted"><code>${escapeHtml(err?.message || String(err))}</code></p>`,
-                buttons: [{ label:"Ok", onClick: close }]
-              });
+              return;
             }
-          }
-        }
-      ]
+            setAdminLogged();
+            closeModal();
+            openAdminPanel();
+          },
+        },
+      ],
     });
+
+    setTimeout(() => document.getElementById("adminPassInput")?.focus(), 50);
   }
 
-  // ============
-  // Painel Admin (modal)
-  // ============
-  function openAdminPanel(){
-    if (!isAdmin()){
-      askPassword();
-      return;
-    }
-
-    open({
-      title: "🔒 Painel do Admin",
+  function openAdminPanel() {
+    openModal({
+      title: "🛠️ Painel Admin",
       bodyHTML: `
-        <p class="muted" style="margin-top:0">
-          (Temporário) Em breve aqui entra login de usuários, estatísticas e painel completo.
+        <p style="margin-top:0">
+          Ações administrativas (uso interno).
         </p>
 
         <div style="display:grid; gap:10px; margin-top:12px">
-          <button class="btn" id="adminResetBtn" type="button">🧹 Zerar ranking</button>
-          <button class="btn ghost" id="adminLogoutBtn" type="button">Sair do admin</button>
+          <button class="btn" id="adminResetRankingBtn" type="button">🧹 Zerar ranking (individual + setor)</button>
         </div>
+
+        <p class="muted" style="margin:12px 0 0; font-size:13px">
+          Isso apaga/zera as coleções <code>individualRanking</code> e <code>sectorStats</code>.
+        </p>
       `,
-      buttons: [{ label:"Fechar", onClick: close }]
+      buttons: [{ label: "Fechar", onClick: closeModal }],
     });
 
     setTimeout(() => {
-      document.getElementById("adminResetBtn")?.addEventListener("click", confirmAndResetRanking);
-      document.getElementById("adminLogoutBtn")?.addEventListener("click", () => {
-        setAdmin(false);
-        syncBadge();
-        close();
-      });
+      document.getElementById("adminResetRankingBtn")?.addEventListener("click", () => confirmResetRanking());
     }, 0);
   }
 
-  // ============
-  // Click do botão 🔒
-  // ============
-  adminBtn.addEventListener("click", () => {
-    if (isAdmin()) openAdminPanel();
-    else askPassword();
-  });
+  function confirmResetRanking() {
+    openModal({
+      title: "Confirmar reset",
+      bodyHTML: `
+        <p><strong>Tem certeza?</strong></p>
+        <p class="muted">Esta ação remove os resultados do ranking (individual e por setor).</p>
+      `,
+      buttons: [
+        { label: "Cancelar", variant: "ghost", onClick: closeModal },
+        {
+          label: "Sim, zerar agora",
+          onClick: async () => {
+            closeModal();
+            await runResetRanking();
+          },
+        },
+      ],
+    });
+  }
+
+  async function runResetRanking() {
+    // modal de status
+    openModal({
+      title: "Zerando ranking…",
+      bodyHTML: `<p class="muted" style="margin-top:0">Aguarde…</p>`,
+      buttons: [{ label: "Fechar", onClick: closeModal }],
+    });
+
+    try {
+      const res1 = await clearCollectionPreferDelete("individualRanking", zeroIndividualDoc);
+      const res2 = await clearCollectionPreferDelete("sectorStats", zeroSectorDoc);
+
+      openModal({
+        title: "✅ Ranking zerado",
+        bodyHTML: `
+          <p>Concluído.</p>
+          <p class="muted" style="margin-top:10px; font-size:13px">
+            individualRanking: <strong>${res1}</strong><br/>
+            sectorStats: <strong>${res2}</strong>
+          </p>
+        `,
+        buttons: [{ label: "Ok", onClick: closeModal }],
+      });
+    } catch (err) {
+      console.error("[admin] reset ranking falhou:", err);
+      openModal({
+        title: "❌ Falha ao zerar ranking",
+        bodyHTML: `
+          <p>Não foi possível concluir o reset.</p>
+          <p class="muted"><code>${escapeHtml(err?.message || String(err))}</code></p>
+          <p class="muted" style="margin-top:10px">
+            Se o erro for <code>permission-denied</code>, precisamos ajustar as regras do Firestore para permitir admin.
+          </p>
+        `,
+        buttons: [{ label: "Ok", onClick: closeModal }],
+      });
+    }
+  }
+
+  // --------- Core reset helpers ---------
+
+  async function clearCollectionPreferDelete(colName, zeroFn) {
+    const snap = await getDocs(collection(db, colName));
+    const docs = snap.docs;
+
+    if (!docs.length) return "0 docs (já vazio)";
+
+    // Firestore batch: limite 500. Vou usar 450 por margem.
+    const CHUNK = 450;
+
+    // 1) tenta deletar em batch
+    try {
+      let deleted = 0;
+      for (let i = 0; i < docs.length; i += CHUNK) {
+        const batch = writeBatch(db);
+        const slice = docs.slice(i, i + CHUNK);
+        for (const d of slice) batch.delete(d.ref);
+        await batch.commit();
+        deleted += slice.length;
+      }
+      return `${deleted} docs apagados`;
+    } catch (e) {
+      // 2) fallback: zera docs (se delete não for permitido)
+      console.warn(`[admin] delete falhou em ${colName}. Tentando fallback de zerar docs…`, e);
+
+      let zeroed = 0;
+      for (let i = 0; i < docs.length; i += CHUNK) {
+        const batch = writeBatch(db);
+        const slice = docs.slice(i, i + CHUNK);
+        for (const d of slice) {
+          const payload = zeroFn(d.id);
+          batch.set(doc(db, colName, d.id), payload, { merge: true });
+        }
+        await batch.commit();
+        zeroed += slice.length;
+      }
+
+      return `${zeroed} docs zerados (fallback)`;
+    }
+  }
+
+  function zeroIndividualDoc() {
+    return {
+      score: 0,
+      correct: 0,
+      wrong: 0,
+      resetAt: serverTimestamp(),
+      // opcionalmente: manter name/sector; merge:true mantém campos existentes
+    };
+  }
+
+  function zeroSectorDoc() {
+    return {
+      missions: 0,
+      totalOverall: 0,
+      totalT1: 0,
+      totalT2: 0,
+      totalT3: 0,
+      totalCorrect: 0,
+      totalWrong: 0,
+      totalAuto: 0,
+      updatedAt: serverTimestamp(),
+      resetAt: serverTimestamp(),
+    };
+  }
+
+  function escapeHtml(s) {
+    return String(s)
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#039;");
+  }
 }
