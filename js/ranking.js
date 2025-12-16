@@ -1,14 +1,13 @@
 // js/ranking.js — ranking individual + por setor (Firestore)
-// Requer:
-// - app.firebase: { db, doc, getDoc, runTransaction, serverTimestamp, collection, getDocs, setDoc, query, orderBy, limit }
-// - app.modal: { openModal, closeModal }
-// - app.SECTORS: array de setores (o mesmo do formulário)
-// - app.gameState: getters (nome/setor) e contagens/pontuação
-// - game-core chama: app.finishMission(payload)
 
 export function bootRanking(app){
-  const { openModal, closeModal } = app.modal;
+  const { openModal, closeModal } = app.modal || {};
   const fb = app.firebase;
+
+  if (!openModal || !closeModal) {
+    console.warn("[ranking] modal não inicializado (ui-modal.js precisa bootar antes).");
+    return;
+  }
 
   if (!fb?.db) {
     console.warn("[ranking] Firebase não inicializado em app.firebase");
@@ -31,9 +30,6 @@ export function bootRanking(app){
     }
   };
 
-  /** =========================
-   * Helpers
-   * ========================= */
   function escapeHtml(s){
     return String(s)
       .replaceAll("&","&amp;")
@@ -64,9 +60,7 @@ export function bootRanking(app){
   }
 
   function individualDocId(name, sector){
-    const n = keyify(name);
-    const s = keyify(sector);
-    return `n_${n}__s_${s}`;
+    return `n_${keyify(name)}__s_${keyify(sector)}`;
   }
 
   function medalFor(i){
@@ -81,15 +75,13 @@ export function bootRanking(app){
   }
 
   function getUserName(){
-    return clampName(app.gameState?.getUserName?.() || localStorage.getItem("mission_name") || "");
+    const n = app.gameState?.getUserName?.() || localStorage.getItem("mission_name") || "";
+    return clampName(n);
   }
   function getUserSector(){
     return (app.gameState?.getUserSector?.() || localStorage.getItem("mission_sector") || "").trim();
   }
 
-  /** =========================
-   * Commit: ranking por setor (agregado)
-   * ========================= */
   async function maybeCommitMissionToSectorRanking(payload){
     if (isOptedOut()) return;
 
@@ -102,7 +94,6 @@ export function bootRanking(app){
     const correctCount = Number(payload?.correctCount ?? app.gameState?.correctCount ?? 0);
     const wrongCount = Number(payload?.wrongCount ?? app.gameState?.wrongCount ?? 0);
     const autoUsed = Number(payload?.autoUsed ?? app.gameState?.autoUsed ?? 0);
-
     const tScore = payload?.taskScore ?? app.gameState?.taskScore ?? [0,0,0];
 
     await fb.runTransaction(fb.db, async (tx) => {
@@ -132,11 +123,6 @@ export function bootRanking(app){
     });
   }
 
-  /** =========================
-   * Commit: ranking individual (SEM duplicar nome+setor)
-   * - 1 doc determinístico por nome+setor
-   * - só sobrescreve se score >= score anterior
-   * ========================= */
   async function commitIndividualRanking(payload){
     if (isOptedOut()) return;
 
@@ -153,8 +139,6 @@ export function bootRanking(app){
 
     const snap = await fb.getDoc(ref);
     const prevScore = snap.exists() ? Number(snap.data()?.score || 0) : -Infinity;
-
-    // mantém o melhor resultado
     if (score < prevScore) return;
 
     await fb.setDoc(ref, {
@@ -167,9 +151,6 @@ export function bootRanking(app){
     }, { merge:true });
   }
 
-  /** =========================
-   * Modal do ranking
-   * ========================= */
   async function openRankingModal(){
     openModal({
       title: "🏆 Ranking",
@@ -195,7 +176,6 @@ export function bootRanking(app){
       buttons: [{ label:"Fechar", onClick: closeModal }]
     });
 
-    // tabs
     setTimeout(() => {
       const wrap = document.getElementById("rankingTabs");
       const btns = wrap?.querySelectorAll(".ranking-tab");
@@ -222,9 +202,6 @@ export function bootRanking(app){
     await Promise.allSettled([renderIndividualRanking(), renderSectorRanking()]);
   }
 
-  /** =========================
-   * Render: ranking individual
-   * ========================= */
   async function renderIndividualRanking(){
     const panel = document.getElementById("panel-ind");
     if (!panel) return;
@@ -249,7 +226,6 @@ export function bootRanking(app){
         });
       });
 
-      // desempate no cliente (sem exigir índice composto)
       rows.sort((a,b) =>
         (b.score - a.score) ||
         (a.createdAtMs - b.createdAtMs) ||
@@ -299,23 +275,19 @@ export function bootRanking(app){
     }
   }
 
-  /** =========================
-   * Render: ranking por setor (agregado)
-   * ========================= */
   async function renderSectorRanking(){
     const panel = document.getElementById("panel-sec");
     if (!panel) return;
 
     try {
-      const sectors = (app.SECTORS || []).filter(s => s && s !== "Selecione…");
+      const sectors = (app.data?.SECTORS || []).filter(s => s && s !== "Selecione…");
       const map = new Map();
 
-      // tenta trazer toda a coleção (mais rápido)
       try {
         const snapAll = await fb.getDocs(fb.collection(fb.db, "sectorStats"));
         snapAll.forEach(d => map.set(d.id, d.data()));
       } catch {
-        // fallback abaixo, ok
+        // ok, fallback abaixo
       }
 
       const rows = [];
@@ -398,4 +370,3 @@ export function bootRanking(app){
     }
   }
 }
-
