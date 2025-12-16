@@ -18,6 +18,61 @@
 
   --container: 1060px;
 }
+/* ===== Topbar como banner ===== */
+.topbar-banner{
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 18px;
+}
+
+.topbar-left{
+  display:flex;
+  align-items:center;
+}
+
+.topbar-logo{
+  height: 42px;
+  max-width: 180px;
+  object-fit: contain;
+}
+
+.topbar-center{
+  text-align: center;
+}
+
+.topbar-center h1{
+  margin: 4px 0 0;
+}
+
+.topbar-right{
+  display:flex;
+  align-items:center;
+  gap: 12px;
+}
+
+.topbar-santa{
+  font-size: 32px;
+}
+
+/* Mobile */
+@media (max-width: 860px){
+  .topbar-banner{
+    grid-template-columns: 1fr;
+    text-align: center;
+  }
+
+  .topbar-left,
+  .topbar-right{
+    justify-content: center;
+  }
+
+  .topbar-right{
+    flex-direction: column;
+    gap: 6px;
+  }
+}
 
 *{ box-sizing:border-box; }
 html, body{ height:100%; }
@@ -915,3 +970,4 @@ body.modal-open #overlay{
 .tip-muted{
   color: rgba(255,255,255,.68);
 }
+
