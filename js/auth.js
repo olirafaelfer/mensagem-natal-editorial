@@ -1,8 +1,9 @@
 // js/auth.js — Login/Cadastro/Anônimo + Perfil (Sair / Deletar conta)
-// - Gate abre automaticamente no início (sem botão fechar)
-// - Tabs e botões funcionam via delegação dentro do #modalBody (ui-modal)
-// - Logado trava nome/setor
-// - Anônimo não participa do ranking
+// Requer:
+// - app.firebase.db (Firestore)
+// - app.modal (openModal/closeModal)
+// - Inputs do form principal: #userName, #userSector, #optRanking
+// - Botão topo: #authBtn
 
 import {
   getAuth,
@@ -23,16 +24,23 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
 
 export function bootAuth(app) {
+  // ✅ blindagem contra boot duplicado
+  if (app.__AUTH_BOOTED__ === true) {
+    console.warn("[auth] bootAuth já executado. Ignorando segunda inicialização.");
+    return;
+  }
+  app.__AUTH_BOOTED__ = true;
+
   const db = app.firebase?.db;
   if (!db) {
     console.warn("[auth] Firestore (app.firebase.db) não disponível.");
     return;
   }
 
-  const auth = getAuth();
-
+  const auth = getAuth(); // usa default app já inicializado no main.js
   const { openModal, closeModal } = app.modal || {};
-  if (typeof openModal !== "function" || typeof closeModal !== "function") {
+  const hasModal = typeof openModal === "function" && typeof closeModal === "function";
+  if (!hasModal) {
     console.warn("[auth] app.modal não disponível (ui-modal).");
     return;
   }
@@ -41,29 +49,18 @@ export function bootAuth(app) {
   const nameEl = document.getElementById("userName");
   const sectorEl = document.getElementById("userSector");
   const optRankingEl = document.getElementById("optRanking");
+  const authBtn = document.getElementById("authBtn");
 
-  // botão do topo (se você tiver)
-  const authBtn =
-    document.getElementById("authBtn") ||
-    document.getElementById("loginBtn") ||
-    document.getElementById("userBtn") ||
-    document.getElementById("accountBtn");
-
+  // Estado
   let currentUser = null;
   let currentProfile = null;
-  let gateOpen = false;
 
-  // API p/ outros módulos
-  app.auth = {
-    isLogged: () => !!currentUser,
-    getProfile: () => currentProfile,
-    openGate: () => openAuthGate({ force: false }),
-    openAccount: () => (currentUser ? openAccountPanel() : openAuthGate({ force: false })),
-  };
+  // trava para impedir double click / múltiplas ações simultâneas
+  let busy = false;
 
   authBtn?.addEventListener("click", () => {
     if (currentUser) openAccountPanel();
-    else openAuthGate({ force: false });
+    else openAuthGate({ forceNoClose: false });
   });
 
   onAuthStateChanged(auth, async (user) => {
@@ -71,456 +68,23 @@ export function bootAuth(app) {
     currentProfile = null;
 
     if (currentUser) {
-      currentProfile = await fetchOrCreateProfile(currentUser).catch((e) => {
+      try {
+        currentProfile = await fetchOrCreateProfile(currentUser);
+        if (currentProfile) applyLoggedProfileToForm(currentProfile);
+        else lockIdentityFields(true);
+      } catch (e) {
         console.warn("[auth] falha ao carregar/criar profile:", e);
-        return null;
-      });
-
-      if (currentProfile) applyLoggedProfileToForm(currentProfile);
-      else lockIdentityFields(true);
-
-      // se gate estava aberto, fecha e libera modal close UI
-      if (gateOpen) {
-        gateOpen = false;
-        unlockModalCloseUI();
-        closeModal();
+        lockIdentityFields(true);
       }
     } else {
       lockIdentityFields(false);
+      // mantém o que usuário digitou/localStorage no modo anônimo
     }
   });
 
-  // bloqueia ranking no anônimo
-  optRankingEl?.addEventListener("change", () => {
-    if (!optRankingEl) return;
-    if (optRankingEl.checked && !currentUser) {
-      optRankingEl.checked = false;
-      localStorage.setItem("mission_optout_ranking", "1");
-
-      openModal({
-        title: "Ranking requer cadastro",
-        bodyHTML: `
-          <p>Para participar do ranking, é necessário <strong>criar uma conta</strong> ou <strong>fazer login</strong>.</p>
-          <p class="muted" style="margin-top:10px">Você pode continuar no modo anônimo, mas sem ranking.</p>
-        `,
-        buttons: [
-          { label: "Ok", onClick: closeModal },
-          { label: "Fazer login", onClick: () => { closeModal(); openAuthGate({ force: true }); } },
-        ],
-      });
-    }
-  });
-
-  // =============================
-  // GATE
-  // =============================
-  function openAuthGate({ force } = { force: false }) {
-    if (currentUser && !force) {
-      openAccountPanel();
-      return;
-    }
-
-    gateOpen = true;
-
-    openModal({
-      title: "🔐 Entrar ou criar conta",
-      bodyHTML: renderAuthHTML(),
-      buttons: [], // sem fechar no gate inicial
-    });
-
-    lockModalCloseUI();
-
-    // IMPORTANTÍSSIMO: esperar o ui-modal inserir o HTML no DOM
-    afterModalPaint(() => {
-      wireAuthDelegationHandlers();
-      focusInGate();
-    });
-  }
-
-  function renderAuthHTML() {
-    const sectorsHTML = buildSectorOptionsHTML();
-    return `
-      <div class="auth-head">
-        <h4 class="auth-title" style="margin:0">Acesse para entrar no ranking</h4>
-        <p class="auth-sub" style="margin:0">
-          Se preferir, você pode usar o modo anônimo (sem ranking).
-        </p>
-      </div>
-
-      <div class="auth-tabs" role="tablist" aria-label="Autenticação">
-        <div class="auth-tab active" data-tab="login" role="tab" aria-selected="true">Login</div>
-        <div class="auth-tab" data-tab="signup" role="tab" aria-selected="false">Criar conta</div>
-      </div>
-
-      <div data-auth="status" class="auth-status"></div>
-
-      <div data-pane="login">
-        <div class="auth-grid onecol">
-          <label class="field">
-            <span>E-mail</span>
-            <input class="input" data-auth="loginEmail" type="email" autocomplete="email" placeholder="seu@email.com"/>
-          </label>
-          <label class="field">
-            <span>Senha</span>
-            <input class="input" data-auth="loginPass" type="password" autocomplete="current-password" placeholder="••••••••"/>
-          </label>
-        </div>
-
-        <div class="auth-actions">
-          <button class="btn" data-action="login" type="button">Entrar</button>
-          <button class="btn ghost" data-action="forgot" type="button">Esqueci minha senha</button>
-        </div>
-      </div>
-
-      <div data-pane="signup" class="hidden">
-        <div class="auth-grid">
-          <label class="field">
-            <span>Nome</span>
-            <input class="input" data-auth="signupName" type="text" maxlength="60" placeholder="Seu nome"/>
-          </label>
-          <label class="field">
-            <span>Setor</span>
-            <select class="input" data-auth="signupSector">${sectorsHTML}</select>
-          </label>
-        </div>
-
-        <div class="auth-grid onecol" style="margin-top:12px">
-          <label class="field">
-            <span>E-mail</span>
-            <input class="input" data-auth="signupEmail" type="email" autocomplete="email" placeholder="seu@email.com"/>
-          </label>
-          <label class="field">
-            <span>Senha</span>
-            <input class="input" data-auth="signupPass" type="password" autocomplete="new-password" placeholder="Crie uma senha"/>
-          </label>
-        </div>
-
-        <div class="auth-actions">
-          <button class="btn" data-action="signup" type="button">Criar conta</button>
-        </div>
-      </div>
-
-      <hr class="auth-divider"/>
-
-      <div class="auth-note">
-        <b>Modo anônimo</b><br/>
-        Você pode fazer a missão sem cadastro, mas <b>não participa do ranking</b>.
-        <div class="auth-actions" style="margin-top:10px">
-          <button class="btn ghost" data-action="anon" type="button">Prefiro não me cadastrar</button>
-        </div>
-      </div>
-    `;
-  }
-
-  function wireAuthDelegationHandlers() {
-    const root = getModalBody();
-    if (!root) {
-      console.warn("[auth] #modalBody não encontrado para wire.");
-      return;
-    }
-
-    // remove listener antigo (se reabrir modal)
-    root.removeEventListener("click", onGateClick);
-    root.addEventListener("click", onGateClick);
-
-    function onGateClick(ev) {
-      const t = ev.target instanceof HTMLElement ? ev.target : null;
-      if (!t) return;
-
-      // Tabs
-      const tab = t.closest(".auth-tab");
-      if (tab) {
-        const key = tab.getAttribute("data-tab");
-        if (key === "login") setGateTab("login");
-        if (key === "signup") setGateTab("signup");
-        return;
-      }
-
-      // Actions
-      const actBtn = t.closest("[data-action]");
-      if (actBtn) {
-        const action = actBtn.getAttribute("data-action");
-
-        if (action === "login") doLogin();
-        if (action === "signup") doSignup();
-        if (action === "forgot") openForgotPassword();
-        if (action === "anon") enterAnonymous();
-
-        return;
-      }
-    }
-  }
-
-  function setGateTab(which) {
-    const root = getModalBody();
-    if (!root) return;
-
-    const tabs = Array.from(root.querySelectorAll(".auth-tab"));
-    for (const el of tabs) {
-      const is = el.getAttribute("data-tab") === which;
-      el.classList.toggle("active", is);
-      el.setAttribute("aria-selected", String(is));
-    }
-
-    const paneLogin = root.querySelector('[data-pane="login"]');
-    const paneSignup = root.querySelector('[data-pane="signup"]');
-
-    if (paneLogin) paneLogin.classList.toggle("hidden", which !== "login");
-    if (paneSignup) paneSignup.classList.toggle("hidden", which !== "signup");
-
-    clearStatus();
-
-    if (which === "login") {
-      setTimeout(() => root.querySelector('[data-auth="loginEmail"]')?.focus(), 30);
-    } else {
-      setTimeout(() => root.querySelector('[data-auth="signupName"]')?.focus(), 30);
-    }
-  }
-
-  function enterAnonymous() {
-    gateOpen = false;
-    unlockModalCloseUI();
-    closeModal();
-
-    // opt-out ranking
-    localStorage.setItem("mission_optout_ranking", "1");
-    if (optRankingEl) optRankingEl.checked = false;
-
-    lockIdentityFields(false);
-  }
-
-  function focusInGate() {
-    const root = getModalBody();
-    if (!root) return;
-    const el = root.querySelector('[data-auth="loginEmail"]');
-    el?.focus();
-  }
-
-  // =============================
-  // LOGIN
-  // =============================
-  async function doLogin() {
-    const root = getModalBody();
-    const email = (root?.querySelector('[data-auth="loginEmail"]')?.value || "").trim();
-    const pass = (root?.querySelector('[data-auth="loginPass"]')?.value || "").trim();
-
-    if (!email || !pass) {
-      showStatus("Preencha e-mail e senha.", "error");
-      return;
-    }
-
-    try {
-      await signInWithEmailAndPassword(auth, email, pass);
-      showStatus("Login realizado ✅", "ok");
-      // onAuthStateChanged fecha o gate
-    } catch (e) {
-      showStatus(humanAuthError(e), "error");
-    }
-  }
-
-  // =============================
-  // CADASTRO
-  // =============================
-  async function doSignup() {
-    const root = getModalBody();
-    const name = (root?.querySelector('[data-auth="signupName"]')?.value || "").trim();
-    const sector = (root?.querySelector('[data-auth="signupSector"]')?.value || "").trim();
-    const email = (root?.querySelector('[data-auth="signupEmail"]')?.value || "").trim();
-    const pass = (root?.querySelector('[data-auth="signupPass"]')?.value || "").trim();
-
-    if (!name || !sector || !email || !pass) {
-      showStatus("Preencha nome, setor, e-mail e senha.", "error");
-      return;
-    }
-    if (!sector) {
-      showStatus("Selecione um setor válido.", "error");
-      return;
-    }
-
-    try {
-      const cred = await createUserWithEmailAndPassword(auth, email, pass);
-
-      const payload = {
-        uid: cred.user.uid,
-        email,
-        name: clampLen(name, 60),
-        sector: clampLen(sector, 120),
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-      };
-
-      try {
-        await setDoc(doc(db, "users", cred.user.uid), payload, { merge: true });
-      } catch (fireErr) {
-        console.warn("[auth] setDoc users falhou:", fireErr);
-        showStatus("Conta criada, mas o profile no Firestore falhou (rules). Ajuste /users nas regras.", "error");
-        return;
-      }
-
-      showStatus("Conta criada ✅ Você já está logado.", "ok");
-      // onAuthStateChanged fecha o gate
-    } catch (e) {
-      showStatus(humanAuthError(e), "error");
-    }
-  }
-
-  // =============================
-  // RECUPERAÇÃO (SÓ EMAIL)
-  // =============================
-  function openForgotPassword() {
-    unlockModalCloseUI(); // aqui pode fechar
-    gateOpen = false;
-
-    openModal({
-      title: "🔁 Recuperar senha",
-      bodyHTML: `
-        <p class="muted" style="margin-top:0">
-          Informe seu e-mail. Você receberá um link para redefinir a senha.
-        </p>
-
-        <label class="field">
-          <span>E-mail</span>
-          <input class="input" id="authResetEmail" type="email" autocomplete="email" placeholder="seu@email.com"/>
-        </label>
-
-        <div id="authResetStatus" class="auth-status show"></div>
-      `,
-      buttons: [
-        { label: "Voltar", variant: "ghost", onClick: () => { closeModal(); openAuthGate({ force: true }); } },
-        {
-          label: "Enviar link",
-          onClick: async () => {
-            const email = (document.getElementById("authResetEmail")?.value || "").trim();
-            const st = document.getElementById("authResetStatus");
-            if (!email) {
-              if (st) {
-                st.className = "auth-status show error";
-                st.textContent = "Digite seu e-mail.";
-              }
-              return;
-            }
-
-            try {
-              await sendPasswordResetEmail(auth, email);
-              if (st) {
-                st.className = "auth-status show ok";
-                st.textContent = "Link enviado! Verifique sua caixa de entrada (e spam).";
-              }
-            } catch (e) {
-              if (st) {
-                st.className = "auth-status show error";
-                st.textContent = humanAuthError(e);
-              }
-            }
-          },
-        },
-      ],
-    });
-
-    setTimeout(() => document.getElementById("authResetEmail")?.focus(), 60);
-  }
-
-  // =============================
-  // CONTA LOGADA
-  // =============================
-  function openAccountPanel() {
-    const name = currentProfile?.name || currentUser?.displayName || "(sem nome)";
-    const email = currentProfile?.email || currentUser?.email || "(sem e-mail)";
-    const sector = currentProfile?.sector || "(sem setor)";
-
-    openModal({
-      title: "👤 Minha conta",
-      bodyHTML: `
-        <div class="auth-profile">
-          <div class="who">
-            <b>${escapeHtml(name)}</b>
-            <small>${escapeHtml(email)}</small>
-            <small class="muted">Setor: ${escapeHtml(sector)}</small>
-          </div>
-        </div>
-
-        <div class="auth-actions" style="margin-top:14px">
-          <button class="btn ghost" id="authLogoutBtn" type="button">Sair</button>
-          <button class="btn" id="authDeleteBtn" type="button">Deletar conta</button>
-        </div>
-
-        <p class="auth-mini" style="margin-top:12px">
-          Se aparecer erro de segurança ao deletar, faça login novamente e tente de novo.
-        </p>
-      `,
-      buttons: [{ label: "Fechar", onClick: closeModal }],
-    });
-
-    setTimeout(() => {
-      document.getElementById("authLogoutBtn")?.addEventListener("click", doLogout);
-      document.getElementById("authDeleteBtn")?.addEventListener("click", confirmDeleteAccount);
-    }, 0);
-  }
-
-  async function doLogout() {
-    try {
-      await signOut(auth);
-      closeModal();
-    } catch (e) {
-      openModal({
-        title: "Erro",
-        bodyHTML: `<p class="muted"><code>${escapeHtml(e?.message || String(e))}</code></p>`,
-        buttons: [{ label: "Ok", onClick: closeModal }],
-      });
-    }
-  }
-
-  function confirmDeleteAccount() {
-    openModal({
-      title: "⚠️ Deletar conta",
-      bodyHTML: `
-        <p><strong>Tem certeza?</strong></p>
-        <p class="muted">Isso remove seu perfil e encerra seu acesso.</p>
-      `,
-      buttons: [
-        { label: "Cancelar", variant: "ghost", onClick: closeModal },
-        { label: "Sim, deletar", onClick: async () => { closeModal(); await doDeleteAccount(); } },
-      ],
-    });
-  }
-
-  async function doDeleteAccount() {
-    if (!currentUser) return;
-
-    openModal({
-      title: "Deletando…",
-      bodyHTML: `<p class="muted" style="margin-top:0">Aguarde…</p>`,
-      buttons: [{ label: "Fechar", onClick: closeModal }],
-    });
-
-    try {
-      await deleteDoc(doc(db, "users", currentUser.uid));
-      await deleteUser(currentUser);
-
-      closeModal();
-      openModal({
-        title: "Conta removida ✅",
-        bodyHTML: `<p>Conta deletada com sucesso.</p>`,
-        buttons: [{ label: "Ok", onClick: closeModal }],
-      });
-    } catch (e) {
-      const msg = humanAuthError(e);
-      openModal({
-        title: "Não foi possível deletar",
-        bodyHTML: `
-          <p>${escapeHtml(msg)}</p>
-          <p class="muted" style="margin-top:10px">
-            Se aparecer <code>requires-recent-login</code>, saia e entre novamente e tente deletar.
-          </p>
-        `,
-        buttons: [{ label: "Ok", onClick: closeModal }],
-      });
-    }
-  }
-
-  // =============================
-  // PROFILE
-  // =============================
+  // -----------------------------
+  // Profile: carregar/criar
+  // -----------------------------
   async function fetchOrCreateProfile(user) {
     const ref = doc(db, "users", user.uid);
     const snap = await getDoc(ref);
@@ -535,6 +99,7 @@ export function bootAuth(app) {
       };
     }
 
+    // cria profile com fallback do form/localStorage
     const fallbackName = (nameEl?.value || localStorage.getItem("mission_name") || "").trim();
     const fallbackSector = (sectorEl?.value || localStorage.getItem("mission_sector") || "").trim();
 
@@ -557,6 +122,9 @@ export function bootAuth(app) {
     };
   }
 
+  // -----------------------------
+  // Aplicar perfil no form e travar
+  // -----------------------------
   function applyLoggedProfileToForm(profile) {
     if (nameEl) nameEl.value = profile.name || "";
     if (sectorEl) sectorEl.value = profile.sector || "";
@@ -572,9 +140,11 @@ export function bootAuth(app) {
       if (locked) {
         nameEl.setAttribute("disabled", "disabled");
         nameEl.classList.add("auth-locked");
+        nameEl.title = "Você está logado — nome vem do seu perfil.";
       } else {
         nameEl.removeAttribute("disabled");
         nameEl.classList.remove("auth-locked");
+        nameEl.title = "";
       }
     }
 
@@ -582,42 +152,424 @@ export function bootAuth(app) {
       if (locked) {
         sectorEl.setAttribute("disabled", "disabled");
         sectorEl.classList.add("auth-locked");
+        sectorEl.title = "Você está logado — setor vem do seu perfil.";
       } else {
         sectorEl.removeAttribute("disabled");
         sectorEl.classList.remove("auth-locked");
+        sectorEl.title = "";
       }
     }
   }
 
-  // =============================
-  // STATUS + SETORES
-  // =============================
-  function getModalBody() {
-    return document.getElementById("modalBody");
+  // -----------------------------
+  // Gate principal (login/cadastro/anon)
+  // -----------------------------
+  function openAuthGate({ forceNoClose } = { forceNoClose: true }) {
+    busy = false;
+
+    openModal({
+      title: "🔐 Entrar ou criar conta",
+      bodyHTML: renderAuthHTML({ noClose: !!forceNoClose }),
+      buttons: forceNoClose
+        ? [] // sem botão fechar quando for o primeiro modal do app
+        : [{ label: "Fechar", onClick: closeModal }],
+    });
+
+    wireAuthModalHandlers();
   }
 
-  function showStatus(msg, kind) {
-    const root = getModalBody();
-    const box = root?.querySelector('[data-auth="status"]');
-    if (!box) return;
-    box.className = `auth-status show ${kind === "ok" ? "ok" : "error"}`;
-    box.textContent = msg;
+  function renderAuthHTML({ noClose }) {
+    const sectorsHTML = buildSectorOptionsHTML();
+
+    return `
+      <div class="auth-head">
+        <h4 class="auth-title" style="margin:0">Acesse para entrar no ranking</h4>
+        <p class="auth-sub" style="margin:0">
+          Se preferir, você pode usar o modo anônimo (sem ranking).
+        </p>
+      </div>
+
+      <div class="auth-tabs" role="tablist" aria-label="Autenticação">
+        <div class="auth-tab active" id="authTabLogin" role="tab" aria-selected="true">Login</div>
+        <div class="auth-tab" id="authTabSignup" role="tab" aria-selected="false">Criar conta</div>
+      </div>
+
+      <div id="authStatus" class="auth-status"></div>
+
+      <div id="authPaneLogin">
+        <div class="auth-grid onecol">
+          <label class="field">
+            <span>E-mail</span>
+            <input class="input" id="authLoginEmail" type="email" autocomplete="email" placeholder="seu@email.com"/>
+          </label>
+          <label class="field">
+            <span>Senha</span>
+            <input class="input" id="authLoginPass" type="password" autocomplete="current-password" placeholder="••••••••"/>
+          </label>
+        </div>
+
+        <div class="auth-actions">
+          <button class="btn" id="authLoginBtn" type="button">Entrar</button>
+          <button class="btn ghost" id="authForgotBtn" type="button">Esqueci minha senha</button>
+        </div>
+      </div>
+
+      <div id="authPaneSignup" class="hidden">
+        <div class="auth-grid">
+          <label class="field">
+            <span>Nome</span>
+            <input class="input" id="authSignupName" type="text" maxlength="60" placeholder="Seu nome"/>
+          </label>
+          <label class="field">
+            <span>Setor</span>
+            <select class="input" id="authSignupSector">${sectorsHTML}</select>
+          </label>
+        </div>
+
+        <div class="auth-grid onecol" style="margin-top:12px">
+          <label class="field">
+            <span>E-mail</span>
+            <input class="input" id="authSignupEmail" type="email" autocomplete="email" placeholder="seu@email.com"/>
+          </label>
+          <label class="field">
+            <span>Senha</span>
+            <input class="input" id="authSignupPass" type="password" autocomplete="new-password" placeholder="Crie uma senha"/>
+          </label>
+        </div>
+
+        <div class="auth-actions">
+          <button class="btn" id="authSignupBtn" type="button">Criar conta</button>
+        </div>
+      </div>
+
+      <hr class="auth-divider"/>
+
+      <div class="auth-note">
+        <b>Modo anônimo</b><br/>
+        Você pode fazer a missão sem cadastro, mas <b>não participa do ranking</b>.
+        <div class="auth-actions" style="margin-top:10px">
+          <button class="btn ghost" id="authAnonBtn" type="button">Prefiro não me cadastrar</button>
+          ${noClose ? `<span class="auth-mini">Você poderá logar depois pelo botão do topo.</span>` : ""}
+        </div>
+      </div>
+    `;
   }
 
-  function clearStatus() {
-    const root = getModalBody();
-    const box = root?.querySelector('[data-auth="status"]');
-    if (!box) return;
-    box.className = "auth-status";
-    box.textContent = "";
+  function wireAuthModalHandlers() {
+    const tabLogin = document.getElementById("authTabLogin");
+    const tabSignup = document.getElementById("authTabSignup");
+    const paneLogin = document.getElementById("authPaneLogin");
+    const paneSignup = document.getElementById("authPaneSignup");
+
+    tabLogin?.addEventListener("click", () => {
+      tabLogin.classList.add("active");
+      tabSignup?.classList.remove("active");
+      tabLogin.setAttribute("aria-selected", "true");
+      tabSignup?.setAttribute("aria-selected", "false");
+      paneLogin?.classList.remove("hidden");
+      paneSignup?.classList.add("hidden");
+      clearStatus();
+    });
+
+    tabSignup?.addEventListener("click", () => {
+      tabSignup.classList.add("active");
+      tabLogin?.classList.remove("active");
+      tabSignup.setAttribute("aria-selected", "true");
+      tabLogin?.setAttribute("aria-selected", "false");
+      paneSignup?.classList.remove("hidden");
+      paneLogin?.classList.add("hidden");
+      clearStatus();
+    });
+
+    document.getElementById("authLoginBtn")?.addEventListener("click", doLogin);
+    document.getElementById("authSignupBtn")?.addEventListener("click", doSignup);
+    document.getElementById("authForgotBtn")?.addEventListener("click", openForgotPassword);
+    document.getElementById("authAnonBtn")?.addEventListener("click", () => {
+      clearStatus();
+      closeModal();
+    });
+
+    setTimeout(() => document.getElementById("authLoginEmail")?.focus(), 60);
   }
 
+  // -----------------------------
+  // Login
+  // -----------------------------
+  async function doLogin() {
+    if (busy) return;
+    busy = true;
+
+    const email = (document.getElementById("authLoginEmail")?.value || "").trim();
+    const pass = (document.getElementById("authLoginPass")?.value || "").trim();
+
+    if (!email || !pass) {
+      showStatus("Preencha e-mail e senha.", "error");
+      busy = false;
+      return;
+    }
+
+    try {
+      await signInWithEmailAndPassword(auth, email, pass);
+      showStatus("Login realizado ✅", "ok");
+      setTimeout(() => closeModal(), 300);
+    } catch (e) {
+      showStatus(humanAuthError(e), "error");
+      busy = false;
+    }
+  }
+
+  // -----------------------------
+  // Cadastro
+  // -----------------------------
+  async function doSignup() {
+    if (busy) return;
+    busy = true;
+
+    const name = (document.getElementById("authSignupName")?.value || "").trim();
+    const sector = (document.getElementById("authSignupSector")?.value || "").trim();
+    const email = (document.getElementById("authSignupEmail")?.value || "").trim();
+    const pass = (document.getElementById("authSignupPass")?.value || "").trim();
+
+    if (!name || !sector || !email || !pass) {
+      showStatus("Preencha nome, setor, e-mail e senha.", "error");
+      busy = false;
+      return;
+    }
+
+    try {
+      const cred = await createUserWithEmailAndPassword(auth, email, pass);
+
+      const payload = {
+        uid: cred.user.uid,
+        email,
+        name: clampLen(name, 60),
+        sector: clampLen(sector, 120),
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      };
+
+      // ✅ 1 profile por uid (não duplica)
+      await setDoc(doc(db, "users", cred.user.uid), payload, { merge: true });
+
+      showStatus("Conta criada ✅", "ok");
+      setTimeout(() => closeModal(), 300);
+    } catch (e) {
+      showStatus(humanAuthError(e), "error");
+      busy = false;
+    }
+  }
+
+  // -----------------------------
+  // Esqueci minha senha (SÓ EMAIL)
+  // -----------------------------
+  function openForgotPassword() {
+    busy = false;
+
+    openModal({
+      title: "🔁 Recuperar senha",
+      bodyHTML: `
+        <p class="muted" style="margin-top:0">
+          Informe seu e-mail. Você receberá um link para redefinir a senha.
+        </p>
+
+        <label class="field">
+          <span>E-mail</span>
+          <input class="input" id="authResetEmail" type="email" autocomplete="email" placeholder="seu@email.com"/>
+        </label>
+
+        <div id="authResetStatus" class="auth-status show" style="display:block"></div>
+      `,
+      buttons: [
+        { label: "Voltar", variant: "ghost", onClick: () => { closeModal(); openAuthGate({ forceNoClose: false }); } },
+        {
+          label: "Enviar link",
+          onClick: async () => {
+            if (busy) return;
+            busy = true;
+
+            const email = (document.getElementById("authResetEmail")?.value || "").trim();
+            const st = document.getElementById("authResetStatus");
+
+            if (!email) {
+              if (st) {
+                st.className = "auth-status show error";
+                st.textContent = "Digite seu e-mail.";
+              }
+              busy = false;
+              return;
+            }
+
+            try {
+              await sendPasswordResetEmail(auth, email);
+              if (st) {
+                st.className = "auth-status show ok";
+                st.textContent = "Link enviado! Verifique sua caixa de entrada (e spam).";
+              }
+            } catch (e) {
+              if (st) {
+                st.className = "auth-status show error";
+                st.textContent = humanAuthError(e);
+              }
+            } finally {
+              busy = false;
+            }
+          },
+        },
+      ],
+    });
+
+    setTimeout(() => document.getElementById("authResetEmail")?.focus(), 60);
+  }
+
+  // -----------------------------
+  // Painel de conta (logado)
+  // -----------------------------
+  function openAccountPanel() {
+    busy = false;
+
+    const name = currentProfile?.name || currentUser?.displayName || "(sem nome)";
+    const email = currentProfile?.email || currentUser?.email || "(sem e-mail)";
+    const sector = currentProfile?.sector || "(sem setor)";
+
+    openModal({
+      title: "👤 Minha conta",
+      bodyHTML: `
+        <div class="auth-profile">
+          <div class="who">
+            <b>${escapeHtml(name)}</b>
+            <small>${escapeHtml(email)}</small>
+            <small class="muted">Setor: ${escapeHtml(sector)}</small>
+          </div>
+        </div>
+
+        <div class="auth-actions" style="margin-top:14px">
+          <button class="btn ghost" id="authLogoutBtn" type="button">Sair</button>
+          <button class="btn" id="authDeleteBtn" type="button">Deletar conta</button>
+        </div>
+
+        <p class="auth-mini" style="margin-top:12px">
+          Ao deletar a conta, seu perfil e seu usuário de autenticação serão removidos.
+        </p>
+      `,
+      buttons: [{ label: "Fechar", onClick: closeModal }],
+    });
+
+    setTimeout(() => {
+      document.getElementById("authLogoutBtn")?.addEventListener("click", doLogout);
+      document.getElementById("authDeleteBtn")?.addEventListener("click", confirmDeleteAccount);
+    }, 0);
+  }
+
+  async function doLogout() {
+    if (busy) return;
+    busy = true;
+
+    try {
+      await signOut(auth);
+      closeModal();
+    } catch (e) {
+      openModal({
+        title: "Erro",
+        bodyHTML: `<p class="muted"><code>${escapeHtml(e?.message || String(e))}</code></p>`,
+        buttons: [{ label: "Ok", onClick: closeModal }],
+      });
+    } finally {
+      busy = false;
+    }
+  }
+
+  function confirmDeleteAccount() {
+    openModal({
+      title: "⚠️ Deletar conta",
+      bodyHTML: `
+        <p><strong>Tem certeza?</strong></p>
+        <p class="muted">
+          Isso remove seu perfil e seu acesso. Você poderá criar outra conta depois.
+        </p>
+      `,
+      buttons: [
+        { label: "Cancelar", variant: "ghost", onClick: closeModal },
+        {
+          label: "Sim, deletar",
+          onClick: async () => {
+            closeModal();
+            await doDeleteAccount();
+          },
+        },
+      ],
+    });
+  }
+
+  async function doDeleteAccount() {
+    if (!currentUser) return;
+
+    openModal({
+      title: "Deletando…",
+      bodyHTML: `<p class="muted" style="margin-top:0">Aguarde…</p>`,
+      buttons: [],
+    });
+
+    try {
+      // 1) apaga profile no Firestore
+      await deleteDoc(doc(db, "users", currentUser.uid));
+
+      // 2) apaga usuário do Auth
+      await deleteUser(currentUser);
+
+      openModal({
+        title: "Conta removida ✅",
+        bodyHTML: `<p>Conta deletada com sucesso.</p>`,
+        buttons: [{ label: "Ok", onClick: closeModal }],
+      });
+    } catch (e) {
+      const msg = humanAuthError(e);
+      openModal({
+        title: "Não foi possível deletar",
+        bodyHTML: `
+          <p>${escapeHtml(msg)}</p>
+          <p class="muted" style="margin-top:10px">
+            Se aparecer <code>requires-recent-login</code>, faça logout, login novamente e tente deletar.
+          </p>
+        `,
+        buttons: [{ label: "Ok", onClick: closeModal }],
+      });
+    } finally {
+      busy = false;
+    }
+  }
+
+  // -----------------------------
+  // Ranking toggle: aviso quando anônimo tentar participar
+  // -----------------------------
+  optRankingEl?.addEventListener("change", () => {
+    if (!currentUser && optRankingEl.checked) {
+      optRankingEl.checked = false;
+      localStorage.setItem("mission_optout_ranking", "1");
+
+      openModal({
+        title: "Ranking requer cadastro",
+        bodyHTML: `
+          <p>Para participar do ranking, é necessário criar uma conta ou fazer login.</p>
+          <p class="muted" style="margin-top:10px">Você pode continuar no modo anônimo, mas sem ranking.</p>
+        `,
+        buttons: [
+          { label: "Ok", onClick: closeModal },
+          { label: "Fazer login", onClick: () => { closeModal(); openAuthGate({ forceNoClose: false }); } }
+        ],
+      });
+    }
+  });
+
+  // -----------------------------
+  // Helpers
+  // -----------------------------
   function buildSectorOptionsHTML() {
     const sectors = app.data?.SECTORS;
+
     if (Array.isArray(sectors) && sectors.length) {
       return sectors
         .map((s) => {
-          const v = (s === "Selecione…" || s === "Selecione") ? "" : s;
+          const v = (s === "Selecione…") ? "" : s;
           return `<option value="${escapeHtml(v)}">${escapeHtml(s)}</option>`;
         })
         .join("");
@@ -632,6 +584,20 @@ export function bootAuth(app) {
     return `<option value="">Selecione…</option>`;
   }
 
+  function showStatus(msg, kind) {
+    const box = document.getElementById("authStatus");
+    if (!box) return;
+    box.className = `auth-status show ${kind === "ok" ? "ok" : "error"}`;
+    box.textContent = msg;
+  }
+
+  function clearStatus() {
+    const box = document.getElementById("authStatus");
+    if (!box) return;
+    box.className = "auth-status";
+    box.textContent = "";
+  }
+
   function humanAuthError(e) {
     const code = String(e?.code || "");
     if (code.includes("auth/invalid-email")) return "E-mail inválido.";
@@ -642,7 +608,6 @@ export function bootAuth(app) {
     if (code.includes("auth/weak-password")) return "Senha fraca. Use uma senha mais forte.";
     if (code.includes("auth/too-many-requests")) return "Muitas tentativas. Tente novamente em alguns minutos.";
     if (code.includes("auth/requires-recent-login")) return "Por segurança, faça login novamente e tente deletar a conta.";
-    if (code.includes("permission-denied")) return "Sem permissão no Firestore. Ajuste as rules para /users.";
     return e?.message ? String(e.message) : "Erro inesperado.";
   }
 
@@ -660,45 +625,12 @@ export function bootAuth(app) {
     return v.length > max ? v.slice(0, max) : v;
   }
 
-  // =============================
-  // MODAL CLOSE LOCK (gate inicial)
-  // =============================
-  function lockModalCloseUI() {
-    const closeX = document.getElementById("closeModal");
-    if (closeX) closeX.style.display = "none";
+  // ✅ Se você quiser que o login abra sozinho ao iniciar o app:
+  // chame app.auth.openGate() no final do bootAll() ou aqui:
+  // openAuthGate({ forceNoClose: true });
 
-    window.__AUTH_ESC_BLOCK__ = (ev) => {
-      if (ev.key === "Escape") {
-        ev.preventDefault();
-        ev.stopPropagation();
-      }
-    };
-    document.addEventListener("keydown", window.__AUTH_ESC_BLOCK__, true);
-  }
-
-  function unlockModalCloseUI() {
-    const closeX = document.getElementById("closeModal");
-    if (closeX) closeX.style.display = "";
-
-    if (window.__AUTH_ESC_BLOCK__) {
-      document.removeEventListener("keydown", window.__AUTH_ESC_BLOCK__, true);
-      window.__AUTH_ESC_BLOCK__ = null;
-    }
-  }
-
-  // garante que o HTML do modal já “pintou”
-  function afterModalPaint(fn) {
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        try { fn(); } catch (e) { console.warn("[auth] afterModalPaint error:", e); }
-      });
-    });
-  }
-
-  // =============================
-  // ABRIR AUTOMÁTICO NO START
-  // =============================
-  setTimeout(() => {
-    if (!currentUser) openAuthGate({ force: true });
-  }, 50);
+  // Opcional: expor helpers para outros módulos
+  app.auth = app.auth || {};
+  app.auth.openAuthGate = openAuthGate;
+  app.auth.openAccountPanel = openAccountPanel;
 }
