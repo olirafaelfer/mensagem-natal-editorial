@@ -1,155 +1,604 @@
-// js/auth.js — Login/Cadastro/Recuperação + modo anônimo
+// js/auth.js — Login/Cadastro/Anônimo + Perfil (Sair / Deletar conta)
 // Requer:
-// - app.ui.showOnly (do main.js)
-// - app.dom (do main.js) com screenAuth/screenForm/userNameEl/userSectorEl/optRankingEl etc.
-// - app.modal { openModal, closeModal } (ui-modal.js)
-// - Firebase já inicializado no main.js (initializeApp), pois aqui usamos getAuth(getApp())
+// - app.firebase.db (Firestore)
+// - app.modal (openModal/closeModal) OU screenAuth (se você tiver)
+// - Inputs existentes no form principal: #userName e #userSector
+//
+// Observação:
+// - Este módulo trava nome/setor quando usuário está logado.
+// - "Esqueci minha senha" pede só e-mail.
+// - Clicar no botão do topo abre "Minha conta" se estiver logado.
 
-import { getApp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js";
 import {
   getAuth,
   onAuthStateChanged,
-  setPersistence,
-  browserLocalPersistence,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   sendPasswordResetEmail,
   signOut,
-  updateProfile,
+  deleteUser,
 } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
 
 import {
-  getFirestore,
   doc,
   getDoc,
   setDoc,
+  deleteDoc,
   serverTimestamp,
 } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
 
 export function bootAuth(app) {
-  const { openModal, closeModal } = app.modal || {};
-  if (!openModal || !closeModal) {
-    console.warn("[auth] app.modal não disponível (ui-modal precisa bootar antes).");
+  const db = app.firebase?.db;
+  if (!db) {
+    console.warn("[auth] Firestore (app.firebase.db) não disponível.");
     return;
   }
 
-  // Firebase instances (usa o app default criado no main.js)
-  const fbApp = getApp();
-  const auth = getAuth(fbApp);
-  const db = app.firebase?.db || getFirestore(fbApp);
+  const auth = getAuth(); // usa o app default já inicializado no main.js
 
-  // Persistência (mantém logado)
-  setPersistence(auth, browserLocalPersistence).catch(() => {});
+  const { openModal, closeModal } = app.modal || {};
+  const hasModal = typeof openModal === "function" && typeof closeModal === "function";
 
-  // ---- Chaves locais ----
-  const ANON_KEY = "mission_auth_anon"; // "1" se escolheu modo anônimo
-  const USER_CACHE_KEY = "mission_user_cache"; // cache simples do perfil
+  // --- DOM principal (form do jogo) ---
+  const nameEl = document.getElementById("userName");
+  const sectorEl = document.getElementById("userSector");
+  const optRankingEl = document.getElementById("optRanking"); // existe no seu HTML
 
-  // ---- DOM base (do seu main.js) ----
-  const dom = app.dom || {};
-  const screenAuth = dom.screenAuth || document.getElementById("screenAuth");
-  const screenForm = dom.screenForm || document.getElementById("screenForm");
-  const loginTopBtn =
-    document.getElementById("loginBtn") ||
-    document.getElementById("authBtn") ||
-    document.getElementById("userLoginBtn"); // fallback
+  // Botão do topo (login/cadastro)
+  // ⚠️ Se o seu id for diferente, ajuste aqui:
+  const authBtn = document.getElementById("authBtn");
 
-  const userNameEl = dom.userNameEl || document.getElementById("userName");
-  const userSectorEl = dom.userSectorEl || document.getElementById("userSector");
-  const optRankingEl = dom.optRankingEl || document.getElementById("optRanking");
+  // Estado
+  let currentUser = null;
+  let currentProfile = null;
 
-  // Lista de setores vem do app.data (mesma do jogo)
-  const SECTORS = app.data?.SECTORS || [];
+  // Se existir o botão no topo, ele deve:
+  // - logado: abrir painel "Minha conta"
+  // - deslogado: abrir login/cadastro
+  authBtn?.addEventListener("click", () => {
+    if (currentUser) openAccountPanel();
+    else openAuthGate();
+  });
 
-  // ---- DOM do Auth (IDs esperados) ----
-  const $ = (sel) => (screenAuth?.querySelector(sel)) || document.querySelector(sel);
+  // Observa mudanças de login
+  onAuthStateChanged(auth, async (user) => {
+    currentUser = user || null;
+    currentProfile = null;
 
-  const tabLogin = $("#authTabLogin");
-  const tabSignup = $("#authTabSignup");
+    if (currentUser) {
+      currentProfile = await fetchOrCreateProfile(currentUser).catch((e) => {
+        console.warn("[auth] falha ao carregar/criar profile:", e);
+        return null;
+      });
 
-  const panelLogin = $("#authPanelLogin");
-  const panelSignup = $("#authPanelSignup");
+      if (currentProfile) {
+        applyLoggedProfileToForm(currentProfile);
+      } else {
+        // se falhou profile, pelo menos trava edição
+        lockIdentityFields(true);
+      }
+    } else {
+      lockIdentityFields(false);
+      // se deslogou, mantém o que o usuário digitou/localStorage no modo anônimo
+      // (não apagamos automaticamente)
+    }
+  });
 
-  const statusBox = $("#authStatus");
+  // -----------------------------
+  // Profile: carregar/criar
+  // -----------------------------
+  async function fetchOrCreateProfile(user) {
+    const ref = doc(db, "users", user.uid);
+    const snap = await getDoc(ref);
 
-  const loginEmail = $("#authLoginEmail");
-  const loginPass = $("#authLoginPass");
-  const loginBtn = $("#authLoginBtn");
+    if (snap.exists()) {
+      const data = snap.data() || {};
+      return {
+        uid: user.uid,
+        email: user.email || data.email || "",
+        name: data.name || "",
+        sector: data.sector || "",
+      };
+    }
 
-  const forgotBtn = $("#authForgotBtn");
+    // Sem doc ainda: cria um profile básico usando o que já estiver no form/localStorage
+    const fallbackName = (nameEl?.value || localStorage.getItem("mission_name") || "").trim();
+    const fallbackSector = (sectorEl?.value || localStorage.getItem("mission_sector") || "").trim();
 
-  const signupName = $("#authSignupName");
-  const signupSector = $("#authSignupSector"); // select ou input
-  const signupEmail = $("#authSignupEmail");
-  const signupPass = $("#authSignupPass");
-  const signupBtn = $("#authSignupBtn");
+    const payload = {
+      uid: user.uid,
+      email: user.email || "",
+      name: clampLen(fallbackName, 60) || "(Sem nome)",
+      sector: clampLen(fallbackSector, 120) || "(Sem setor)",
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    };
 
-  const anonBtn = $("#authAnonBtn");
+    await setDoc(ref, payload, { merge: true });
 
-  const logoutBtn = $("#authLogoutBtn");
+    return {
+      uid: payload.uid,
+      email: payload.email,
+      name: payload.name,
+      sector: payload.sector,
+    };
+  }
 
-  // =========================
-  // 1) Popula setores no CADASTRO (select)
-  // =========================
-  function populateAuthSectors() {
-    if (!signupSector) return;
+  // -----------------------------
+  // Aplicar perfil no form e travar
+  // -----------------------------
+  function applyLoggedProfileToForm(profile) {
+    if (nameEl) nameEl.value = profile.name || "";
+    if (sectorEl) sectorEl.value = profile.sector || "";
 
-    // Só popula se for SELECT
-    const isSelect = signupSector instanceof HTMLSelectElement;
-    if (!isSelect) return;
+    // mantém coerência do app
+    if (profile.name) localStorage.setItem("mission_name", profile.name);
+    if (profile.sector) localStorage.setItem("mission_sector", profile.sector);
 
-    if (!Array.isArray(SECTORS) || SECTORS.length === 0) {
-      // fallback se por algum motivo não veio do app.data
-      signupSector.innerHTML = `<option value="">Setor (não carregado)</option>`;
+    lockIdentityFields(true);
+  }
+
+  function lockIdentityFields(locked) {
+    if (nameEl) {
+      if (locked) {
+        nameEl.setAttribute("disabled", "disabled");
+        nameEl.classList.add("auth-locked");
+        nameEl.title = "Você está logado — nome vem do seu perfil.";
+      } else {
+        nameEl.removeAttribute("disabled");
+        nameEl.classList.remove("auth-locked");
+        nameEl.title = "";
+      }
+    }
+
+    if (sectorEl) {
+      if (locked) {
+        sectorEl.setAttribute("disabled", "disabled");
+        sectorEl.classList.add("auth-locked");
+        sectorEl.title = "Você está logado — setor vem do seu perfil.";
+      } else {
+        sectorEl.removeAttribute("disabled");
+        sectorEl.classList.remove("auth-locked");
+        sectorEl.title = "";
+      }
+    }
+  }
+
+  // -----------------------------
+  // Gate principal (login/cadastro/anon)
+  // -----------------------------
+  function openAuthGate() {
+    if (!hasModal) {
+      console.warn("[auth] app.modal não disponível. Recomendo usar ui-modal.");
       return;
     }
 
-    signupSector.innerHTML = "";
-    for (const s of SECTORS) {
-      const opt = document.createElement("option");
-      opt.value = (s === "Selecione…") ? "" : s;
-      opt.textContent = s;
-      signupSector.appendChild(opt);
+    openModal({
+      title: "🔐 Entrar ou criar conta",
+      bodyHTML: renderAuthHTML(),
+      buttons: [{ label: "Fechar", onClick: closeModal }],
+    });
+
+    wireAuthModalHandlers();
+  }
+
+  function renderAuthHTML() {
+    const sectorsHTML = buildSectorOptionsHTML();
+
+    return `
+      <div class="auth-head">
+        <h4 class="auth-title" style="margin:0">Acesse para entrar no ranking</h4>
+        <p class="auth-sub" style="margin:0">
+          Se preferir, você pode usar o modo anônimo (sem ranking).
+        </p>
+      </div>
+
+      <div class="auth-tabs" role="tablist" aria-label="Autenticação">
+        <div class="auth-tab active" id="authTabLogin" role="tab" aria-selected="true">Login</div>
+        <div class="auth-tab" id="authTabSignup" role="tab" aria-selected="false">Criar conta</div>
+      </div>
+
+      <div id="authStatus" class="auth-status"></div>
+
+      <div id="authPaneLogin">
+        <div class="auth-grid onecol">
+          <label class="field">
+            <span>E-mail</span>
+            <input class="input" id="authLoginEmail" type="email" autocomplete="email" placeholder="seu@email.com"/>
+          </label>
+          <label class="field">
+            <span>Senha</span>
+            <input class="input" id="authLoginPass" type="password" autocomplete="current-password" placeholder="••••••••"/>
+          </label>
+        </div>
+
+        <div class="auth-actions">
+          <button class="btn" id="authLoginBtn" type="button">Entrar</button>
+          <button class="btn ghost" id="authForgotBtn" type="button">Esqueci minha senha</button>
+        </div>
+      </div>
+
+      <div id="authPaneSignup" class="hidden">
+        <div class="auth-grid">
+          <label class="field">
+            <span>Nome</span>
+            <input class="input" id="authSignupName" type="text" maxlength="60" placeholder="Seu nome"/>
+          </label>
+          <label class="field">
+            <span>Setor</span>
+            <select class="input" id="authSignupSector">${sectorsHTML}</select>
+          </label>
+        </div>
+
+        <div class="auth-grid onecol" style="margin-top:12px">
+          <label class="field">
+            <span>E-mail</span>
+            <input class="input" id="authSignupEmail" type="email" autocomplete="email" placeholder="seu@email.com"/>
+          </label>
+          <label class="field">
+            <span>Senha</span>
+            <input class="input" id="authSignupPass" type="password" autocomplete="new-password" placeholder="Crie uma senha"/>
+          </label>
+        </div>
+
+        <div class="auth-actions">
+          <button class="btn" id="authSignupBtn" type="button">Criar conta</button>
+        </div>
+      </div>
+
+      <hr class="auth-divider"/>
+
+      <div class="auth-note">
+        <b>Modo anônimo</b><br/>
+        Você pode fazer a missão sem cadastro, mas <b>não participa do ranking</b>.
+        <div class="auth-actions" style="margin-top:10px">
+          <button class="btn ghost" id="authAnonBtn" type="button">Prefiro não me cadastrar</button>
+        </div>
+      </div>
+    `;
+  }
+
+  function wireAuthModalHandlers() {
+    const tabLogin = document.getElementById("authTabLogin");
+    const tabSignup = document.getElementById("authTabSignup");
+    const paneLogin = document.getElementById("authPaneLogin");
+    const paneSignup = document.getElementById("authPaneSignup");
+
+    tabLogin?.addEventListener("click", () => {
+      tabLogin.classList.add("active");
+      tabSignup?.classList.remove("active");
+      tabLogin.setAttribute("aria-selected", "true");
+      tabSignup?.setAttribute("aria-selected", "false");
+      paneLogin?.classList.remove("hidden");
+      paneSignup?.classList.add("hidden");
+      clearStatus();
+    });
+
+    tabSignup?.addEventListener("click", () => {
+      tabSignup.classList.add("active");
+      tabLogin?.classList.remove("active");
+      tabSignup.setAttribute("aria-selected", "true");
+      tabLogin?.setAttribute("aria-selected", "false");
+      paneSignup?.classList.remove("hidden");
+      paneLogin?.classList.add("hidden");
+      clearStatus();
+    });
+
+    document.getElementById("authLoginBtn")?.addEventListener("click", doLogin);
+    document.getElementById("authSignupBtn")?.addEventListener("click", doSignup);
+    document.getElementById("authForgotBtn")?.addEventListener("click", openForgotPassword);
+    document.getElementById("authAnonBtn")?.addEventListener("click", () => {
+      // modo anônimo: só fecha modal, sem mexer em nome/setor
+      clearStatus();
+      closeModal();
+    });
+
+    // foco inicial
+    setTimeout(() => document.getElementById("authLoginEmail")?.focus(), 60);
+  }
+
+  // -----------------------------
+  // Login
+  // -----------------------------
+  async function doLogin() {
+    const email = (document.getElementById("authLoginEmail")?.value || "").trim();
+    const pass = (document.getElementById("authLoginPass")?.value || "").trim();
+
+    if (!email || !pass) {
+      showStatus("Preencha e-mail e senha.", "error");
+      return;
     }
 
-    // tenta restaurar setor salvo/atual
-    const saved =
-      (userSectorEl?.value) ||
-      localStorage.getItem("mission_sector") ||
-      "";
+    try {
+      await signInWithEmailAndPassword(auth, email, pass);
+      showStatus("Login realizado ✅", "ok");
+      // fecha logo após login
+      setTimeout(() => closeModal(), 450);
+    } catch (e) {
+      showStatus(humanAuthError(e), "error");
+    }
+  }
 
-    if (saved) signupSector.value = saved;
+  // -----------------------------
+  // Cadastro
+  // -----------------------------
+  async function doSignup() {
+    const name = (document.getElementById("authSignupName")?.value || "").trim();
+    const sector = (document.getElementById("authSignupSector")?.value || "").trim();
+    const email = (document.getElementById("authSignupEmail")?.value || "").trim();
+    const pass = (document.getElementById("authSignupPass")?.value || "").trim();
 
-    // espelha mudanças para o form principal (opcional, ajuda na consistência)
-    signupSector.addEventListener("change", () => {
-      const v = signupSector.value || "";
-      if (userSectorEl) userSectorEl.value = v;
-      localStorage.setItem("mission_sector", v);
+    if (!name || !sector || !email || !pass) {
+      showStatus("Preencha nome, setor, e-mail e senha.", "error");
+      return;
+    }
+
+    try {
+      const cred = await createUserWithEmailAndPassword(auth, email, pass);
+
+      // salva profile no Firestore
+      const payload = {
+        uid: cred.user.uid,
+        email,
+        name: clampLen(name, 60),
+        sector: clampLen(sector, 120),
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      };
+
+      await setDoc(doc(db, "users", cred.user.uid), payload, { merge: true });
+
+      showStatus("Conta criada ✅", "ok");
+      setTimeout(() => closeModal(), 450);
+    } catch (e) {
+      showStatus(humanAuthError(e), "error");
+    }
+  }
+
+  // -----------------------------
+  // Esqueci minha senha (SÓ EMAIL)
+  // -----------------------------
+  function openForgotPassword() {
+    if (!hasModal) return;
+
+    openModal({
+      title: "🔁 Recuperar senha",
+      bodyHTML: `
+        <p class="muted" style="margin-top:0">
+          Informe seu e-mail. Você receberá um link para redefinir a senha.
+        </p>
+
+        <label class="field">
+          <span>E-mail</span>
+          <input class="input" id="authResetEmail" type="email" autocomplete="email" placeholder="seu@email.com"/>
+        </label>
+
+        <div id="authResetStatus" class="auth-status" style="display:block"></div>
+      `,
+      buttons: [
+        { label: "Cancelar", variant: "ghost", onClick: closeModal },
+        {
+          label: "Enviar link",
+          onClick: async () => {
+            const email = (document.getElementById("authResetEmail")?.value || "").trim();
+            const st = document.getElementById("authResetStatus");
+            if (!email) {
+              if (st) {
+                st.className = "auth-status show error";
+                st.textContent = "Digite seu e-mail.";
+              }
+              return;
+            }
+
+            try {
+              await sendPasswordResetEmail(auth, email);
+              if (st) {
+                st.className = "auth-status show ok";
+                st.textContent = "Link enviado! Verifique sua caixa de entrada (e spam).";
+              }
+            } catch (e) {
+              if (st) {
+                st.className = "auth-status show error";
+                st.textContent = humanAuthError(e);
+              }
+            }
+          },
+        },
+      ],
+    });
+
+    setTimeout(() => document.getElementById("authResetEmail")?.focus(), 60);
+  }
+
+  // -----------------------------
+  // Painel de conta (logado)
+  // -----------------------------
+  function openAccountPanel() {
+    if (!hasModal) return;
+
+    const name = currentProfile?.name || currentUser?.displayName || "(sem nome)";
+    const email = currentProfile?.email || currentUser?.email || "(sem e-mail)";
+    const sector = currentProfile?.sector || "(sem setor)";
+
+    openModal({
+      title: "👤 Minha conta",
+      bodyHTML: `
+        <div class="auth-profile">
+          <div class="who">
+            <b>${escapeHtml(name)}</b>
+            <small>${escapeHtml(email)}</small>
+            <small class="muted">Setor: ${escapeHtml(sector)}</small>
+          </div>
+        </div>
+
+        <div class="auth-actions" style="margin-top:14px">
+          <button class="btn ghost" id="authLogoutBtn" type="button">Sair</button>
+          <button class="btn" id="authDeleteBtn" type="button">Deletar conta</button>
+        </div>
+
+        <p class="auth-mini" style="margin-top:12px">
+          Ao deletar a conta, seu perfil é removido. (O ranking nós vamos ajustar para ficar apenas para logados.)
+        </p>
+      `,
+      buttons: [{ label: "Fechar", onClick: closeModal }],
+    });
+
+    setTimeout(() => {
+      document.getElementById("authLogoutBtn")?.addEventListener("click", doLogout);
+      document.getElementById("authDeleteBtn")?.addEventListener("click", confirmDeleteAccount);
+    }, 0);
+  }
+
+  async function doLogout() {
+    try {
+      await signOut(auth);
+      closeModal();
+    } catch (e) {
+      openModal({
+        title: "Erro",
+        bodyHTML: `<p class="muted"><code>${escapeHtml(e?.message || String(e))}</code></p>`,
+        buttons: [{ label: "Ok", onClick: closeModal }],
+      });
+    }
+  }
+
+  function confirmDeleteAccount() {
+    openModal({
+      title: "⚠️ Deletar conta",
+      bodyHTML: `
+        <p><strong>Tem certeza?</strong></p>
+        <p class="muted">
+          Isso remove seu perfil e encerra seu acesso. (Você pode criar novamente depois.)
+        </p>
+      `,
+      buttons: [
+        { label: "Cancelar", variant: "ghost", onClick: closeModal },
+        {
+          label: "Sim, deletar",
+          onClick: async () => {
+            closeModal();
+            await doDeleteAccount();
+          },
+        },
+      ],
     });
   }
 
-  // Chama imediatamente e também quando a aba Signup é aberta
-  populateAuthSectors();
+  async function doDeleteAccount() {
+    if (!currentUser) return;
 
-  // ---- Helpers UI ----
-  function showStatus(kind, msg) {
-    if (!statusBox) {
+    openModal({
+      title: "Deletando…",
+      bodyHTML: `<p class="muted" style="margin-top:0">Aguarde…</p>`,
+      buttons: [{ label: "Fechar", onClick: closeModal }],
+    });
+
+    try {
+      // 1) remove profile do Firestore
+      await deleteDoc(doc(db, "users", currentUser.uid));
+
+      // 2) remove usuário do Auth
+      await deleteUser(currentUser);
+
+      closeModal();
       openModal({
-        title: kind === "error" ? "Erro" : "Info",
-        bodyHTML: `<p>${escapeHtml(msg)}</p>`,
+        title: "Conta removida ✅",
+        bodyHTML: `<p>Conta deletada com sucesso.</p>`,
         buttons: [{ label: "Ok", onClick: closeModal }],
       });
-      return;
+    } catch (e) {
+      // Muitas vezes o Firebase exige "reauthentication" pra deletar user
+      const msg = humanAuthError(e);
+      openModal({
+        title: "Não foi possível deletar",
+        bodyHTML: `
+          <p>${escapeHtml(msg)}</p>
+          <p class="muted" style="margin-top:10px">
+            Se aparecer algo como <code>requires-recent-login</code>, você precisa sair e entrar novamente, e então deletar.
+          </p>
+        `,
+        buttons: [{ label: "Ok", onClick: closeModal }],
+      });
     }
-    statusBox.classList.remove("show", "error", "ok");
-    statusBox.classList.add("show", kind === "error" ? "error" : "ok");
-    statusBox.innerHTML = `<p style="margin:0">${escapeHtml(msg)}</p>`;
+  }
+
+  // -----------------------------
+  // Ranking toggle: aviso quando anônimo tentar participar
+  // -----------------------------
+  optRankingEl?.addEventListener("change", () => {
+    // Se usuário NÃO logado e marcou "participar do ranking" -> bloqueia e avisa
+    if (!currentUser && optRankingEl.checked) {
+      optRankingEl.checked = false;
+      localStorage.setItem("mission_optout_ranking", "1");
+
+      if (hasModal) {
+        openModal({
+          title: "Ranking requer cadastro",
+          bodyHTML: `
+            <p>Para participar do ranking, é necessário criar uma conta ou fazer login.</p>
+            <p class="muted" style="margin-top:10px">Você pode continuar no modo anônimo, mas sem ranking.</p>
+          `,
+          buttons: [
+            { label: "Ok", onClick: closeModal },
+            { label: "Fazer login", onClick: () => { closeModal(); openAuthGate(); } }
+          ],
+        });
+      }
+    }
+  });
+
+  // -----------------------------
+  // Helpers UI / status
+  // -----------------------------
+  function buildSectorOptionsHTML() {
+    // tenta usar app.data.SECTORS, senão pega do select já preenchido no DOM
+    const sectors = app.data?.SECTORS;
+
+    if (Array.isArray(sectors) && sectors.length) {
+      return sectors
+        .map((s) => {
+          const v = (s === "Selecione…") ? "" : s;
+          return `<option value="${escapeHtml(v)}">${escapeHtml(s)}</option>`;
+        })
+        .join("");
+    }
+
+    // fallback: clona opções do select real
+    if (sectorEl && sectorEl.options?.length) {
+      return Array.from(sectorEl.options)
+        .map((o) => `<option value="${escapeHtml(o.value)}">${escapeHtml(o.textContent || "")}</option>`)
+        .join("");
+    }
+
+    // fallback seco
+    return `<option value="">Selecione…</option>`;
+  }
+
+  function showStatus(msg, kind) {
+    const box = document.getElementById("authStatus");
+    if (!box) return;
+    box.className = `auth-status show ${kind === "ok" ? "ok" : "error"}`;
+    box.textContent = msg;
   }
 
   function clearStatus() {
-    if (!statusBox) return;
-    statusBox.classList.remove("show", "error", "ok");
-    statusBox.innerHTML = "";
+    const box = document.getElementById("authStatus");
+    if (!box) return;
+    box.className = "auth-status";
+    box.textContent = "";
+  }
+
+  function humanAuthError(e) {
+    const code = String(e?.code || "");
+    if (code.includes("auth/invalid-email")) return "E-mail inválido.";
+    if (code.includes("auth/user-not-found")) return "Usuário não encontrado.";
+    if (code.includes("auth/wrong-password")) return "Senha incorreta.";
+    if (code.includes("auth/invalid-credential")) return "Credenciais inválidas.";
+    if (code.includes("auth/email-already-in-use")) return "Este e-mail já está em uso.";
+    if (code.includes("auth/weak-password")) return "Senha fraca. Use uma senha mais forte.";
+    if (code.includes("auth/too-many-requests")) return "Muitas tentativas. Tente novamente em alguns minutos.";
+    if (code.includes("auth/requires-recent-login")) return "Por segurança, faça login novamente e tente deletar a conta.";
+    return e?.message ? String(e.message) : "Erro inesperado.";
   }
 
   function escapeHtml(s) {
@@ -161,312 +610,8 @@ export function bootAuth(app) {
       .replaceAll("'", "&#039;");
   }
 
-  function isLoggedIn() {
-    return !!auth.currentUser;
+  function clampLen(s, max) {
+    const v = String(s || "").trim().replace(/\s+/g, " ");
+    return v.length > max ? v.slice(0, max) : v;
   }
-
-  function isAnonMode() {
-    return localStorage.getItem(ANON_KEY) === "1";
-  }
-
-  function setAnonMode(on) {
-    if (on) localStorage.setItem(ANON_KEY, "1");
-    else localStorage.removeItem(ANON_KEY);
-  }
-
-  function goAuthScreen() {
-    if (!screenAuth) {
-      openModal({
-        title: "Auth",
-        bodyHTML: `<p>Não encontrei <code>#screenAuth</code> no HTML.</p>`,
-        buttons: [{ label: "Ok", onClick: closeModal }],
-      });
-      return;
-    }
-    app.ui?.showOnly?.(screenAuth);
-  }
-
-  function goFormScreen() {
-    if (!screenForm) return;
-    app.ui?.showOnly?.(screenForm);
-  }
-
-  function setTab(which) {
-    // which: "login" | "signup"
-    if (tabLogin && tabSignup) {
-      tabLogin.classList.toggle("active", which === "login");
-      tabSignup.classList.toggle("active", which === "signup");
-    }
-    if (panelLogin && panelSignup) {
-      panelLogin.classList.toggle("hidden", which !== "login");
-      panelSignup.classList.toggle("hidden", which !== "signup");
-    }
-
-    // ao abrir signup, garante setores populados
-    if (which === "signup") populateAuthSectors();
-
-    clearStatus();
-  }
-
-  function setFormFieldsFromProfile(profile) {
-    if (userNameEl && profile?.name) userNameEl.value = profile.name;
-    if (userSectorEl && profile?.sector) userSectorEl.value = profile.sector;
-
-    if (profile?.name) localStorage.setItem("mission_name", profile.name);
-    if (profile?.sector) localStorage.setItem("mission_sector", profile.sector);
-
-    // espelha pro auth também
-    if (signupName && profile?.name) signupName.value = profile.name;
-    if (signupSector && profile?.sector) {
-      if (signupSector instanceof HTMLSelectElement) signupSector.value = profile.sector;
-      else signupSector.value = profile.sector;
-    }
-  }
-
-  async function fetchUserProfile(uid) {
-    try {
-      const cached = JSON.parse(localStorage.getItem(USER_CACHE_KEY) || "null");
-      if (cached?.uid === uid && cached?.profile) return cached.profile;
-    } catch {}
-
-    const ref = doc(db, "users", uid);
-    const snap = await getDoc(ref);
-    if (!snap.exists()) return null;
-
-    const profile = snap.data();
-    try {
-      localStorage.setItem(USER_CACHE_KEY, JSON.stringify({ uid, profile }));
-    } catch {}
-    return profile;
-  }
-
-  async function upsertUserProfile(uid, profile) {
-    const ref = doc(db, "users", uid);
-    await setDoc(
-      ref,
-      {
-        ...profile,
-        updatedAt: serverTimestamp(),
-        createdAt: profile.createdAt || serverTimestamp(),
-      },
-      { merge: true }
-    );
-
-    try {
-      localStorage.setItem(USER_CACHE_KEY, JSON.stringify({ uid, profile }));
-    } catch {}
-  }
-
-  // ---- Regras: ranking só para logado ----
-  function enforceRankingRule() {
-    if (!optRankingEl) return;
-
-    optRankingEl.addEventListener("change", () => {
-      if (!optRankingEl.checked) return;
-
-      if (!isLoggedIn()) {
-        optRankingEl.checked = false;
-        localStorage.setItem("mission_optout_ranking", "1");
-
-        openModal({
-          title: "Ranking exige cadastro",
-          bodyHTML: `
-            <p>Para participar do ranking, você precisa estar logado.</p>
-            <p class="muted" style="margin-top:10px">Você pode jogar no modo anônimo, mas sem contabilizar no ranking.</p>
-          `,
-          buttons: [
-            { label: "Continuar anônimo", variant: "ghost", onClick: closeModal },
-            { label: "Fazer login", onClick: () => { closeModal(); goAuthScreen(); } }
-          ],
-        });
-      }
-    });
-  }
-
-  // ---- Handlers Auth ----
-  async function handleLogin() {
-    clearStatus();
-    const email = String(loginEmail?.value || "").trim();
-    const pass = String(loginPass?.value || "").trim();
-
-    if (!email || !pass) {
-      showStatus("error", "Preencha e-mail e senha.");
-      return;
-    }
-
-    try {
-      const cred = await signInWithEmailAndPassword(auth, email, pass);
-
-      setAnonMode(false);
-
-      const profile = await fetchUserProfile(cred.user.uid);
-
-      if (!profile) {
-        const fallbackName = cred.user.displayName || localStorage.getItem("mission_name") || "";
-        const fallbackSector = localStorage.getItem("mission_sector") || "";
-        await upsertUserProfile(cred.user.uid, {
-          uid: cred.user.uid,
-          email: cred.user.email || email,
-          name: fallbackName,
-          sector: fallbackSector,
-        });
-      }
-
-      const finalProfile = (profile || (await fetchUserProfile(cred.user.uid))) || null;
-      if (finalProfile) setFormFieldsFromProfile(finalProfile);
-
-      showStatus("ok", "Login realizado. Você já pode iniciar a missão.");
-      goFormScreen();
-    } catch (err) {
-      console.error("[auth] login error:", err);
-      showStatus("error", friendlyAuthError(err));
-    }
-  }
-
-  async function handleSignup() {
-    clearStatus();
-
-    const name = String(signupName?.value || "").trim();
-
-    // setor pode vir de select ou input
-    const sector = String(signupSector?.value || "").trim();
-
-    const email = String(signupEmail?.value || "").trim();
-    const pass = String(signupPass?.value || "").trim();
-
-    if (!name || name.length < 2) {
-      showStatus("error", "Informe seu nome (mínimo 2 caracteres).");
-      return;
-    }
-    if (!sector || sector.length < 2) {
-      showStatus("error", "Selecione seu setor.");
-      return;
-    }
-    if (!email) {
-      showStatus("error", "Informe seu e-mail.");
-      return;
-    }
-    if (!pass || pass.length < 6) {
-      showStatus("error", "A senha precisa ter pelo menos 6 caracteres.");
-      return;
-    }
-
-    try {
-      const cred = await createUserWithEmailAndPassword(auth, email, pass);
-
-      try { await updateProfile(cred.user, { displayName: name }); } catch {}
-
-      await upsertUserProfile(cred.user.uid, {
-        uid: cred.user.uid,
-        email,
-        name,
-        sector,
-      });
-
-      setAnonMode(false);
-      setFormFieldsFromProfile({ name, sector });
-
-      showStatus("ok", "Conta criada com sucesso. Você já pode iniciar a missão.");
-      goFormScreen();
-    } catch (err) {
-      console.error("[auth] signup error:", err);
-      showStatus("error", friendlyAuthError(err));
-    }
-  }
-
-  async function handleForgotPassword() {
-    clearStatus();
-    const email = String(loginEmail?.value || signupEmail?.value || "").trim();
-
-    if (!email) {
-      showStatus("error", "Digite seu e-mail (na aba Login) para recuperar a senha.");
-      return;
-    }
-
-    try {
-      await sendPasswordResetEmail(auth, email);
-      showStatus("ok", "Enviamos um e-mail de recuperação. Verifique sua caixa de entrada.");
-    } catch (err) {
-      console.error("[auth] forgot error:", err);
-      showStatus("error", friendlyAuthError(err));
-    }
-  }
-
-  async function handleAnon() {
-    setAnonMode(true);
-
-    if (optRankingEl) {
-      optRankingEl.checked = false;
-      localStorage.setItem("mission_optout_ranking", "1");
-    }
-
-    showStatus("ok", "Modo anônimo ativado. Você pode jogar, mas sem entrar no ranking.");
-    goFormScreen();
-  }
-
-  async function handleLogout() {
-    clearStatus();
-    try {
-      await signOut(auth);
-      localStorage.removeItem(USER_CACHE_KEY);
-      showStatus("ok", "Você saiu da conta.");
-    } catch (err) {
-      console.error("[auth] logout error:", err);
-      showStatus("error", "Não foi possível sair.");
-    }
-  }
-
-  function friendlyAuthError(err) {
-    const code = err?.code || "";
-    if (code.includes("auth/invalid-credential")) return "E-mail ou senha inválidos.";
-    if (code.includes("auth/user-not-found")) return "Usuário não encontrado.";
-    if (code.includes("auth/wrong-password")) return "Senha incorreta.";
-    if (code.includes("auth/email-already-in-use")) return "Este e-mail já está em uso.";
-    if (code.includes("auth/weak-password")) return "Senha fraca. Use pelo menos 6 caracteres.";
-    if (code.includes("auth/invalid-email")) return "E-mail inválido.";
-    if (code.includes("auth/too-many-requests")) return "Muitas tentativas. Tente novamente mais tarde.";
-    return err?.message ? String(err.message) : "Erro inesperado.";
-  }
-
-  // ---- Wiring de UI ----
-  loginTopBtn?.addEventListener("click", () => {
-    goAuthScreen();
-    setTab("login");
-  });
-
-  tabLogin?.addEventListener("click", () => setTab("login"));
-  tabSignup?.addEventListener("click", () => setTab("signup"));
-
-  loginBtn?.addEventListener("click", handleLogin);
-  signupBtn?.addEventListener("click", handleSignup);
-  forgotBtn?.addEventListener("click", handleForgotPassword);
-  anonBtn?.addEventListener("click", handleAnon);
-  logoutBtn?.addEventListener("click", handleLogout);
-
-  enforceRankingRule();
-
-  // ---- Estado: quando o auth muda, atualiza o form ----
-  onAuthStateChanged(auth, async (user) => {
-    if (user) {
-      setAnonMode(false);
-      const profile = await fetchUserProfile(user.uid);
-      if (profile) setFormFieldsFromProfile(profile);
-    } else {
-      if (isAnonMode() && optRankingEl) {
-        optRankingEl.checked = false;
-        localStorage.setItem("mission_optout_ranking", "1");
-      }
-    }
-  });
-
-  // ---- API exposta ----
-  app.auth = {
-    auth,
-    db,
-    isLoggedIn: () => !!auth.currentUser,
-    isAnonMode: () => localStorage.getItem(ANON_KEY) === "1",
-    goAuthScreen: () => goAuthScreen(),
-    goFormScreen: () => goFormScreen(),
-    getCurrentUser: () => auth.currentUser,
-  };
 }
