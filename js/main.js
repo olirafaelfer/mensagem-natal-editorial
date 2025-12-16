@@ -282,7 +282,6 @@ async function bootAll(){
     const bootGame    = pickBoot(gameMod,    ["bootGame", "bootGameCore", "boot", "init"]);
     const bootAdmin   = pickBoot(adminMod,   ["bootAdmin", "boot", "init"]); // ✅ novo
 
-    // ✅ ordem importante: modal primeiro (admin usa app.modal)
     bootModal?.(app);
     bootThemeFx?.(app);
     bootRanking?.(app);
@@ -296,5 +295,9 @@ async function bootAll(){
 }
 
 bootAll();
+
+
+bootAll();
+
 
 
