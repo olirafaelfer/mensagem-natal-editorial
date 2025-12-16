@@ -1,6 +1,7 @@
 // js/main.js (module) — BOOTSTRAP / CONTEXTO GLOBAL DO APP
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js";
+import { getAuth } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
 import {
   getFirestore,
   doc, getDoc, runTransaction, serverTimestamp,
@@ -33,12 +34,14 @@ const firebaseConfig = {
 
 const fbApp = initializeApp(firebaseConfig);
 const db = getFirestore(fbApp);
+const auth = getAuth(fbApp);
 
 /* =========================
    Firebase helpers exportáveis
 ========================= */
 const firebase = {
   db,
+  auth,
 
   // atalhos (módulos chamam fb.collection/fb.query/...)
   doc,
@@ -54,6 +57,8 @@ const firebase = {
 
   // mantém também namespace fs (caso algum módulo use fb.fs.*)
   fs: {
+    db,
+    auth,
     doc,
     getDoc,
     runTransaction,
@@ -268,25 +273,26 @@ function pickBoot(mod, candidates){
 
   return null;
 }
+
 async function bootAll(){
   try {
     const modalMod   = await import("./ui-modal.js");
     const themeMod   = await import("./theme-fx.js");
     const rankingMod = await import("./ranking.js");
     const gameMod    = await import("./game-core.js");
-    const adminMod   = await import("./admin.js"); // ✅ novo
+    const adminMod   = await import("./admin.js");
 
     const bootModal   = pickBoot(modalMod,   ["bootModal", "boot", "init"]);
     const bootThemeFx = pickBoot(themeMod,   ["bootThemeFx", "bootTheme", "boot", "init"]);
     const bootRanking = pickBoot(rankingMod, ["bootRanking", "boot", "init"]);
     const bootGame    = pickBoot(gameMod,    ["bootGame", "bootGameCore", "boot", "init"]);
-    const bootAdmin   = pickBoot(adminMod,   ["bootAdmin", "boot", "init"]); // ✅ novo
+    const bootAdmin   = pickBoot(adminMod,   ["bootAdmin", "boot", "init"]);
 
     bootModal?.(app);
     bootThemeFx?.(app);
     bootRanking?.(app);
     bootGame?.(app);
-    bootAdmin?.(app); // ✅ novo
+    bootAdmin?.(app);
 
   } catch (err) {
     console.error("❌ Falha no boot dos módulos:", err);
@@ -295,9 +301,3 @@ async function bootAll(){
 }
 
 bootAll();
-
-
-bootAll();
-
-
-
