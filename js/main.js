@@ -5,7 +5,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.4/fireba
 import {
   getFirestore,
   doc, getDoc, runTransaction, serverTimestamp,
-  collection, getDocs, addDoc,
+  collection, getDocs, setDoc,
   query, orderBy, limit
 } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
 
@@ -297,6 +297,19 @@ function medalFor(i){
   if (i === 1) return { t:"🥈", top:true };
   if (i === 2) return { t:"🥉", top:true };
   return { t:`${i+1}º`, top:false };
+}
+
+/* ✅ ID determinístico para não duplicar ranking (nome+setor) */
+function keyify(s){
+  return normalize(String(s || ""))
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)+/g, "")
+    .slice(0, 80);
+}
+function individualDocId(name, sector){
+  const n = keyify(name);
+  const s = keyify(sector);
+  return `n_${n}__s_${s}`;
 }
 
 /** =========================
@@ -895,9 +908,52 @@ function showFinal(){
     finalStats.textContent = `Pontos: ${score} | Acertos: ${correctCount} | Erros: ${wrongCount}`;
   }
 
+  // render textos
   if (finalBox1) finalBox1.innerHTML = `<p style="margin:0">${buildFinalColoredHTML(levels[0], currentTextByLevel[0] || levels[0].raw)}</p>`;
   if (finalBox2) finalBox2.innerHTML = `<p style="margin:0">${buildFinalColoredHTML(levels[1], currentTextByLevel[1] || levels[1].raw)}</p>`;
   if (finalBox3) finalBox3.innerHTML = `<p style="margin:0">${buildFinalColoredHTML(levels[2], currentTextByLevel[2] || levels[2].raw)}</p>`;
+
+  // ✅ esconder caixas + botão para abrir
+  finalBox1?.classList.add("hidden");
+  finalBox2?.classList.add("hidden");
+  finalBox3?.classList.add("hidden");
+
+  if (finalRecado){
+    finalRecado.innerHTML = `
+      <div class="final-toggle">
+        <button class="btn" id="toggleFinalBoxes" type="button" aria-expanded="false">
+          Ver as mensagens que você corrigiu
+        </button>
+        <button class="btn ghost" id="hideFinalBoxes" type="button" aria-expanded="true" style="display:none">
+          Ocultar mensagens
+        </button>
+      </div>
+    `;
+
+    setTimeout(() => {
+      const btnShow = document.getElementById("toggleFinalBoxes");
+      const btnHide = document.getElementById("hideFinalBoxes");
+
+      const showBoxes = () => {
+        finalBox1?.classList.remove("hidden");
+        finalBox2?.classList.remove("hidden");
+        finalBox3?.classList.remove("hidden");
+        btnShow?.setAttribute("aria-expanded","true");
+        if (btnHide) btnHide.style.display = "inline-flex";
+      };
+
+      const hideBoxes = () => {
+        finalBox1?.classList.add("hidden");
+        finalBox2?.classList.add("hidden");
+        finalBox3?.classList.add("hidden");
+        btnShow?.setAttribute("aria-expanded","false");
+        if (btnHide) btnHide.style.display = "none";
+      };
+
+      btnShow?.addEventListener("click", showBoxes);
+      btnHide?.addEventListener("click", hideBoxes);
+    }, 0);
+  }
 
   if (headerTitle) headerTitle.textContent = "Missão concluída 🎄";
   showOnly(screenFinal);
@@ -1028,6 +1084,7 @@ async function maybeCommitMissionToRanking(){
   });
 }
 
+/* ✅ sem duplicar: 1 doc por nome+setor (sobrescreve se score maior) */
 async function commitIndividualRanking(){
   const optOut = localStorage.getItem("mission_optout_ranking") === "1";
   if (optOut) return;
@@ -1036,14 +1093,22 @@ async function commitIndividualRanking(){
   const sector = getUserSector();
   if (!name || !sector) return;
 
-  await addDoc(collection(db, "individualRanking"), {
+  const id = individualDocId(name, sector);
+  const ref = doc(db, "individualRanking", id);
+
+  const snap = await getDoc(ref);
+  const prevScore = snap.exists() ? Number(snap.data()?.score || 0) : -Infinity;
+
+  if (score < prevScore) return;
+
+  await setDoc(ref, {
     name,
     sector,
     score,
     correct: correctCount,
     wrong: wrongCount,
     createdAt: serverTimestamp()
-  });
+  }, { merge:true });
 }
 
 async function openRankingModal(){
@@ -1094,7 +1159,6 @@ async function openRankingModal(){
     });
   }, 0);
 
-  // load data (parallel)
   await Promise.allSettled([renderIndividualRanking(), renderSectorRanking()]);
 }
 
@@ -1103,11 +1167,10 @@ async function renderIndividualRanking(){
   if (!panel) return;
 
   try {
-    // ✅ AJUSTE PROPOSTO: remove o 2º orderBy para evitar exigir índice composto.
-    // (A ordenação em empates pode variar, mas elimina o erro "The query requires an index".)
     const q = query(
       collection(db, "individualRanking"),
       orderBy("score", "desc"),
+      orderBy("createdAt", "asc"),
       limit(50)
     );
 
@@ -1165,7 +1228,7 @@ async function renderIndividualRanking(){
     panel.innerHTML = `
       <p>Não foi possível carregar o ranking individual.</p>
       <p class="muted"><code>${escapeHtml(err?.message || String(err))}</code></p>
-      <p class="muted">Se aparecer “Missing or insufficient permissions”, é regra do Firestore (não é índice).</p>
+      <p class="muted">Se aparecer erro de índice, crie o índice sugerido pelo Firebase Console (score desc + createdAt asc).</p>
     `;
   }
 }
@@ -1208,7 +1271,6 @@ async function renderSectorRanking(){
       });
     }
 
-    // edge case: tudo zero
     const hasAny = rows.some(r => r.avgOverall !== 0 || r.avgCorrect !== 0 || r.avgWrong !== 0);
     if (!hasAny){
       panel.innerHTML = `<p class="muted">Ainda não há dados suficientes para o ranking por setor.</p>`;
