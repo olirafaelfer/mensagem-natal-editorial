@@ -5,18 +5,13 @@
 
 /* wrapper da tela de auth */
 .auth-card{
-  /* mantém “mobile-like” como o resto do app */
-  width: min(560px, calc(100% - 32px));
   margin: 18px auto;
-
   background: var(--cardBg);
   border: 1px solid var(--stroke);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
   overflow: hidden;
-
   backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
 }
 
 .auth-inner{
@@ -98,7 +93,6 @@
   background: rgba(0,0,0,.16);
   color: rgba(255,255,255,.82);
   line-height: 1.55;
-  overflow-wrap: anywhere;
 }
 
 .auth-divider{
@@ -116,8 +110,6 @@
   background: rgba(0,0,0,.22);
   color: rgba(255,255,255,.90);
   display:none;
-  line-height: 1.5;
-  overflow-wrap: anywhere;
 }
 .auth-status.show{ display:block; }
 
@@ -163,4 +155,12 @@
 /* responsivo */
 @media (max-width: 860px){
   .auth-grid{ grid-template-columns: 1fr; }
+}
+
+/* =========================
+   NOVO: campos travados quando logado
+========================= */
+.auth-locked{
+  opacity: .75;
+  filter: grayscale(.15);
 }
