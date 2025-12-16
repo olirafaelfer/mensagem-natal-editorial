@@ -2,7 +2,7 @@
    Base / Theme Variables
    ========================= */
 :root{
-  --bg: #0b1020;              /* fundo sólido (estático) */
+  --bg: #0b1020;
   --accent: #e53935;
   --intensity: 1;
 
@@ -10,7 +10,7 @@
   --muted: rgba(255,255,255,.70);
   --muted2: rgba(255,255,255,.55);
 
-  --cardBg: rgba(255,255,255,.06);   /* mais sutil */
+  --cardBg: rgba(255,255,255,.06);
   --stroke: rgba(255,255,255,.12);
 
   --shadow: 0 14px 40px rgba(0,0,0,.35);
@@ -26,11 +26,10 @@ body{
   margin: 0;
   font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
   color: var(--text);
-  background: var(--bg);         /* ✅ sem degradê */
+  background: var(--bg);
   overflow-x: hidden;
-  overflow-y: auto;              /* ✅ scroll ativo */
+  overflow-y: auto;
 
-  /* “intensidade” ainda funciona, mas bem mais sutil */
   filter: saturate(calc(1.02 * var(--intensity)))
           contrast(calc(1.01 * var(--intensity)));
 }
@@ -124,15 +123,6 @@ hr{
   width: min(var(--container), calc(100% - 32px));
   margin-left: auto;
   margin-right: auto;
-}
-
-/* ✅ AJUSTE: melhora a leitura no desktop sem mexer na estrutura.
-   Mantém o layout parecido com o mobile, mas sem “apertar” demais */
-@media (min-width: 980px){
-  .app > .topbar,
-  .app > .card{
-    width: min(860px, calc(100% - 32px));
-  }
 }
 
 /* =========================
@@ -420,7 +410,7 @@ select.input option{
   line-height: 1.55;
   letter-spacing: 0;
   word-spacing: 0;
-  white-space: pre-wrap;   /* respeita \n */
+  white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
 
@@ -431,7 +421,7 @@ select.input option{
 }
 
 .token{
-  display: inline;         /* não cria “espaço extra” */
+  display: inline;
   padding: 2px 3px;
   margin: 0;
   border-radius: 8px;
@@ -581,26 +571,28 @@ select.input option{
   color: rgba(255,255,255,.78);
 }
 
+/* ✅ Botão do final (mostrar caixas) */
+.final-toggle{
+  margin-top: 14px;
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.final-toggle .btn{
+  width: fit-content;
+}
+
 /* =========================
    Modal / Overlay
    ========================= */
 #overlay{
-  /* ✅ AJUSTE PRINCIPAL:
-     fixed garante que o modal apareça NO VIEWPORT (onde o usuário estiver),
-     e não “preso” no topo do documento */
   position: fixed;
   inset: 0;
   z-index: 999;
-
   display: grid;
   place-items: center;
-
-  /* ✅ AJUSTE: padding + safe area (iPhone/Android) */
-  padding: calc(18px + env(safe-area-inset-top))
-           calc(18px + env(safe-area-inset-right))
-           calc(18px + env(safe-area-inset-bottom))
-           calc(18px + env(safe-area-inset-left));
-
+  padding: 18px;
   background: rgba(0,0,0,.55);
   opacity: 0;
   pointer-events: none;
@@ -618,13 +610,12 @@ select.input option{
   border-radius: 18px;
   box-shadow: 0 30px 90px rgba(0,0,0,.55);
   overflow: hidden;
+
+  /* ✅ evita “modal esquisita” em telas pequenas */
+  max-height: calc(100vh - 36px);
+
   transform: translateY(10px) scale(.99);
   transition: transform 180ms ease;
-
-  /* ✅ AJUSTE: evita “grudar no topo” e melhora no mobile */
-  max-height: calc(100vh - 36px);
-  overflow: auto;
-  -webkit-overflow-scrolling: touch;
 }
 #overlay.show .modal{ transform: translateY(0) scale(1); }
 
@@ -646,6 +637,11 @@ select.input option{
 .modal-body{
   padding: 14px 14px 6px;
   color: rgba(255,255,255,.88);
+
+  /* ✅ scroll interno (melhora no mobile e evita “pular”) */
+  overflow: auto;
+  max-height: calc(100vh - 200px);
+  -webkit-overflow-scrolling: touch;
 }
 
 .modal-foot{
@@ -857,12 +853,6 @@ select.input option{
     display: inline;
     padding: 0 1px;
     margin: 0;
-  }
-
-  /* ✅ AJUSTE: modal confortável no mobile */
-  .modal{
-    width: min(720px, 100%);
-    max-height: calc(100vh - 28px);
   }
 }
 
