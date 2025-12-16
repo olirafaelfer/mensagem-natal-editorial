@@ -8,6 +8,15 @@ import {
   query, orderBy, limit
 } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
 
+const THEME_PRESETS = {
+  classic: { name:"Clássico", accent:"#e53935", bg:"#0b1020" },
+  candy:   { name:"Candy Cane", accent:"#ff2e63", bg:"#140a12" },
+  neon:    { name:"Neon Noel", accent:"#00ffd5", bg:"#001016" },
+  aurora:  { name:"Aurora", accent:"#7c4dff", bg:"#071022" },
+  gold:    { name:"Dourado", accent:"#ffcc00", bg:"#140f02" },
+};
+
+
 /* =========================
    Firebase config
 ========================= */
@@ -28,6 +37,20 @@ const db = getFirestore(fbApp);
 ========================= */
 const firebase = {
   db,
+
+  // ✅ atalho direto (ranking.js e outros módulos antigos costumam chamar fb.collection, fb.query etc.)
+  doc,
+  getDoc,
+  runTransaction,
+  serverTimestamp,
+  collection,
+  getDocs,
+  setDoc,
+  query,
+  orderBy,
+  limit,
+
+  // ✅ mantém também o namespace fs, caso algum módulo use fb.fs.*
   fs: {
     doc,
     getDoc,
@@ -41,6 +64,7 @@ const firebase = {
     limit
   }
 };
+
 
 /* =========================
    Constantes globais
@@ -303,3 +327,4 @@ async function bootAll(){
 }
 
 bootAll();
+
