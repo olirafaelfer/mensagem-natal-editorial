@@ -218,7 +218,42 @@
       <div class="modal-foot" id="modalFoot"></div>
     </div>
   </div>
+<!-- Tela do Admin -->
+<div id="adminLoginScreen" class="hidden">
+  <div class="modal">
+    <div class="modal-head">
+      <h3 id="modalTitle">Login Admin</h3>
+      <button class="icon-btn" id="closeAdminModal" aria-label="Fechar" type="button">✕</button>
+    </div>
+    <div class="modal-body">
+      <h4>Entre com a senha para acessar a área de administrador</h4>
+      <input type="password" id="adminPasswordInput" placeholder="Digite a senha" class="input" />
+    </div>
+    <div class="modal-foot">
+      <button id="adminLoginBtn" class="btn" type="button">Entrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Área do admin quando logado -->
+<div id="adminPanel" class="hidden">
+  <div class="modal">
+    <div class="modal-head">
+      <h3 id="adminPanelTitle">Painel do Administrador</h3>
+      <button class="icon-btn" id="closeAdminPanel" aria-label="Fechar" type="button">✕</button>
+    </div>
+    <div class="modal-body">
+      <h4>Bem-vindo, Administrador!</h4>
+      <p>Escolha uma opção abaixo:</p>
+      <button id="resetRankingBtn" class="btn">Zerar Ranking</button>
+    </div>
+    <div class="modal-foot">
+      <button id="closeAdminPanelBtn" class="btn" type="button">Fechar</button>
+    </div>
+  </div>
+</div>
 
   <script type="module" src="js/main.js"></script>
 </body>
 </html>
+
