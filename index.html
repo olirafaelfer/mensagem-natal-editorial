@@ -11,7 +11,7 @@
   <link rel="stylesheet" href="css/style.css" />
   <link rel="stylesheet" href="css/admin.css" />
   <link rel="stylesheet" href="css/auth.css" />
-  <link rel="stylesheet" href="css/lgpd.css" />
+  <!-- LGPD removido -->
 </head>
 
 <body>
@@ -20,34 +20,35 @@
 
   <main class="app">
     <div class="container">
-<header class="topbar-banner">
-  <div class="topbar-row topbar-row-1">
-    <div class="topbar-left">
-      <img class="topbar-logo" src="img/logo-natal.png" alt="Logo de Natal" />
-    </div>
 
-    <div class="topbar-center">
-      <div class="topbar-mission">MISSÃO DO EDITOR-CHEFE</div>
-    </div>
+      <!-- HEADER novo (banner em 2 linhas) -->
+      <header class="topbar-banner">
+        <div class="topbar-row topbar-row-1">
+          <div class="topbar-left">
+            <img class="topbar-logo" src="img/logo-natal.png" alt="Logo de Natal" />
+          </div>
 
-    <div class="topbar-right">
-      <span class="topbar-santa" aria-hidden="true">🎅</span>
-    </div>
-  </div>
+          <div class="topbar-center">
+            <div class="topbar-mission">MISSÃO DO EDITOR-CHEFE</div>
+          </div>
 
-  <div class="topbar-row topbar-row-2">
-    <h1 class="topbar-title" id="headerTitle">Revisão da Mensagem de Natal</h1>
+          <div class="topbar-right">
+            <span class="topbar-santa" aria-hidden="true">🎅</span>
+          </div>
+        </div>
 
-    <div class="top-actions">
-      <button class="icon-btn" id="customizeBtn" title="Personalizar" type="button">⚙️</button>
-      <button class="icon-btn" id="rankingBtn" title="Ranking" type="button">🏆</button>
-      <button class="icon-btn" id="loginBtn" title="Entrar / Criar conta" type="button">👤</button>
-    </div>
-  </div>
-</header>
+        <div class="topbar-row topbar-row-2">
+          <h1 class="topbar-title" id="headerTitle">Revisão da Mensagem de Natal</h1>
 
+          <div class="top-actions">
+            <button class="icon-btn" id="customizeBtn" title="Personalizar" type="button">⚙️</button>
+            <button class="icon-btn" id="rankingBtn" title="Ranking" type="button">🏆</button>
+            <button class="icon-btn" id="loginBtn" title="Entrar / Criar conta" type="button">👤</button>
+          </div>
+        </div>
+      </header>
 
-
+      <!-- Loading fake -->
       <section class="card" id="screenLoading">
         <div class="card-inner center">
           <img class="logo-pulse" src="img/logo-natal.png" alt="Logo natalina" />
@@ -56,10 +57,10 @@
         </div>
       </section>
 
+      <!-- Auth (seu sistema hoje abre por modal, mas manter a section não atrapalha) -->
       <section class="hidden" id="screenAuth">
         <div class="auth-card">
           <div class="auth-inner">
-
             <div class="auth-head">
               <h2 class="auth-title">Entrar ou criar conta</h2>
               <p class="auth-sub">
@@ -139,6 +140,7 @@
         </div>
       </section>
 
+      <!-- Form -->
       <section class="card hidden" id="screenForm">
         <div class="card-inner">
           <h2 class="h2">Antes de começar</h2>
@@ -176,6 +178,7 @@
         </div>
       </section>
 
+      <!-- Game -->
       <section class="card hidden" id="screenGame">
         <div class="card-inner">
           <div class="status-row">
@@ -200,6 +203,7 @@
         </div>
       </section>
 
+      <!-- Final -->
       <section class="card hidden" id="screenFinal">
         <div class="card-inner center">
           <h2 class="final-title">🎄</h2>
@@ -280,12 +284,18 @@
     </div>
   </main>
 
+  <!-- ✅ Modal (OBRIGATÓRIO pro app funcionar) -->
+  <div class="hidden" id="overlay" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <div class="modal">
+      <div class="modal-head">
+        <h3 id="modalTitle">Mensagem</h3>
+        <button class="icon-btn" id="closeModal" aria-label="Fechar" type="button">✕</button>
+      </div>
+      <div class="modal-body" id="modalBody"></div>
+      <div class="modal-foot" id="modalFoot"></div>
+    </div>
+  </div>
 
   <script type="module" src="js/main.js"></script>
 </body>
 </html>
-
-
-
-
-
