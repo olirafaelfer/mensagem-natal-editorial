@@ -33,10 +33,6 @@
         <div class="top-actions">
           <button class="icon-btn" id="customizeBtn" title="Personalizar" type="button">⚙️</button>
           <button class="icon-btn" id="rankingBtn" title="Ranking" type="button">🏆</button>
-
-          <!-- 🔐 Admin -->
-          <button class="icon-btn admin-btn" id="adminBtn" title="Admin" type="button">🔒</button>
-
           <!-- 👤 Login usuário (se você já tiver colocado no topo, mantenha o mesmo id do seu JS) -->
           <button class="icon-btn" id="loginBtn" title="Entrar / Criar conta" type="button">👤</button>
         </div>
@@ -170,24 +166,7 @@
               <span class="slider"></span>
             </label>
           </div>
-
-          <div class="lgpd-box">
-            <p class="lgpd-title">Observação</p>
-            <p class="muted" style="margin:6px 0 0">
-              Os erros e correções serão apresentados ao final da atividade. <br>
-              Não se preocupe com seu desempenho: esta atividade busca interatividade e curiosidades sobre o trabalho editorial!
-            </p>
-          </div>
-
-          <div class="lgpd-box">
-            <p class="lgpd-title">LGPD</p>
-            <p class="muted" style="margin:6px 0 0">
-              Seguimos as diretrizes da LGPD e não faremos compartilhamento de informações pessoais.
-              O ranking exibe apenas resultados <strong>agregados por setor</strong>.
-              <button type="button" class="linklike" id="lgpdMoreBtn">Saiba mais</button>
-            </p>
-          </div>
-
+        
           <div class="actions">
             <button class="btn" id="startBtn" type="button">Iniciar missão</button>
           </div>
@@ -312,40 +291,20 @@
     </div>
   </div>
 
-  <!-- Tela do Admin (mantida como você tinha) -->
-  <div id="adminLoginScreen" class="hidden">
-    <div class="modal">
-      <div class="modal-head">
-        <h3 id="modalTitle">Login Admin</h3>
-        <button class="icon-btn" id="closeAdminModal" aria-label="Fechar" type="button">✕</button>
-      </div>
-      <div class="modal-body">
-        <h4>Entre com a senha para acessar a área de administrador</h4>
-        <input type="password" id="adminPasswordInput" placeholder="Digite a senha" class="input" />
-      </div>
-      <div class="modal-foot">
-        <button id="adminLoginBtn" class="btn" type="button">Entrar</button>
-      </div>
-    </div>
-  </div>
-
-  <div id="adminPanel" class="hidden">
-    <div class="modal">
-      <div class="modal-head">
-        <h3 id="adminPanelTitle">Painel do Administrador</h3>
-        <button class="icon-btn" id="closeAdminPanel" aria-label="Fechar" type="button">✕</button>
-      </div>
-      <div class="modal-body">
-        <h4>Bem-vindo, Administrador!</h4>
-        <p>Escolha uma opção abaixo:</p>
-        <button id="resetRankingBtn" class="btn">Zerar Ranking</button>
-      </div>
-      <div class="modal-foot">
-        <button id="closeAdminPanelBtn" class="btn" type="button">Fechar</button>
-      </div>
-    </div>
-  </div>
-
   <script type="module" src="js/main.js"></script>
+  <footer class="lgpd-footer" aria-label="LGPD e privacidade">
+  <div class="container">
+    <div class="lgpd-footer-card">
+      <p class="lgpd-footer-title"><strong>LGPD</strong></p>
+      <p class="muted" style="margin:6px 0 0">
+        Seguimos as diretrizes da LGPD e não faremos compartilhamento de informações pessoais.
+        O ranking por setor exibe apenas resultados <strong>agregados</strong>.
+        <button type="button" class="linklike" id="lgpdMoreBtn">Saiba mais</button>
+      </p>
+    </div>
+  </div>
+</footer>
+
 </body>
 </html>
+
