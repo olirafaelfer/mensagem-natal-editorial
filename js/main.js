@@ -126,6 +126,15 @@ const explanations = [
 /** =========================
  * Elementos
  * ========================= */
+const toggleFinalMsgsBtn = document.getElementById("toggleFinalMsgs");
+const finalMsgsWrap = document.getElementById("finalMsgsWrap");
+
+toggleFinalMsgsBtn?.addEventListener("click", () => {
+  const isHidden = finalMsgsWrap?.classList.contains("hidden");
+  finalMsgsWrap?.classList.toggle("hidden", !isHidden);
+  toggleFinalMsgsBtn.textContent = isHidden ? "Ocultar mensagens" : "Ver mensagens corrigidas";
+});
+
 const screenLoading = document.getElementById("screenLoading");
 const screenForm = document.getElementById("screenForm");
 const screenGame = document.getElementById("screenGame");
@@ -1613,4 +1622,7 @@ setTimeout(() => {
   if (userNameEl) userNameEl.value = localStorage.getItem("mission_name") || "";
   if (userSectorEl) userSectorEl.value = localStorage.getItem("mission_sector") || "";
 }, 1100);
+if (finalMsgsWrap) finalMsgsWrap.classList.add("hidden");
+if (toggleFinalMsgsBtn) toggleFinalMsgsBtn.textContent = "Ver mensagens corrigidas";
+
 
