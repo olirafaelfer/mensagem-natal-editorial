@@ -21,13 +21,10 @@
   <main class="app">
     <div class="container">
 
-      <!-- HEADER novo (banner em 2 linhas) -->
+      <!-- HEADER (logo + título + botões) -->
       <header class="topbar-banner">
         <div class="topbar-row topbar-row-1">
           <div class="topbar-left">
-            <span class="topbar-santa" aria-hidden="true">🎅MISSÃO DO EDITOR-CHEFE</span>
-          </div>
-                    <div class="topbar-right">
             <img class="topbar-logo" src="img/logo-natal.png" alt="Logo de Natal" />
           </div>
         </div>
@@ -217,15 +214,15 @@
             <button class="btn" id="toggleFinalMsgs" type="button" aria-expanded="false">Ver mensagens corrigidas</button>
           </div>
 
+          <!-- ✅ A DICA AGORA FICA SÓ AQUI DENTRO (aparece quando abrir as mensagens) -->
           <div id="finalMsgsWrap" class="hidden">
-            <!-- ✅ dica aparece só quando abrir as mensagens -->
-            <p class="final-sub hidden" id="finalHintTip" style="margin: 0 0 10px;">
-              Dica: nas mensagens abaixo, clique nos trechos
-              <span style="color:#00e676; font-weight:900;">verdes</span>
+            <div class="hintbar" style="text-align:left; margin-top:12px">
+              💡 Dica: nas mensagens abaixo, clique nos trechos
+              <span class="final-correct"><strong>verdes</strong></span>
               e
-              <span style="color:#ff1744; font-weight:900;">vermelhos</span>
+              <span class="final-wrong"><strong>vermelhos</strong></span>
               para ver a explicação.
-            </p>
+            </div>
 
             <div class="final-activity">
               <div class="final-activity-head">
@@ -299,24 +296,5 @@
   </div>
 
   <script type="module" src="js/main.js"></script>
-
-  <!-- ✅ mostra/esconde a dica junto com "Ver mensagens corrigidas" -->
-  <script>
-    (function(){
-      const btn = document.getElementById("toggleFinalMsgs");
-      const wrap = document.getElementById("finalMsgsWrap");
-      const tip = document.getElementById("finalHintTip");
-      if (!btn || !wrap || !tip) return;
-
-      function syncTip(){
-        const isOpen = !wrap.classList.contains("hidden");
-        tip.classList.toggle("hidden", !isOpen);
-      }
-
-      btn.addEventListener("click", () => setTimeout(syncTip, 0));
-      syncTip();
-    })();
-  </script>
 </body>
 </html>
-
