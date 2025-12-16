@@ -36,7 +36,6 @@ body{
 
 /* 🔒 quando modal abre: trava o fundo no lugar correto (mobile-friendly) */
 body.modal-open{
-  position: fixed;
   width: 100%;
   overflow: hidden;
 }
@@ -867,4 +866,38 @@ select.input option{
 @supports not (color: color-mix(in srgb, red 50%, white)) {
   a{ color: #ff8a80; }
 }
+.tip{
+  position: fixed;
+  z-index: 10000;
+  max-width: min(360px, calc(100vw - 24px));
+  background: rgba(15,18,26,.98);
+  border: 1px solid rgba(255,255,255,.14);
+  border-radius: 14px;
+  box-shadow: 0 22px 70px rgba(0,0,0,.55);
+  padding: 10px 12px;
+  transform: translateZ(0);
+  animation: tipIn 140ms ease-out;
+}
+
+@keyframes tipIn{
+  from{ opacity:0; transform: translateY(4px) scale(.98); }
+  to{ opacity:1; transform: translateY(0) scale(1); }
+}
+
+.tip-title{
+  font-weight: 950;
+  letter-spacing: .1px;
+  margin-bottom: 6px;
+}
+
+.tip-body{
+  color: rgba(255,255,255,.88);
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.tip-muted{
+  color: rgba(255,255,255,.68);
+}
+
 
