@@ -1167,25 +1167,34 @@ async function renderIndividualRanking(){
   if (!panel) return;
 
   try {
-    const q = query(
-      collection(db, "individualRanking"),
-      orderBy("score", "desc"),
-      orderBy("createdAt", "asc"),
-      limit(50)
-    );
+const q = query(
+  collection(db, "individualRanking"),
+  orderBy("score", "desc"),
+  limit(50)
+);
 
-    const snap = await getDocs(q);
-    const rows = [];
-    snap.forEach(docu => {
-      const d = docu.data() || {};
-      rows.push({
-        name: String(d.name || "").trim(),
-        sector: String(d.sector || "").trim(),
-        score: Number(d.score || 0),
-        correct: Number(d.correct || 0),
-        wrong: Number(d.wrong || 0),
-      });
-    });
+const snap = await getDocs(q);
+
+const rows = [];
+snap.forEach(docu => {
+  const d = docu.data() || {};
+  rows.push({
+    name: String(d.name || "").trim(),
+    sector: String(d.sector || "").trim(),
+    score: Number(d.score || 0),
+    correct: Number(d.correct || 0),
+    wrong: Number(d.wrong || 0),
+    // createdAt pode vir undefined; guardo como number pra ordenar
+    createdAtMs: d.createdAt?.toMillis ? d.createdAt.toMillis() : 0
+  });
+});
+
+// desempate no cliente (não exige índice composto)
+rows.sort((a,b) =>
+  (b.score - a.score) ||
+  (a.createdAtMs - b.createdAtMs) ||
+  a.name.localeCompare(b.name)
+);
 
     if (rows.length === 0){
       panel.innerHTML = `<p class="muted">Ainda não há resultados no ranking individual.</p>`;
@@ -1604,3 +1613,4 @@ setTimeout(() => {
   if (userNameEl) userNameEl.value = localStorage.getItem("mission_name") || "";
   if (userSectorEl) userSectorEl.value = localStorage.getItem("mission_sector") || "";
 }, 1100);
+
