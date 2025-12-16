@@ -278,29 +278,25 @@
   </main>
 
   <!-- ✅ LGPD FORA do main (acompanha o conteúdo, não "cola" no fim da tela) -->
-  <footer class="lgpd-footer lgpd-below" aria-label="LGPD e privacidade">
-    <div class="container">
-      <div class="lgpd-footer-card">
-        <p class="lgpd-footer-title"><strong>LGPD</strong></p>
+<footer class="lgpd-footer lgpd-below" aria-label="LGPD e privacidade">
+  <div class="container">
+    <div class="lgpd-footer-card">
+      <p class="lgpd-footer-title"><strong>Privacidade e LGPD</strong></p>
 
-        <p class="muted" style="margin:6px 0 10px">
-          Este aplicativo respeita a Lei Geral de Proteção de Dados.
-          Nenhuma informação sensível é compartilhada.
-          Resultados por setor são exibidos apenas de forma <strong>agregada</strong>.
-        </p>
-
-        <!-- ✅ POPUP NATIVO: sem JS do app, sem modal, sem nada -->
-        <button
-          type="button"
-          class="linklike"
-          id="lgpdMoreBtn"
-          onclick="alert('LGPD — Proteção de Dados\n\nEste aplicativo coleta apenas as informações necessárias para:\n• Exibir ranking individual (opcional)\n• Gerar estatísticas agregadas por setor\n\nNenhum dado sensível é compartilhado com terceiros.\nO ranking é opcional e pode ser desativado a qualquer momento.')"
-        >
-          Saiba mais
-        </button>
-      </div>
+      <p class="lgpd-text">
+        Seus dados não são tratados nem compartilhados fora do app.
+        O <strong>nome</strong> e o <strong>setor</strong> fornecidos servem exclusivamente
+        para compor o ranking.
+        <br><br>
+        No ranking por setor, os resultados são <strong>agregados</strong> e não exibem nomes.
+        Caso queira remover seu nome do ranking, basta <strong>apagar sua conta</strong>,
+        e ele será removido automaticamente.
+        <br><br>
+        Para mais informações, consulte o setor de <strong>Proteção de Dados</strong>.
+      </p>
     </div>
-  </footer>
+  </div>
+</footer>
 
   <!-- Modal do app (mantido, mas o LGPD não depende dele) -->
   <div class="hidden" id="overlay" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
@@ -317,4 +313,5 @@
   <script type="module" src="js/main.js"></script>
 </body>
 </html>
+
 
