@@ -1,4 +1,4 @@
-// js/lgpd.js — handler LGPD (delegação; resistente a mudanças de DOM)
+// js/lgpd.js — handler LGPD (delegação super robusta)
 export function bootLgpd(app){
   if (app.__LGPD_BOOTED__) return;
   app.__LGPD_BOOTED__ = true;
@@ -9,19 +9,22 @@ export function bootLgpd(app){
     return;
   }
 
-  // Delegação: funciona mesmo se #lgpdMoreBtn for recriado/movido
   document.addEventListener("click", (ev) => {
     const t = ev.target instanceof HTMLElement ? ev.target : null;
-    const btn = t?.closest?.("#lgpdMoreBtn");
+    if (!t) return;
+
+    // ✅ aceita id antigo OU data novo
+    const btn = t.closest("#lgpdMoreBtn,[data-lgpd='more']");
     if (!btn) return;
 
     ev.preventDefault();
+    ev.stopPropagation();
 
     openModal({
       title: "LGPD e privacidade",
       bodyHTML: `
         <p style="margin-top:0">
-          <strong>O que coletamos:</strong> apenas dados necessários para o jogo (ex.: nome e setor informados).
+          <strong>O que coletamos:</strong> dados mínimos para funcionamento do jogo e ranking.
         </p>
         <p>
           <strong>Ranking por setor:</strong> exibimos somente dados <strong>agregados</strong>.
@@ -35,5 +38,5 @@ export function bootLgpd(app){
       `,
       buttons: [{ label: "Fechar", onClick: closeModal }]
     });
-  }, true);
+  }, true); // ✅ capture=true para não “perder” o clique
 }
