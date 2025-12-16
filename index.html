@@ -10,7 +10,6 @@
 
   <link rel="stylesheet" href="css/style.css" />
   <link rel="stylesheet" href="css/admin.css" />
-  <!-- ✅ novo: estilos da área de login/cadastro -->
   <link rel="stylesheet" href="css/auth.css" />
 </head>
 
@@ -32,89 +31,16 @@
         </div>
 
         <div class="top-actions">
-          <!-- ✅ novo: login/cadastro de usuários -->
-          <button class="icon-btn" id="loginBtn" title="Entrar / Conta" type="button">👤</button>
-
           <button class="icon-btn" id="customizeBtn" title="Personalizar" type="button">⚙️</button>
           <button class="icon-btn" id="rankingBtn" title="Ranking" type="button">🏆</button>
+
+          <!-- 🔐 Admin -->
           <button class="icon-btn admin-btn" id="adminBtn" title="Admin" type="button">🔒</button>
+
+          <!-- 👤 Login usuário (se você já tiver colocado no topo, mantenha o mesmo id do seu JS) -->
+          <button class="icon-btn" id="loginBtn" title="Entrar / Criar conta" type="button">👤</button>
         </div>
       </header>
-
-      <!-- ✅ novo: Tela de Login/Cadastro (fica dentro do fluxo do app) -->
-      <section class="card hidden" id="screenAuth">
-        <div class="card-inner">
-          <div class="center" style="margin-bottom:12px">
-            <h2 class="h2" style="margin-bottom:6px">Acesso à plataforma</h2>
-            <p class="muted" style="margin:0">
-              Para entrar no ranking e ver seu histórico, faça login ou crie sua conta.
-              Se preferir, você ainda pode jogar sem cadastro (sem contabilizar no ranking).
-            </p>
-          </div>
-
-          <div class="auth-tabs">
-            <button class="auth-tab active" id="tabLogin" type="button">Entrar</button>
-            <button class="auth-tab" id="tabRegister" type="button">Criar conta</button>
-          </div>
-
-          <!-- LOGIN -->
-          <div id="authLogin">
-            <div class="form-grid" style="margin-top:12px">
-              <label class="field" style="grid-column: 1 / -1;">
-                <span>E-mail</span>
-                <input class="input" id="loginEmail" type="email" placeholder="seu@email.com" autocomplete="email" />
-              </label>
-
-              <label class="field" style="grid-column: 1 / -1;">
-                <span>Senha</span>
-                <input class="input" id="loginPassword" type="password" placeholder="Sua senha" autocomplete="current-password" />
-              </label>
-            </div>
-
-            <div class="actions" style="justify-content:flex-start; margin-top:12px">
-              <button class="btn" id="loginSubmit" type="button">Entrar</button>
-              <button class="btn ghost" id="forgotPassword" type="button">Esqueci a senha</button>
-              <button class="btn ghost" id="continueNoLogin" type="button">Continuar sem login</button>
-            </div>
-          </div>
-
-          <!-- CADASTRO -->
-          <div id="authRegister" class="hidden">
-            <div class="form-grid" style="margin-top:12px">
-              <label class="field">
-                <span>Nome</span>
-                <input class="input" id="regName" type="text" placeholder="Seu nome" autocomplete="name" maxlength="60" />
-              </label>
-
-              <label class="field">
-                <span>Setor</span>
-                <select class="input" id="regSector"></select>
-              </label>
-
-              <label class="field" style="grid-column: 1 / -1;">
-                <span>E-mail</span>
-                <input class="input" id="regEmail" type="email" placeholder="seu@email.com" autocomplete="email" />
-              </label>
-
-              <label class="field" style="grid-column: 1 / -1;">
-                <span>Senha</span>
-                <input class="input" id="regPassword" type="password" placeholder="Crie uma senha" autocomplete="new-password" />
-              </label>
-            </div>
-
-            <div class="actions" style="justify-content:flex-start; margin-top:12px">
-              <button class="btn" id="registerSubmit" type="button">Criar conta</button>
-              <button class="btn ghost" id="backToLogin" type="button">Voltar</button>
-            </div>
-
-            <div class="hintbar" style="margin-top:12px">
-              ✅ Depois do cadastro, você poderá acompanhar seus resultados e participar do ranking.
-            </div>
-          </div>
-
-          <div id="authStatus" class="hintbar hidden" style="margin-top:12px"></div>
-        </div>
-      </section>
 
       <!-- Loading fake -->
       <section class="card" id="screenLoading">
@@ -122,6 +48,94 @@
           <img class="logo-pulse" src="img/logo-natal.png" alt="Logo natalina" />
           <h2 class="loading-title">Preparando sua missão…</h2>
           <p class="muted">Carregando o conteúdo especial de Natal ❄️</p>
+        </div>
+      </section>
+
+      <!-- ✅ Auth (Login/Cadastro) -->
+      <section class="hidden" id="screenAuth">
+        <div class="auth-card">
+          <div class="auth-inner">
+
+            <div class="auth-head">
+              <h2 class="auth-title">Entrar ou criar conta</h2>
+              <p class="auth-sub">
+                Para participar do ranking, será necessário ter uma conta.
+                Se preferir, você pode continuar no modo anônimo.
+              </p>
+            </div>
+
+            <!-- tabs -->
+            <div class="auth-tabs">
+              <div class="auth-tab active" id="authTabLogin" role="button" tabindex="0">Login</div>
+              <div class="auth-tab" id="authTabSignup" role="button" tabindex="0">Criar conta</div>
+            </div>
+
+            <!-- status -->
+            <div class="auth-status" id="authStatus"></div>
+
+            <!-- LOGIN -->
+            <div id="authPanelLogin">
+              <div class="auth-grid onecol">
+                <label class="field">
+                  <span>E-mail</span>
+                  <input class="input" id="authLoginEmail" type="email" autocomplete="email" placeholder="seuemail@empresa.com" />
+                </label>
+
+                <label class="field">
+                  <span>Senha</span>
+                  <input class="input" id="authLoginPass" type="password" autocomplete="current-password" placeholder="••••••••" />
+                </label>
+              </div>
+
+              <div class="auth-actions">
+                <button class="btn" id="authLoginBtn" type="button">Entrar</button>
+                <button class="btn ghost" id="authForgotBtn" type="button">Esqueci minha senha</button>
+                <button class="btn ghost" id="authAnonBtn" type="button">Prefiro seguir no modo anônimo</button>
+              </div>
+
+              <hr class="auth-divider" />
+
+              <p class="auth-mini" style="margin:0">
+                Ao entrar, seu <strong>nome</strong> e <strong>setor</strong> poderão ser preenchidos automaticamente.
+              </p>
+            </div>
+
+            <!-- SIGNUP -->
+            <div id="authPanelSignup" class="hidden">
+              <div class="auth-grid">
+                <label class="field">
+                  <span>Nome</span>
+                  <input class="input" id="authSignupName" type="text" autocomplete="name" maxlength="60" placeholder="Ex.: Rafael" />
+                </label>
+
+                <label class="field">
+                  <span>Setor</span>
+                  <select class="input" id="authSignupSector"></select>
+                </label>
+
+                <label class="field">
+                  <span>E-mail</span>
+                  <input class="input" id="authSignupEmail" type="email" autocomplete="email" placeholder="seuemail@empresa.com" />
+                </label>
+
+                <label class="field">
+                  <span>Senha</span>
+                  <input class="input" id="authSignupPass" type="password" autocomplete="new-password" placeholder="mín. 6 caracteres" />
+                </label>
+              </div>
+
+              <div class="auth-actions">
+                <button class="btn" id="authSignupBtn" type="button">Criar conta</button>
+                <button class="btn ghost" id="authBackToLoginBtn" type="button">Já tenho conta</button>
+                <button class="btn ghost" id="authAnonBtn2" type="button">Prefiro seguir no modo anônimo</button>
+              </div>
+
+              <div class="auth-note">
+                Dica: depois a gente pode adicionar verificação por código no e-mail, mas primeiro vamos deixar login/cadastro funcionando.
+              </div>
+            </div>
+
+          </div>
         </div>
       </section>
 
@@ -214,8 +228,6 @@
           <div class="stat-grid" id="finalStatGrid"></div>
 
           <p class="final-sub" id="finalStats"></p>
-
-          <!-- ✅ precisa ser DIV porque o JS injeta botões e HTML -->
           <div class="final-sub" id="finalRecado"></div>
 
           <br>
@@ -300,7 +312,7 @@
     </div>
   </div>
 
-  <!-- Tela do Admin (mantido) -->
+  <!-- Tela do Admin (mantida como você tinha) -->
   <div id="adminLoginScreen" class="hidden">
     <div class="modal">
       <div class="modal-head">
