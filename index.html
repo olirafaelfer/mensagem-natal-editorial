@@ -12,18 +12,13 @@
   <link rel="stylesheet" href="css/admin.css" />
   <link rel="stylesheet" href="css/auth.css" />
   <link rel="stylesheet" href="css/lgpd.css" />
-
 </head>
 
 <body>
-  <!-- fundos (fixos via CSS) -->
   <canvas id="snow" aria-hidden="true"></canvas>
-
-  <!-- ✅ não deixar hidden fixo aqui (o JS controla o efeito) -->
   <div id="reindeerLayer" class="reindeer-layer" aria-hidden="true"></div>
 
   <main class="app">
-    <!-- wrapper central para layout consistente -->
     <div class="container">
 
       <header class="topbar">
@@ -35,12 +30,10 @@
         <div class="top-actions">
           <button class="icon-btn" id="customizeBtn" title="Personalizar" type="button">⚙️</button>
           <button class="icon-btn" id="rankingBtn" title="Ranking" type="button">🏆</button>
-          <!-- 👤 Login usuário (se você já tiver colocado no topo, mantenha o mesmo id do seu JS) -->
           <button class="icon-btn" id="loginBtn" title="Entrar / Criar conta" type="button">👤</button>
         </div>
       </header>
 
-      <!-- Loading fake -->
       <section class="card" id="screenLoading">
         <div class="card-inner center">
           <img class="logo-pulse" src="img/logo-natal.png" alt="Logo natalina" />
@@ -49,7 +42,6 @@
         </div>
       </section>
 
-      <!-- ✅ Auth (Login/Cadastro) -->
       <section class="hidden" id="screenAuth">
         <div class="auth-card">
           <div class="auth-inner">
@@ -62,16 +54,13 @@
               </p>
             </div>
 
-            <!-- tabs -->
             <div class="auth-tabs">
               <div class="auth-tab active" id="authTabLogin" role="button" tabindex="0">Login</div>
               <div class="auth-tab" id="authTabSignup" role="button" tabindex="0">Criar conta</div>
             </div>
 
-            <!-- status -->
             <div class="auth-status" id="authStatus"></div>
 
-            <!-- LOGIN -->
             <div id="authPanelLogin">
               <div class="auth-grid onecol">
                 <label class="field">
@@ -98,7 +87,6 @@
               </p>
             </div>
 
-            <!-- SIGNUP -->
             <div id="authPanelSignup" class="hidden">
               <div class="auth-grid">
                 <label class="field">
@@ -137,7 +125,6 @@
         </div>
       </section>
 
-      <!-- Form -->
       <section class="card hidden" id="screenForm">
         <div class="card-inner">
           <h2 class="h2">Antes de começar</h2>
@@ -164,18 +151,18 @@
             </div>
 
             <label class="switch" aria-label="Participar do ranking">
-              <input type="checkbox" id="optRanking" checked>
+              <!-- IMPORTANTE: deixe DESMARCADO por padrão para evitar confusão -->
+              <input type="checkbox" id="optRanking">
               <span class="slider"></span>
             </label>
           </div>
-        
+
           <div class="actions">
             <button class="btn" id="startBtn" type="button">Iniciar missão</button>
           </div>
         </div>
       </section>
 
-      <!-- Game -->
       <section class="card hidden" id="screenGame">
         <div class="card-inner">
           <div class="status-row">
@@ -200,7 +187,6 @@
         </div>
       </section>
 
-      <!-- Final -->
       <section class="card hidden" id="screenFinal">
         <div class="card-inner center">
           <h2 class="final-title">🎄</h2>
@@ -278,10 +264,21 @@
         </div>
       </section>
 
+      <!-- ✅ LGPD abaixo do box principal (acompanha a página) -->
+      <footer class="lgpd-below" aria-label="LGPD e privacidade">
+        <div class="lgpd-footer-card">
+          <p class="lgpd-footer-title"><strong>LGPD</strong></p>
+          <p class="muted" style="margin:6px 0 0">
+            Seguimos as diretrizes da LGPD e não faremos compartilhamento de informações pessoais.
+            O ranking por setor exibe apenas resultados <strong>agregados</strong>.
+            <button type="button" class="linklike" data-lgpd="more" id="lgpdMoreBtn">Saiba mais</button>
+          </p>
+        </div>
+      </footer>
+
     </div>
   </main>
 
-  <!-- Modal -->
   <div class="hidden" id="overlay" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
     <div class="modal">
       <div class="modal-head">
@@ -294,21 +291,5 @@
   </div>
 
   <script type="module" src="js/main.js"></script>
-  <footer class="lgpd-footer" aria-label="LGPD e privacidade">
-  <div class="container">
-    <div class="lgpd-footer-card">
-      <p class="lgpd-footer-title"><strong>LGPD</strong></p>
-      <p class="muted" style="margin:6px 0 0">
-        Seguimos as diretrizes da LGPD e não faremos compartilhamento de informações pessoais.
-        O ranking por setor exibe apenas resultados <strong>agregados</strong>.
-        <button type="button" class="linklike" data-lgpd="more" id="lgpdMoreBtn">Saiba mais</button>
-      </p>
-    </div>
-  </div>
-</footer>
-
 </body>
 </html>
-
-
-
