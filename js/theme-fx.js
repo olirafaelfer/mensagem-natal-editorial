@@ -1,30 +1,24 @@
 // js/theme-fx.js — Personalização do tema + efeitos visuais (neve, renas)
-// Requer:
-// - app.firebase: { db, doc, getDoc, setDoc, serverTimestamp }
-// - app.modal: { openModal, closeModal }
-// - app.gameState: getters de nome/setor/pontuação
-// - app.theme-fx: efeitos visuais e personalização do tema
 
 export function bootThemeFx(app) {
-  const PRESETS =
-  app?.data?.THEME_PRESETS ||
-  app?.themePresets ||
-  {
-    classic: { name:"Clássico", accent:"#e53935", bg:"#0b1020" },
-    candy:   { name:"Candy Cane", accent:"#ff2e63", bg:"#140a12" },
-    neon:    { name:"Neon Noel", accent:"#00ffd5", bg:"#001016" },
-    aurora:  { name:"Aurora", accent:"#7c4dff", bg:"#071022" },
-    gold:    { name:"Dourado", accent:"#ffcc00", bg:"#140f02" },
-  };
-
-  const { openModal, closeModal } = app.modal;
-  const fb = app.firebase;
-  const THEME_PRESETS = app.THEME_PRESETS;
-
-  if (!fb?.db) {
-    console.warn("[theme-fx] Firebase não inicializado em app.firebase");
+  const { openModal, closeModal } = app.modal || {};
+  if (!openModal || !closeModal) {
+    console.warn("[theme-fx] modal não inicializado (ui-modal.js precisa bootar antes).");
     return;
   }
+
+  const escapeHtml = app.utils?.escapeHtml || ((s)=>String(s));
+
+  // ✅ fonte única e garantida
+  const PRESETS =
+    app?.data?.THEME_PRESETS ||
+    {
+      classic: { name:"Clássico", accent:"#e53935", bg:"#0b1020" },
+      candy:   { name:"Candy Cane", accent:"#ff2e63", bg:"#140a12" },
+      neon:    { name:"Neon Noel", accent:"#00ffd5", bg:"#001016" },
+      aurora:  { name:"Aurora", accent:"#7c4dff", bg:"#071022" },
+      gold:    { name:"Dourado", accent:"#ffcc00", bg:"#140f02" },
+    };
 
   const customizeBtn = document.getElementById("customizeBtn");
   const openCustomizeInline = document.getElementById("openCustomizeInline");
@@ -32,12 +26,10 @@ export function bootThemeFx(app) {
   customizeBtn?.addEventListener("click", openCustomizeModal);
   openCustomizeInline?.addEventListener("click", openCustomizeModal);
 
-  // Salvar tema
   function saveTheme(obj) {
     localStorage.setItem("mission_theme", JSON.stringify(obj));
   }
 
-  // Carregar tema
   function loadTheme() {
     try {
       return JSON.parse(localStorage.getItem("mission_theme") || "null") || {
@@ -51,9 +43,11 @@ export function bootThemeFx(app) {
     }
   }
 
-  // Aplicar o tema (paleta de cores, intensidade, etc.)
+  let reindeerTimer = null;
+
   function applyTheme({ snow, reindeer, preset = "classic", intensity = 1 }) {
-    const p = THEME_PRESETS[preset] || THEME_PRESETS.classic;
+    const p = PRESETS[preset] || PRESETS.classic;
+
     const root = document.documentElement;
     root.style.setProperty("--accent", p.accent);
     root.style.setProperty("--bg", p.bg);
@@ -62,15 +56,16 @@ export function bootThemeFx(app) {
     const snowCanvas = document.getElementById("snow");
     if (snowCanvas) snowCanvas.style.display = snow ? "block" : "none";
 
+    const reindeerLayer = document.getElementById("reindeerLayer");
     if (reindeer) {
+      if (reindeerLayer) reindeerLayer.classList.remove("hidden");
       startReindeer();
     } else {
       stopReindeer();
+      if (reindeerLayer) reindeerLayer.classList.add("hidden");
     }
   }
 
-  // Começar o efeito de renas
-  let reindeerTimer = null;
   function startReindeer() {
     const reindeerLayer = document.getElementById("reindeerLayer");
     if (!reindeerLayer) return;
@@ -87,12 +82,12 @@ export function bootThemeFx(app) {
     if (reindeerLayer) reindeerLayer.innerHTML = "";
   }
 
-  // Criar ondas de renas no efeito
   function spawnReindeerWave() {
     const reindeerLayer = document.getElementById("reindeerLayer");
     if (!reindeerLayer) return;
     const emojis = ["🦌", "🦌", "🦌", "🛷", "🦌"];
     const count = 8;
+
     for (let i = 0; i < count; i++) {
       const d = document.createElement("div");
       d.className = "reindeer";
@@ -102,12 +97,12 @@ export function bootThemeFx(app) {
       d.style.animationDuration = `${7.5 + Math.random() * 6.0}s`;
       d.style.animationDelay = `${Math.random() * 1.2}s`;
       reindeerLayer.appendChild(d);
+
       const ttl = parseFloat(d.style.animationDuration) * 1000 + 1500;
       setTimeout(() => d.remove(), ttl);
     }
   }
 
-  // Neve (Efeito de neve no fundo)
   function snowInit() {
     const canvas = document.getElementById("snow");
     if (!canvas) return;
@@ -154,6 +149,7 @@ export function bootThemeFx(app) {
         f.phase += f.sway * 60;
         f.x += f.vx + Math.sin(f.phase) * 0.4;
         f.y += f.vy;
+
         if (f.y > h + 10) {
           f.y = rand(-40, -10);
           f.x = rand(0, w);
@@ -175,11 +171,26 @@ export function bootThemeFx(app) {
     tick();
   }
 
-  // Abrir modal de personalização
+  function toggleHTML(id, title, subtitle, checked) {
+    return `
+      <div class="toggle-row">
+        <div class="toggle-text">
+          <b>${escapeHtml(title)}</b>
+          <small class="muted">${escapeHtml(subtitle)}</small>
+        </div>
+        <label class="switch" aria-label="${escapeHtml(title)}">
+          <input type="checkbox" id="${id}" ${checked ? "checked" : ""}/>
+          <span class="slider"></span>
+        </label>
+      </div>
+    `;
+  }
+
   function openCustomizeModal() {
     const saved = loadTheme();
-    const presetOptions = Object.entries(THEME_PRESETS).map(([k, v]) =>
-      `<option value="${k}" ${saved.preset === k ? "selected" : ""}>${escapeHtml(v.name)}</option>`
+
+    const presetOptions = Object.entries(PRESETS).map(([k, v]) =>
+      `<option value="${escapeHtml(k)}" ${saved.preset === k ? "selected" : ""}>${escapeHtml(v.name)}</option>`
     ).join("");
 
     openModal({
@@ -204,7 +215,8 @@ export function bootThemeFx(app) {
           <div>
             <b>Intensidade</b>
             <div class="muted" style="margin:2px 0 8px">Quanto mais alto, mais vivo.</div>
-            <input id="optIntensity" type="range" min="0.8" max="1.6" step="0.05" value="${saved.intensity ?? 1}" style="width:100%"/>
+            <input id="optIntensity" type="range" min="0.8" max="1.6" step="0.05"
+              value="${saved.intensity ?? 1}" style="width:100%"/>
           </div>
         </div>
       `,
@@ -237,23 +249,7 @@ export function bootThemeFx(app) {
     }, 0);
   }
 
-  function toggleHTML(id, title, subtitle, checked) {
-    return `
-      <div class="toggle-row">
-        <div class="toggle-text">
-          <b>${escapeHtml(title)}</b>
-          <small class="muted">${escapeHtml(subtitle)}</small>
-        </div>
-        <label class="switch" aria-label="${escapeHtml(title)}">
-          <input type="checkbox" id="${id}" ${checked ? "checked" : ""}/>
-          <span class="slider"></span>
-        </label>
-      </div>
-    `;
-  }
-
-  // Inicialização da neve
+  // ✅ aplica tema salvo na inicialização
+  applyTheme(loadTheme());
   snowInit();
 }
-
-
