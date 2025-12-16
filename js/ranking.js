@@ -1,4 +1,14 @@
-// js/ranking.js — ranking individual + por setor (Firestore)
+// js/ranking.js — ranking individual (logados) + por setor (Firestore)
+// - Individual: /individualRanking/{uid} (docId = uid) + campo uid no payload (rules)
+// - Setor: /sectorStats/{sectorId} (agregado)
+// - Destaque do usuário logado no ranking individual
+//
+// Requer:
+// - app.modal (openModal/closeModal)
+// - app.firebase.* helpers (db, doc, getDoc, setDoc, runTransaction, serverTimestamp, collection, getDocs, query, orderBy, limit)
+// - app.auth (opcional, vindo do auth.js): isLogged(), getProfile()
+
+import { getAuth } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
 
 export function bootRanking(app){
   const { openModal, closeModal } = app.modal || {};
@@ -19,6 +29,33 @@ export function bootRanking(app){
 
   rankingBtn?.addEventListener("click", () => openRankingModal());
   finalRankingBtn?.addEventListener("click", () => openRankingModal());
+
+  // ✅ API para outros módulos (ex: auth.js "Minha conta")
+  app.ranking = {
+    // snapshot simples do ranking do usuário (se existir)
+    // retorna: { uid, name, sector, score, correct, wrong } | null
+    getMyRankingSnapshot: async () => {
+      const uid = getLoggedUid();
+      if (!uid) return null;
+      try {
+        const ref = fb.doc(fb.db, "individualRanking", uid);
+        const snap = await fb.getDoc(ref);
+        if (!snap.exists()) return null;
+        const d = snap.data() || {};
+        return {
+          uid,
+          name: String(d.name || "").trim(),
+          sector: String(d.sector || "").trim(),
+          score: Number(d.score || 0),
+          correct: Number(d.correct || 0),
+          wrong: Number(d.wrong || 0),
+        };
+      } catch (e) {
+        console.warn("[ranking] getMyRankingSnapshot falhou:", e);
+        return null;
+      }
+    },
+  };
 
   // game-core chama isso ao finalizar
   app.finishMission = async (payload) => {
@@ -47,20 +84,9 @@ export function bootRanking(app){
       .replace(/\p{Diacritic}/gu, "");
   }
 
-  function keyify(s){
-    return normalize(String(s || ""))
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/(^-|-$)+/g, "")
-      .slice(0, 80);
-  }
-
   function clampName(name){
     const n = (name || "").trim().replace(/\s+/g, " ");
     return n.length > 60 ? n.slice(0,60) : n;
-  }
-
-  function individualDocId(name, sector){
-    return `n_${keyify(name)}__s_${keyify(sector)}`;
   }
 
   function medalFor(i){
@@ -75,14 +101,40 @@ export function bootRanking(app){
   }
 
   function getUserName(){
-    const n = app.gameState?.getUserName?.() || localStorage.getItem("mission_name") || "";
+    const n =
+      app.user?.getUserName?.() ||
+      (app.gameState?.getUserName?.() ?? "") ||
+      localStorage.getItem("mission_name") ||
+      "";
     return clampName(n);
   }
+
   function getUserSector(){
-    return (app.gameState?.getUserSector?.() || localStorage.getItem("mission_sector") || "").trim();
+    return String(
+      app.user?.getUserSector?.() ||
+      (app.gameState?.getUserSector?.() ?? "") ||
+      localStorage.getItem("mission_sector") ||
+      ""
+    ).trim();
+  }
+
+  function getLoggedUid(){
+    // prioriza app.auth (se existir) e cai no firebase auth
+    const auth = getAuth();
+    const uid = auth?.currentUser?.uid || null;
+    return uid;
+  }
+
+  function getLoggedProfileSafe(){
+    // tenta obter do auth.js
+    const p = app.auth?.getProfile?.() || null;
+    if (p && (p.name || p.sector)) return p;
+    return null;
   }
 
   async function maybeCommitMissionToSectorRanking(payload){
+    // ranking por setor continua respeitando opt-out.
+    // (se anônimo não consegue habilitar optRanking, essa função já não roda na prática)
     if (isOptedOut()) return;
 
     const sector = getUserSector();
@@ -124,31 +176,47 @@ export function bootRanking(app){
   }
 
   async function commitIndividualRanking(payload){
+    // ✅ regras novas: individual somente logado e com uid
     if (isOptedOut()) return;
 
-    const name = clampName(getUserName());
-    const sector = getUserSector();
+    const uid = getLoggedUid();
+    if (!uid) return; // sem login, não salva individual
+
+    // nome/setor: preferir profile (mais confiável), senão pega do form/localStorage
+    const prof = getLoggedProfileSafe();
+    const name = clampName((prof?.name || getUserName() || "").trim());
+    const sector = (prof?.sector || getUserSector() || "").trim();
+
     if (!name || !sector) return;
 
     const score = Number(payload?.score ?? app.gameState?.score ?? 0);
     const correct = Number(payload?.correctCount ?? app.gameState?.correctCount ?? 0);
     const wrong = Number(payload?.wrongCount ?? app.gameState?.wrongCount ?? 0);
 
-    const id = individualDocId(name, sector);
-    const ref = fb.doc(fb.db, "individualRanking", id);
+    // docId = uid
+    const ref = fb.doc(fb.db, "individualRanking", uid);
 
+    // checa score anterior para não piorar
     const snap = await fb.getDoc(ref);
     const prevScore = snap.exists() ? Number(snap.data()?.score || 0) : -Infinity;
     if (score < prevScore) return;
 
-    await fb.setDoc(ref, {
+    // createdAt só na primeira vez
+    const base = {
+      uid,
       name,
       sector,
       score,
       correct,
       wrong,
-      createdAt: fb.serverTimestamp()
-    }, { merge:true });
+      updatedAt: fb.serverTimestamp(),
+    };
+
+    if (!snap.exists()) {
+      base.createdAt = fb.serverTimestamp();
+    }
+
+    await fb.setDoc(ref, base, { merge:true });
   }
 
   async function openRankingModal(){
@@ -169,7 +237,7 @@ export function bootRanking(app){
         </div>
 
         <p class="muted" style="margin-top:12px">
-          Ranking individual exibe nomes apenas de quem optou por participar.
+          Ranking individual aparece apenas para quem está logado e optou por participar.
           Ranking por setor é agregado (LGPD).
         </p>
       `,
@@ -219,6 +287,8 @@ export function bootRanking(app){
       snap.forEach(docu => {
         const d = docu.data() || {};
         rows.push({
+          docId: docu.id, // uid
+          uid: String(d.uid || docu.id || ""),
           name: String(d.name || "").trim(),
           sector: String(d.sector || "").trim(),
           score: Number(d.score || 0),
@@ -237,6 +307,9 @@ export function bootRanking(app){
         return;
       }
 
+      const myUid = getLoggedUid();
+      const myIndex = myUid ? rows.findIndex(r => (r.uid === myUid || r.docId === myUid)) : -1;
+
       panel.innerHTML = `
         <div style="overflow:auto; border-radius:14px">
           <table class="rank-table">
@@ -251,11 +324,12 @@ export function bootRanking(app){
               ${rows.map((r,i) => {
                 const m = medalFor(i);
                 const delay = Math.min(i * 30, 420);
+                const isMe = (myIndex === i);
                 return `
-                  <tr class="rank-row" style="animation-delay:${delay}ms">
+                  <tr class="rank-row ${isMe ? "rank-me" : ""}" style="animation-delay:${delay}ms">
                     <td><span class="medal ${m.top ? "top":""}">${m.t}</span></td>
                     <td>
-                      <span class="rank-name">${escapeHtml(r.name || "—")}</span>
+                      <span class="rank-name">${escapeHtml(r.name || "—")}${isMe ? ' <span class="muted">(você)</span>' : ""}</span>
                       <span class="rank-sub">${escapeHtml(r.sector || "")}</span>
                     </td>
                     <td class="num"><strong>${r.score}</strong></td>
@@ -265,6 +339,12 @@ export function bootRanking(app){
             </tbody>
           </table>
         </div>
+
+        ${myIndex === -1 && myUid ? `
+          <p class="muted" style="margin-top:12px">
+            Você está logado, mas ainda não apareceu no top 50 (ou ainda não enviou resultado com ranking ligado).
+          </p>
+        ` : ``}
       `;
     } catch (err) {
       console.error("Ranking individual falhou:", err);
