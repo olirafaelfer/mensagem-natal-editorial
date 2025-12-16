@@ -1,0 +1,158 @@
+/* =========================
+   auth.css — Tela de Login/Cadastro (isolado)
+   Depende do style.css (variáveis e botões base)
+========================= */
+
+/* wrapper da tela de auth */
+.auth-card{
+  margin: 18px auto;
+  background: var(--cardBg);
+  border: 1px solid var(--stroke);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+  backdrop-filter: blur(6px);
+}
+
+.auth-inner{
+  padding: 18px;
+}
+
+.auth-head{
+  display:flex;
+  flex-direction:column;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.auth-title{
+  margin: 0;
+  font-weight: 950;
+  letter-spacing: .2px;
+  font-size: 18px;
+}
+
+.auth-sub{
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.auth-tabs{
+  display:flex;
+  gap: 8px;
+  margin: 10px 0 14px;
+}
+
+.auth-tab{
+  flex: 1;
+  border: 1px solid rgba(255,255,255,.12);
+  background: rgba(255,255,255,.06);
+  color: rgba(255,255,255,.92);
+  padding: 10px 10px;
+  border-radius: 14px;
+  cursor: pointer;
+  font-weight: 900;
+  letter-spacing: .1px;
+  transition: transform .12s ease, filter .2s ease, background .2s ease, border-color .2s ease;
+  user-select: none;
+}
+
+.auth-tab:hover{ filter: brightness(1.06); }
+.auth-tab:active{ transform: translateY(1px); }
+
+.auth-tab.active{
+  background: color-mix(in srgb, var(--accent) 75%, rgba(255,255,255,.10));
+  border-color: color-mix(in srgb, var(--accent) 55%, rgba(255,255,255,.14));
+}
+
+.auth-grid{
+  display:grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.auth-grid.onecol{
+  grid-template-columns: 1fr;
+}
+
+.auth-actions{
+  display:flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-top: 14px;
+}
+
+.auth-note{
+  margin-top: 12px;
+  padding: 12px;
+  border-radius: 16px;
+  border: 1px solid rgba(255,255,255,.10);
+  background: rgba(0,0,0,.16);
+  color: rgba(255,255,255,.82);
+  line-height: 1.55;
+}
+
+.auth-divider{
+  border:0;
+  border-top: 1px solid rgba(255,255,255,.10);
+  margin: 14px 0;
+}
+
+/* status (erros/sucesso) */
+.auth-status{
+  margin-top: 10px;
+  padding: 12px;
+  border-radius: 16px;
+  border: 1px solid rgba(255,255,255,.10);
+  background: rgba(0,0,0,.22);
+  color: rgba(255,255,255,.90);
+  display:none;
+}
+.auth-status.show{ display:block; }
+
+.auth-status.error{
+  border-color: rgba(255,23,68,.24);
+  background: rgba(255,23,68,.10);
+}
+.auth-status.ok{
+  border-color: rgba(0,230,118,.24);
+  background: rgba(0,230,118,.10);
+}
+
+.auth-mini{
+  font-size: 13px;
+  color: rgba(255,255,255,.72);
+}
+
+/* perfil/logado */
+.auth-profile{
+  display:flex;
+  align-items:center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px;
+  border-radius: 16px;
+  border: 1px solid rgba(255,255,255,.10);
+  background: rgba(0,0,0,.16);
+  margin-top: 10px;
+}
+
+.auth-profile .who{
+  display:flex;
+  flex-direction:column;
+  gap: 2px;
+}
+.auth-profile .who b{
+  font-weight: 950;
+}
+.auth-profile .who small{
+  color: rgba(255,255,255,.70);
+}
+
+/* responsivo */
+@media (max-width: 860px){
+  .auth-grid{ grid-template-columns: 1fr; }
+}
