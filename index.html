@@ -303,6 +303,25 @@
   </div>
 
   <script type="module" src="js/main.js"></script>
+  <script>
+  (function () {
+    const btn = document.getElementById("lgpdMoreBtn");
+    if (!btn) return;
+
+    btn.addEventListener("click", () => {
+      alert(
+        "LGPD — Proteção de Dados\n\n" +
+        "• Coletamos apenas nome e setor (opcional)\n" +
+        "• Ranking individual é opcional\n" +
+        "• Estatísticas por setor são agregadas\n" +
+        "• Nenhum dado é compartilhado com terceiros\n\n" +
+        "Você pode usar o sistema de forma anônima."
+      );
+    });
+  })();
+</script>
+
 </body>
 </html>
+
 
