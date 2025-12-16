@@ -1,1 +1,401 @@
+// js/ranking.js — ranking individual + por setor (Firestore)
+// Requer:
+// - app.firebase: { db, doc, getDoc, runTransaction, serverTimestamp, collection, getDocs, setDoc, query, orderBy, limit }
+// - app.modal: { openModal, closeModal }
+// - app.SECTORS: array de setores (o mesmo do formulário)
+// - app.gameState: getters (nome/setor) e contagens/pontuação
+// - game-core chama: app.finishMission(payload)
+
+export function bootRanking(app){
+  const { openModal, closeModal } = app.modal;
+  const fb = app.firebase;
+
+  if (!fb?.db) {
+    console.warn("[ranking] Firebase não inicializado em app.firebase");
+    return;
+  }
+
+  const rankingBtn = document.getElementById("rankingBtn");
+  const finalRankingBtn = document.getElementById("finalRankingBtn");
+
+  rankingBtn?.addEventListener("click", () => openRankingModal());
+  finalRankingBtn?.addEventListener("click", () => openRankingModal());
+
+  // game-core chama isso ao finalizar
+  app.finishMission = async (payload) => {
+    try {
+      await maybeCommitMissionToSectorRanking(payload);
+      await commitIndividualRanking(payload);
+    } catch (err) {
+      console.error("Falha ao salvar ranking:", err);
+    }
+  };
+
+  /** =========================
+   * Helpers
+   * ========================= */
+  function escapeHtml(s){
+    return String(s)
+      .replaceAll("&","&amp;")
+      .replaceAll("<","&lt;")
+      .replaceAll(">","&gt;")
+      .replaceAll('"',"&quot;")
+      .replaceAll("'","&#039;");
+  }
+
+  function normalize(str){
+    return (str || "")
+      .trim()
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/\p{Diacritic}/gu, "");
+  }
+
+  function keyify(s){
+    return normalize(String(s || ""))
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/(^-|-$)+/g, "")
+      .slice(0, 80);
+  }
+
+  function clampName(name){
+    const n = (name || "").trim().replace(/\s+/g, " ");
+    return n.length > 60 ? n.slice(0,60) : n;
+  }
+
+  function individualDocId(name, sector){
+    const n = keyify(name);
+    const s = keyify(sector);
+    return `n_${n}__s_${s}`;
+  }
+
+  function medalFor(i){
+    if (i === 0) return { t:"🥇", top:true };
+    if (i === 1) return { t:"🥈", top:true };
+    if (i === 2) return { t:"🥉", top:true };
+    return { t:`${i+1}º`, top:false };
+  }
+
+  function isOptedOut(){
+    return localStorage.getItem("mission_optout_ranking") === "1";
+  }
+
+  function getUserName(){
+    return clampName(app.gameState?.getUserName?.() || localStorage.getItem("mission_name") || "");
+  }
+  function getUserSector(){
+    return (app.gameState?.getUserSector?.() || localStorage.getItem("mission_sector") || "").trim();
+  }
+
+  /** =========================
+   * Commit: ranking por setor (agregado)
+   * ========================= */
+  async function maybeCommitMissionToSectorRanking(payload){
+    if (isOptedOut()) return;
+
+    const sector = getUserSector();
+    if (!sector) return;
+
+    const ref = fb.doc(fb.db, "sectorStats", sector);
+
+    const score = Number(payload?.score ?? app.gameState?.score ?? 0);
+    const correctCount = Number(payload?.correctCount ?? app.gameState?.correctCount ?? 0);
+    const wrongCount = Number(payload?.wrongCount ?? app.gameState?.wrongCount ?? 0);
+    const autoUsed = Number(payload?.autoUsed ?? app.gameState?.autoUsed ?? 0);
+
+    const tScore = payload?.taskScore ?? app.gameState?.taskScore ?? [0,0,0];
+
+    await fb.runTransaction(fb.db, async (tx) => {
+      const snap = await tx.get(ref);
+      const d = snap.exists() ? snap.data() : {
+        missions: 0,
+        totalOverall: 0,
+        totalT1: 0,
+        totalT2: 0,
+        totalT3: 0,
+        totalCorrect: 0,
+        totalWrong: 0,
+        totalAuto: 0
+      };
+
+      tx.set(ref, {
+        missions: (d.missions || 0) + 1,
+        totalOverall: (d.totalOverall || 0) + score,
+        totalT1: (d.totalT1 || 0) + Number(tScore?.[0] || 0),
+        totalT2: (d.totalT2 || 0) + Number(tScore?.[1] || 0),
+        totalT3: (d.totalT3 || 0) + Number(tScore?.[2] || 0),
+        totalCorrect: (d.totalCorrect || 0) + correctCount,
+        totalWrong: (d.totalWrong || 0) + wrongCount,
+        totalAuto: (d.totalAuto || 0) + autoUsed,
+        updatedAt: fb.serverTimestamp()
+      }, { merge:true });
+    });
+  }
+
+  /** =========================
+   * Commit: ranking individual (SEM duplicar nome+setor)
+   * - 1 doc determinístico por nome+setor
+   * - só sobrescreve se score >= score anterior
+   * ========================= */
+  async function commitIndividualRanking(payload){
+    if (isOptedOut()) return;
+
+    const name = clampName(getUserName());
+    const sector = getUserSector();
+    if (!name || !sector) return;
+
+    const score = Number(payload?.score ?? app.gameState?.score ?? 0);
+    const correct = Number(payload?.correctCount ?? app.gameState?.correctCount ?? 0);
+    const wrong = Number(payload?.wrongCount ?? app.gameState?.wrongCount ?? 0);
+
+    const id = individualDocId(name, sector);
+    const ref = fb.doc(fb.db, "individualRanking", id);
+
+    const snap = await fb.getDoc(ref);
+    const prevScore = snap.exists() ? Number(snap.data()?.score || 0) : -Infinity;
+
+    // mantém o melhor resultado
+    if (score < prevScore) return;
+
+    await fb.setDoc(ref, {
+      name,
+      sector,
+      score,
+      correct,
+      wrong,
+      createdAt: fb.serverTimestamp()
+    }, { merge:true });
+  }
+
+  /** =========================
+   * Modal do ranking
+   * ========================= */
+  async function openRankingModal(){
+    openModal({
+      title: "🏆 Ranking",
+      bodyHTML: `
+        <div class="ranking-tabs" id="rankingTabs">
+          <button class="ranking-tab active" data-tab="ind">🧑 Individual</button>
+          <button class="ranking-tab" data-tab="sec">🏢 Por setor</button>
+        </div>
+
+        <div class="ranking-panel show" id="panel-ind">
+          <p class="muted" style="margin-top:0">Carregando ranking individual…</p>
+        </div>
+
+        <div class="ranking-panel" id="panel-sec">
+          <p class="muted" style="margin-top:0">Carregando ranking por setor…</p>
+        </div>
+
+        <p class="muted" style="margin-top:12px">
+          Ranking individual exibe nomes apenas de quem optou por participar.
+          Ranking por setor é agregado (LGPD).
+        </p>
+      `,
+      buttons: [{ label:"Fechar", onClick: closeModal }]
+    });
+
+    // tabs
+    setTimeout(() => {
+      const wrap = document.getElementById("rankingTabs");
+      const btns = wrap?.querySelectorAll(".ranking-tab");
+      const ind = document.getElementById("panel-ind");
+      const sec = document.getElementById("panel-sec");
+
+      btns?.forEach(b => {
+        b.addEventListener("click", () => {
+          btns.forEach(x => x.classList.remove("active"));
+          b.classList.add("active");
+
+          const tab = b.dataset.tab;
+          if (tab === "ind"){
+            ind?.classList.add("show");
+            sec?.classList.remove("show");
+          } else {
+            sec?.classList.add("show");
+            ind?.classList.remove("show");
+          }
+        });
+      });
+    }, 0);
+
+    await Promise.allSettled([renderIndividualRanking(), renderSectorRanking()]);
+  }
+
+  /** =========================
+   * Render: ranking individual
+   * ========================= */
+  async function renderIndividualRanking(){
+    const panel = document.getElementById("panel-ind");
+    if (!panel) return;
+
+    try {
+      const q = fb.query(
+        fb.collection(fb.db, "individualRanking"),
+        fb.orderBy("score", "desc"),
+        fb.limit(50)
+      );
+
+      const snap = await fb.getDocs(q);
+
+      const rows = [];
+      snap.forEach(docu => {
+        const d = docu.data() || {};
+        rows.push({
+          name: String(d.name || "").trim(),
+          sector: String(d.sector || "").trim(),
+          score: Number(d.score || 0),
+          createdAtMs: d.createdAt?.toMillis ? d.createdAt.toMillis() : 0
+        });
+      });
+
+      // desempate no cliente (sem exigir índice composto)
+      rows.sort((a,b) =>
+        (b.score - a.score) ||
+        (a.createdAtMs - b.createdAtMs) ||
+        a.name.localeCompare(b.name)
+      );
+
+      if (rows.length === 0){
+        panel.innerHTML = `<p class="muted">Ainda não há resultados no ranking individual.</p>`;
+        return;
+      }
+
+      panel.innerHTML = `
+        <div style="overflow:auto; border-radius:14px">
+          <table class="rank-table">
+            <thead>
+              <tr>
+                <th style="width:56px">#</th>
+                <th>Nome</th>
+                <th class="num">Pontos</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${rows.map((r,i) => {
+                const m = medalFor(i);
+                const delay = Math.min(i * 30, 420);
+                return `
+                  <tr class="rank-row" style="animation-delay:${delay}ms">
+                    <td><span class="medal ${m.top ? "top":""}">${m.t}</span></td>
+                    <td>
+                      <span class="rank-name">${escapeHtml(r.name || "—")}</span>
+                      <span class="rank-sub">${escapeHtml(r.sector || "")}</span>
+                    </td>
+                    <td class="num"><strong>${r.score}</strong></td>
+                  </tr>
+                `;
+              }).join("")}
+            </tbody>
+          </table>
+        </div>
+      `;
+    } catch (err) {
+      console.error("Ranking individual falhou:", err);
+      panel.innerHTML = `
+        <p>Não foi possível carregar o ranking individual.</p>
+        <p class="muted"><code>${escapeHtml(err?.message || String(err))}</code></p>
+      `;
+    }
+  }
+
+  /** =========================
+   * Render: ranking por setor (agregado)
+   * ========================= */
+  async function renderSectorRanking(){
+    const panel = document.getElementById("panel-sec");
+    if (!panel) return;
+
+    try {
+      const sectors = (app.SECTORS || []).filter(s => s && s !== "Selecione…");
+      const map = new Map();
+
+      // tenta trazer toda a coleção (mais rápido)
+      try {
+        const snapAll = await fb.getDocs(fb.collection(fb.db, "sectorStats"));
+        snapAll.forEach(d => map.set(d.id, d.data()));
+      } catch {
+        // fallback abaixo, ok
+      }
+
+      const rows = [];
+      for (const s of sectors){
+        let d = map.get(s);
+        if (!d){
+          const ref = fb.doc(fb.db, "sectorStats", s);
+          const snap = await fb.getDoc(ref);
+          d = snap.exists() ? snap.data() : null;
+        }
+
+        const missions = Number(d?.missions || 0);
+        const avg = (num) => missions ? (Number(num || 0) / missions) : 0;
+
+        rows.push({
+          sector: s,
+          avgT1: avg(d?.totalT1),
+          avgT2: avg(d?.totalT2),
+          avgT3: avg(d?.totalT3),
+          avgOverall: avg(d?.totalOverall),
+          avgCorrect: avg(d?.totalCorrect),
+          avgWrong: avg(d?.totalWrong),
+        });
+      }
+
+      const hasAny = rows.some(r => r.avgOverall !== 0 || r.avgCorrect !== 0 || r.avgWrong !== 0);
+      if (!hasAny){
+        panel.innerHTML = `<p class="muted">Ainda não há dados suficientes para o ranking por setor.</p>`;
+        return;
+      }
+
+      rows.sort((a,b) =>
+        b.avgOverall - a.avgOverall ||
+        b.avgCorrect - a.avgCorrect ||
+        a.avgWrong - b.avgWrong
+      );
+
+      panel.innerHTML = `
+        <div style="overflow:auto; border-radius:14px">
+          <table class="rank-table">
+            <thead>
+              <tr>
+                <th style="width:56px">#</th>
+                <th>Setor</th>
+                <th class="num">Ativ. 1</th>
+                <th class="num">Ativ. 2</th>
+                <th class="num">Ativ. 3</th>
+                <th class="num">Média geral</th>
+                <th class="num">Acertos</th>
+                <th class="num">Erros</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${rows.map((r,i) => {
+                const m = medalFor(i);
+                const delay = Math.min(i * 30, 420);
+                return `
+                  <tr class="rank-row" style="animation-delay:${delay}ms">
+                    <td><span class="medal ${m.top ? "top":""}">${m.t}</span></td>
+                    <td><span class="rank-name">${escapeHtml(r.sector)}</span></td>
+                    <td class="num">${r.avgT1.toFixed(2)}</td>
+                    <td class="num">${r.avgT2.toFixed(2)}</td>
+                    <td class="num">${r.avgT3.toFixed(2)}</td>
+                    <td class="num"><strong>${r.avgOverall.toFixed(2)}</strong></td>
+                    <td class="num">${r.avgCorrect.toFixed(2)}</td>
+                    <td class="num">${r.avgWrong.toFixed(2)}</td>
+                  </tr>
+                `;
+              }).join("")}
+            </tbody>
+          </table>
+        </div>
+      `;
+    } catch (err) {
+      console.error("Ranking setor falhou:", err);
+      panel.innerHTML = `
+        <p>Não foi possível carregar o ranking por setor.</p>
+        <p class="muted"><code>${escapeHtml(err?.message || String(err))}</code></p>
+      `;
+    }
+  }
+}
 
