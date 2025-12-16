@@ -151,7 +151,6 @@
             </div>
 
             <label class="switch" aria-label="Participar do ranking">
-              <!-- IMPORTANTE: deixe DESMARCADO por padrão para evitar confusão -->
               <input type="checkbox" id="optRanking">
               <span class="slider"></span>
             </label>
@@ -264,25 +263,35 @@
         </div>
       </section>
 
-<footer class="lgpd-footer lgpd-below" aria-label="LGPD e privacidade">
-  <div class="container">
-    <div class="lgpd-footer-card">
-      <p class="lgpd-footer-title"><strong>LGPD</strong></p>
-
-      <p class="muted" style="margin:6px 0 0">
-        Este aplicativo respeita a Lei Geral de Proteção de Dados.
-        Nenhuma informação sensível é compartilhada.
-        Resultados por setor são exibidos apenas de forma <strong>agregada</strong>.
-      </p>
-<button type="button" class="linklike" data-lgpd="more" id="lgpdMoreBtn">Saiba mais</button>
-    </div>
-  </div>
-</footer>
-
-
     </div>
   </main>
 
+  <!-- ✅ LGPD FORA do main (acompanha o conteúdo, não "cola" no fim da tela) -->
+  <footer class="lgpd-footer lgpd-below" aria-label="LGPD e privacidade">
+    <div class="container">
+      <div class="lgpd-footer-card">
+        <p class="lgpd-footer-title"><strong>LGPD</strong></p>
+
+        <p class="muted" style="margin:6px 0 10px">
+          Este aplicativo respeita a Lei Geral de Proteção de Dados.
+          Nenhuma informação sensível é compartilhada.
+          Resultados por setor são exibidos apenas de forma <strong>agregada</strong>.
+        </p>
+
+        <!-- ✅ POPUP NATIVO: sem JS do app, sem modal, sem nada -->
+        <button
+          type="button"
+          class="linklike"
+          id="lgpdMoreBtn"
+          onclick="alert('LGPD — Proteção de Dados\n\nEste aplicativo coleta apenas as informações necessárias para:\n• Exibir ranking individual (opcional)\n• Gerar estatísticas agregadas por setor\n\nNenhum dado sensível é compartilhado com terceiros.\nO ranking é opcional e pode ser desativado a qualquer momento.')"
+        >
+          Saiba mais
+        </button>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Modal do app (mantido, mas o LGPD não depende dele) -->
   <div class="hidden" id="overlay" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
     <div class="modal">
       <div class="modal-head">
@@ -295,77 +304,5 @@
   </div>
 
   <script type="module" src="js/main.js"></script>
-<script>
-  (function () {
-    function qs(id){ return document.getElementById(id); }
-
-    function openSimpleModal(title, bodyHTML) {
-      const overlay = qs("overlay");
-      const modalTitle = qs("modalTitle");
-      const modalBody = qs("modalBody");
-      const modalFoot = qs("modalFoot");
-      const closeBtn = qs("closeModal");
-
-      if (!overlay || !modalTitle || !modalBody || !modalFoot || !closeBtn) {
-        // fallback extremo
-        alert(title + "\n\n" + bodyHTML.replace(/<[^>]*>/g, ""));
-        return;
-      }
-
-      modalTitle.textContent = title;
-      modalBody.innerHTML = bodyHTML;
-
-      modalFoot.innerHTML = "";
-      const ok = document.createElement("button");
-      ok.className = "btn";
-      ok.type = "button";
-      ok.textContent = "Entendi";
-      ok.addEventListener("click", closeSimpleModal);
-      modalFoot.appendChild(ok);
-
-      closeBtn.onclick = closeSimpleModal;
-      overlay.classList.remove("hidden");
-    }
-
-    function closeSimpleModal() {
-      const overlay = qs("overlay");
-      if (overlay) overlay.classList.add("hidden");
-    }
-
-    function handleLGPDClick(ev) {
-      const btn = ev.target && ev.target.closest ? ev.target.closest("#lgpdMoreBtn,[data-lgpd='more']") : null;
-      if (!btn) return;
-
-      ev.preventDefault();
-      ev.stopPropagation();
-
-      openSimpleModal("🔐 LGPD — Proteção de Dados", `
-        <p>Este aplicativo coleta apenas as informações necessárias para:</p>
-        <ul>
-          <li>Exibir ranking individual (opcional)</li>
-          <li>Gerar estatísticas agregadas por setor</li>
-        </ul>
-        <p class="muted">
-          Nenhum dado sensível é compartilhado com terceiros.
-          O ranking é opcional e pode ser desativado a qualquer momento.
-        </p>
-      `);
-    }
-
-    // Delegação global (funciona mesmo se algo re-renderizar)
-    document.addEventListener("click", handleLGPDClick, true);
-
-    // Só pra garantir que o botão está “clicável”
-    document.addEventListener("DOMContentLoaded", () => {
-      const btn = qs("lgpdMoreBtn");
-      if (btn) btn.style.pointerEvents = "auto";
-    });
-  })();
-</script>
-
-
 </body>
 </html>
-
-
-
