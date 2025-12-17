@@ -942,3 +942,13 @@ body.modal-open #overlay{
   opacity:.6;
   cursor:not-allowed;
 }
+
+
+/* ===== Score float animation ===== */
+.score-float{position:fixed;left:50%;top:18%;transform:translateX(-50%);padding:10px 14px;border-radius:14px;font-weight:800;z-index:9999;pointer-events:none;opacity:0;animation:scoreFloat 900ms ease-out forwards;}
+@keyframes scoreFloat{0%{opacity:0;transform:translate(-50%,10px) scale(0.98);}15%{opacity:1;transform:translate(-50%,0) scale(1);}100%{opacity:0;transform:translate(-50%,-22px) scale(1);} }
+
+.btn-disabled{opacity:.55;pointer-events:none;}
+
+/* Hide final mission special by default; JS will toggle */
+#finalMissionSpecialBtn{display:none;}

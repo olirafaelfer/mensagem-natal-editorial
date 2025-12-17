@@ -1,9 +1,8 @@
-// js/challenge2-3.js
-// Conteúdo da Atividade 3 do Desafio 2
-// (por enquanto, espelha as atividades originais; basta substituir este objeto depois)
+// js/challenge2-3.js — conteúdo (atividade)
+// ⚠️ Inicialmente copia as atividades existentes. Você pode trocar raw/rules depois.
 
-const level = {
-    name: "Difícil",
+export const level = {
+    name: "Desafio 2 — Atividade 3",
     intro: `Nível difícil: desafios reais de edição.`,
     instruction: `Pontuação, gramática e colocação pronominal.`,
     raw: `No Natal, se deve pensar no amor ao próximo e na importância da empatia. Aos pais, respeite-os; aos filhos, os ame; aos necessitados, ajude-os. Essas atitudes, reforçam os valores natalinos.`,
@@ -15,4 +14,3 @@ const level = {
   };
 
 export default level;
-export { level };

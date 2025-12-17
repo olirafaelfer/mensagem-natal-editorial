@@ -167,8 +167,9 @@
           
           <div class="actions" id="challengeActions">
             <button class="btn" id="challenge1Btn" type="button">Desafio 1</button>
-            <button class="btn ghost" id="challenge2Btn" type="button">Desafio 2 🔒</button>
-            <button class="btn ghost" id="challenge3Btn" type="button">Desafio 3 🔒</button>
+            <button class="btn ghost btn-disabled" id="challenge2Btn" type="button">Desafio 2 🔒</button>
+            <button class="btn ghost btn-disabled" id="challenge3Btn" type="button">Desafio 3 🔒</button>
+            <button class="btn ghost btn-disabled" id="missionSpecialHomeBtn" type="button">Missão especial 🔒</button>
           </div>
 
         </div>
@@ -180,7 +181,6 @@
           <div class="status-row">
             <div class="pill">Nível: <strong id="levelLabel">Fácil</strong></div>
             <div class="pill">Correções a serem feitas: <strong id="remainingCount">0</strong>/<span id="totalFix">0</span></div>
-            <div class="pill pill-danger">Erros: <strong id="wrongCount">0</strong></div>
             <div class="pill">Pontos: <strong id="scoreCount">0</strong></div>
           </div>
 
@@ -193,7 +193,6 @@
 
           <div class="actions">
             <button id="hintBtn" class="btn ghost" type="button">Me dê uma cola!</button>
-            <button id="autoFixBtn" class="btn ghost" type="button">Corrigir automaticamente</button>
             <button id="nextLevelBtn" class="btn btn-disabled" aria-disabled="true" type="button">Próximo nível</button>
           </div>
         </div>
@@ -277,8 +276,10 @@
           <hr>
 
           <div class="actions center-actions">
-            <button class="btn" id="finalRankingBtn" type="button">Ver ranking</button>
-            <button class="btn ghost" id="restartBtn" type="button">Recomeçar</button>
+            <button class="btn ghost" id="finalHomeBtn" type="button">Início</button>
+            <button class="btn" id="finalRankingBtn" type="button">Ranking</button>
+            <button class="btn" id="finalNextTaskBtn" type="button">Próxima tarefa</button>
+            <button class="btn" id="finalMissionSpecialBtn" type="button">Missão especial 🎁</button>
           </div>
         </div>
       </section>

@@ -1,9 +1,8 @@
-// js/challenge1-1.js
-// Conteúdo da Atividade 1 do Desafio 1
-// (por enquanto, espelha as atividades originais; basta substituir este objeto depois)
+// js/challenge1-1.js — conteúdo (atividade)
+// ⚠️ Inicialmente copia as atividades existentes. Você pode trocar raw/rules depois.
 
-const level = {
-    name: "Fácil",
+export const level = {
+    name: "Desafio 1 — Atividade 1",
     intro: `O Papai Noel, editor-chefe, pediu sua ajuda para revisar a Mensagem de Natal.
 Ele escreveu tão rápido que acabou deixando três errinhos para trás.`,
     instruction: `Os erros podem envolver acentuação, ortografia, gramática etc. Clique nos trechos incorretos para corrigir!`,
@@ -16,4 +15,3 @@ Ele escreveu tão rápido que acabou deixando três errinhos para trás.`,
   };
 
 export default level;
-export { level };
