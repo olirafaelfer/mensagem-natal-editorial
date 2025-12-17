@@ -17,13 +17,6 @@
   --radius: 18px;
 
   --container: 1060px;
-   
-}
-:root { color-scheme: light; }
-
-/* Evita que alguns modos forçados mexam em logo/imagens */
-img, svg, video, canvas { 
-  filter: none !important;
 }
 
 *{ box-sizing:border-box; }
@@ -973,4 +966,48 @@ body.modal-open #overlay{
   right: 14px;
   top: 50%;
   transform: translateY(-50%);
+}
+
+
+/* Force light color scheme to reduce browser "forced dark" damage */
+:root { color-scheme: light; }
+img, svg, video, canvas { filter: none !important; }
+
+/* Header: logo left, actions right */
+.topbar-row-1{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+}
+.topbar-left{
+  display:flex;
+  align-items:center;
+  justify-content:flex-start;
+  min-width: 140px;
+}
+.topbar-row-1 .top-actions{
+  position: static;
+  transform: none;
+  display:flex;
+  align-items:center;
+  justify-content:flex-end;
+  gap:10px;
+}
+
+
+/* Tutorial highlight (pisca) */
+.token.pulse{
+  animation: pulseGlow 900ms ease-in-out infinite;
+}
+@keyframes pulseGlow{
+  0% { box-shadow: 0 0 0 rgba(255,255,255,0); }
+  50% { box-shadow: 0 0 0 4px rgba(255,255,255,.18); }
+  100% { box-shadow: 0 0 0 rgba(255,255,255,0); }
+}
+
+/* Hardening contra dark-mode forçado (alguns navegadores/extensões ignoram color-scheme) */
+html, body{
+  background: #0b1220;
+  color: #ffffff;
 }

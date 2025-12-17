@@ -1,33 +1,61 @@
-// js/tutorial.js — dados do tutorial (3 níveis)
-// O motor do jogo consome este array como se fossem níveis normais.
-// Regras:
-// - Se correct === "" => remove o trecho capturado (ex.: vírgula indevida)
+// js/tutorial.js — Tutorial (dados)
+// 3 passos guiados (demonstração, não teste):
+// 1) Corrigir palavra errada
+// 2) Remover vírgula indevida (pontuação)
+// 3) Clique em trecho correto (penalidade) + uso de dica
 
 export function getTutorialLevels(){
   return [
     {
-      name: "Tutorial 1/3 — Como corrigir",
-      instruction: "Clique no trecho destacado e confirme. Depois, aplique a correção sugerida.",
-      raw: "Neste Natal, desejamos que você revise esta frase: A equipe trabalha com atenção e carinho.",
+      name: "Tutorial 1/3 — Corrigir palavra",
+      intro: `Bem-vindo! Vamos treinar rapidinho.
+Clique no trecho incorreto e aplique a correção sugerida.`,
+      instruction: `Objetivo: corrigir uma palavra errada. Dica: procure “refeissões”.`,
+      raw: `Neste Natal, a mesa terá refeissões deliciosas e muita alegria.`,
+      focusRuleId: "t1",
       rules: [
-        { id:"t1", label:"Ortografia", wrong:/\bcarinho\b/g, correct:"carinho", reason:"Exemplo simples (aqui não muda, apenas demonstra o fluxo)." }
+        {
+          id: "t1",
+          label: "Ortografia",
+          wrong: /\brefeissões\b/g,
+          correct: "refeições",
+          reason: "Erro ortográfico. O correto é “refeições”."
+        }
       ]
     },
     {
       name: "Tutorial 2/3 — Pontuação",
-      instruction: "Agora remova a vírgula indevida clicando nela.",
-      raw: "O Natal, é um tempo de amor e esperança.",
+      intro: `Agora, um exemplo de pontuação.
+Você vai remover uma vírgula indevida.`,
+      instruction: `Objetivo: clique na vírgula após “Natal” para removê-la.`,
+      raw: `O Natal, é um tempo de amor e esperança.`,
+      focusRuleId: "t2",
       rules: [
-        // vírgula como token clicável (len 1)
-        { id:"t2", label:"Pontuação", wrong:/,/g, correct:"", reason:"Vírgula indevida entre sujeito e verbo." }
+        {
+          id: "t2",
+          label: "Pontuação",
+          wrong: /,/g,
+          correct: "",
+          reason: "Vírgula indevida: não se separa sujeito e verbo."
+        }
       ]
     },
     {
-      name: "Tutorial 3/3 — Clique equivocado",
-      instruction: "Clique em uma palavra CORRETA (por exemplo: “amor”) e confirme para ver a penalidade. Depois, conclua o nível.",
-      raw: "O Natal é um tempo de amor ao próximo.",
+      name: "Tutorial 3/3 — Cuidado com o clique",
+      intro: `Por fim, veja o que acontece ao tentar corrigir algo que já está certo.
+Isso custa pontos.`,
+      instruction: `Objetivo: clique em um trecho correto (por exemplo, “amor”) e confirme — você verá a penalidade. Depois, use o botão “Me dê uma dica” para ver a opção de correção automática.`,
+      raw: `O Natal é um tempo de amor, carinho e solidariedade.`,
+      // não dá para isolar “amor” como token no motor atual (sem word-tokenizer),
+      // então apenas destacamos a palavra no texto de instrução.
       rules: [
-        { id:"t3", label:"Acentuação", wrong:/\bproximo\b/g, correct:"próximo", reason:"A palavra precisa de acento: próximo." }
+        {
+          id: "t3a",
+          label: "Acentuação (exemplo)",
+          wrong: /\bsolidariedade\b/g,
+          correct: "solidariedade",
+          reason: "Aqui é só um exemplo: esta palavra já está correta."
+        }
       ]
     }
   ];

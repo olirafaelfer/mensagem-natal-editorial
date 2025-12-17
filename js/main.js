@@ -11,13 +11,6 @@ import {
 import c11 from "./challenge1-1.js";
 import c12 from "./challenge1-2.js";
 import c13 from "./challenge1-3.js";
-import c21 from "./challenge2-1.js";
-import c22 from "./challenge2-2.js";
-import c23 from "./challenge2-3.js";
-import c31 from "./challenge3-1.js";
-import c32 from "./challenge3-2.js";
-import c33 from "./challenge3-3.js";
-import { getTutorialLevels } from "./tutorial.js";
 
 
 /* =========================
@@ -106,35 +99,7 @@ const SCORE_RULES = {
 /* =========================
    Levels / Conteúdo (o game-core usa app.data.levels)
 ========================= */
-/* =========================
-   Desafios / Atividades (3x3)
-   O game-core trabalha com app.data.levels (sempre 3 atividades por desafio).
-========================= */
-const CHALLENGES = {
-  1: { id:1, title:"Desafio 1", requiresLogin:false, requiresPrev:false, correctMult:1.0, levels:[c11, c12, c13] },
-  2: { id:2, title:"Desafio 2", requiresLogin:true,  requiresPrev:true,  correctMult:1.2, levels:[c21, c22, c23] },
-  3: { id:3, title:"Desafio 3", requiresLogin:true,  requiresPrev:true,  correctMult:1.2, levels:[c31, c32, c33] }
-};
-
-const PROGRESS_KEY = "mission_progress_v2";
-function loadProgress(){
-  try{
-    const raw = localStorage.getItem(PROGRESS_KEY);
-    if (!raw) return { completedTasks:{1:0,2:0,3:0}, missionSpecialUnlocked:false };
-    const p = JSON.parse(raw);
-    return {
-      completedTasks: {1:Number(p?.completedTasks?.[1]||0),2:Number(p?.completedTasks?.[2]||0),3:Number(p?.completedTasks?.[3]||0)},
-      missionSpecialUnlocked: !!p?.missionSpecialUnlocked
-    };
-  }catch(_){ return { completedTasks:{1:0,2:0,3:0}, missionSpecialUnlocked:false }; }
-}
-function saveProgress(p){
-  localStorage.setItem(PROGRESS_KEY, JSON.stringify(p));
-}
-function prevChallengeDone(p, challengeId){
-  if (challengeId <= 1) return true;
-  return Number(p.completedTasks[challengeId-1]||0) >= 3;
-}
+const levels = [c11, c12, c13];
 
 /* =========================
    Utils compartilhados
@@ -201,14 +166,8 @@ const dom = {
 
   userNameEl: document.getElementById("userName"),
   userSectorEl: document.getElementById("userSector"),
+  startBtn: document.getElementById("startBtn"),
   optRankingEl: document.getElementById("optRanking"),
-  challenge1Btn: document.getElementById("challenge1Btn"),
-  challenge2Btn: document.getElementById("challenge2Btn"),
-  challenge3Btn: document.getElementById("challenge3Btn"),
-  missionSpecialHomeBtn: document.getElementById("missionSpecialHomeBtn"),
-  finalHomeBtn: document.getElementById("finalHomeBtn"),
-  finalNextTaskBtn: document.getElementById("finalNextTaskBtn"),
-  finalMissionSpecialBtn: document.getElementById("finalMissionSpecialBtn"),
 
   finalRankingBtn: document.getElementById("finalRankingBtn"),
   openCustomizeInline: document.getElementById("openCustomizeInline"),
@@ -248,9 +207,7 @@ const app = {
   data: {
     SECTORS,
     SCORE_RULES,
-    levels: [],
-    tutorialLevels: getTutorialLevels(),
-    challenges: CHALLENGES,
+    levels,
     THEME_PRESETS
   },
 
@@ -269,7 +226,6 @@ const app = {
 
 // debug opcional
 window.__MISSION_APP__ = app;
-window.app = app; // alias para debug/console
 
 /* =========================
    Boot seguro
@@ -315,137 +271,21 @@ async function bootAll(){
     bootAdmin?.(app);
     bootAuth?.(app); // ✅ inicializa auth
 
+    /* =========================
+       🔐 ABRIR AUTH AUTOMATICAMENTE
+       ========================= */
 
-// =========================
-// Desafios / Progressão
-// =========================
-const progress = loadProgress();
+    // espera o loading fake terminar
+    setTimeout(() => {
+      if (app.auth?.isLogged?.()) {
+        // usuário já logado → não força auth
+        return;
+      }
 
-function refreshChallengeButtons(){
-  const p = loadProgress();
-  const logged = !!app.auth?.isLogged?.();
-  const b1 = app.dom.challenge1Btn;
-  const b2 = app.dom.challenge2Btn;
-  const b3 = app.dom.challenge3Btn;
-  if (b1) b1.classList.remove("ghost");
-  if (b2){
-    const locked = !logged || !prevChallengeDone(p, 2);
-    b2.classList.toggle("btn-disabled", locked);
-    b2.textContent = locked ? "Desafio 2 🔒" : "Desafio 2";
-  }
-  if (b3){
-    const locked = !logged || !prevChallengeDone(p, 3);
-    b3.classList.toggle("btn-disabled", locked);
-    b3.textContent = locked ? "Desafio 3 🔒" : "Desafio 3";
-  }
+      // abre login/cadastro/anônimo automaticamente
+      app.auth?.openAuthGate?.();
+    }, 1200);
 
-  // Missão especial (home)
-  const ms = app.dom.missionSpecialHomeBtn;
-  if (ms){
-    const unlocked = !!p.missionSpecialUnlocked;
-    ms.classList.toggle("btn-disabled", !unlocked);
-    ms.textContent = unlocked ? "Missão especial 🎁" : "Missão especial 🔒";
-  }
-}
-
-function setActiveChallengeButton(chId){
-  [app.dom.challenge1Btn, app.dom.challenge2Btn, app.dom.challenge3Btn].forEach((b) => {
-    if (!b) return;
-    b.classList.toggle("active", b === (chId===1?app.dom.challenge1Btn:chId===2?app.dom.challenge2Btn:app.dom.challenge3Btn));
-  });
-}
-
-function confirmStartChallenge(chId){
-  const ch = CHALLENGES[chId];
-  if (!ch) return;
-
-  const p = loadProgress();
-  const logged = !!app.auth?.isLogged?.();
-
-  if (ch.requiresLogin && !logged){
-    app.modal?.openModal?.({
-      title: "Desafio bloqueado",
-      bodyHTML: `<p>Desafio bloqueado, crie uma conta e cumpra as tarefas anteriores para participar das demais.</p>`,
-      buttons: [{ label:"Entendi", onClick: app.modal.closeModal }]
-    });
-    return;
-  }
-  if (ch.requiresPrev && !prevChallengeDone(p, chId)){
-    app.modal?.openModal?.({
-      title: "Ainda não liberado",
-      bodyHTML: `<p>Primeiro cumpra as tarefas anteriores para desbloquear este desafio.</p>`,
-      buttons: [{ label:"Entendi", onClick: app.modal.closeModal }]
-    });
-    return;
-  }
-
-  app.modal?.openModal?.({
-    title: ch.title,
-    bodyHTML: `<p>Deseja iniciar agora?</p>`,
-    buttons: [
-      { label:"Cancelar", variant:"ghost", onClick: app.modal.closeModal },
-      { label:"Iniciar", onClick: () => { app.modal.closeModal(); startChallenge(chId); } }
-    ]
-  });
-}
-
-function startChallenge(chId){
-  const ch = CHALLENGES[chId];
-  if (!ch) return;
-
-  setActiveChallengeButton(chId);
-
-  app.gameState = app.gameState || {};
-  app.gameState.currentChallenge = chId;
-  app.data = app.data || {};
-  app.data.correctMult = ch.correctMult;
-
-  // injeta 3 atividades deste desafio
-  app.data.levels = ch.levels.map((lvl) => ({ ...lvl }));
-
-  // tutorial: apenas antes do desafio 1 e só se não visto
-  if (chId === 1 && localStorage.getItem("mission_tutorial_done") !== "1"){
-    app.modal?.openModal?.({
-      title: "Tutorial",
-      bodyHTML: `<p>Este tutorial explicará brevemente a dinâmica do jogo. Você pode pular se preferir.</p>`,
-      buttons: [
-        { label:"Pular", variant:"ghost", onClick: () => { localStorage.setItem("mission_tutorial_done","1"); app.modal.closeModal(); app.game?.start?.(); } },
-        { label:"Ver tutorial", onClick: () => { app.modal.closeModal(); app.game?.startTutorial?.(); } }
-      ]
-    });
-    return;
-  }
-
-  app.game?.start?.();
-}
-
-// Expor para debug
-app.game = app.game || {};
-app.game.setChallenge = confirmStartChallenge; // mantém sua API, mas agora com confirmação + gates
-
-// Wire buttons
-app.dom.challenge1Btn?.addEventListener("click", () => confirmStartChallenge(1));
-app.dom.challenge2Btn?.addEventListener("click", () => confirmStartChallenge(2));
-app.dom.challenge3Btn?.addEventListener("click", () => confirmStartChallenge(3));
-
-app.dom.missionSpecialHomeBtn?.addEventListener("click", () => {
-  const p = loadProgress();
-  if (!p.missionSpecialUnlocked){
-    app.modal?.openModal?.({
-      title: "Missão especial",
-      bodyHTML: `<p>Conclua os 3 desafios para liberar a Missão especial.</p>`,
-      buttons: [{ label:"Entendi", onClick: app.modal.closeModal }]
-    });
-    return;
-  }
-  app.game?.showMissionSpecial?.();
-});
-
-// Atualiza botões no boot + quando auth mudar (auth.js deve chamar app.auth.onChange se existir)
-refreshChallengeButtons();
-app.auth?.onChange?.(() => refreshChallengeButtons());
-
-    
   } catch (err) {
     console.error("❌ Falha no boot dos módulos:", err);
     app.ui.showOnly(app.dom.screenForm);
@@ -453,6 +293,8 @@ app.auth?.onChange?.(() => refreshChallengeButtons());
 }
 
 bootAll();
+
+
 
 
 

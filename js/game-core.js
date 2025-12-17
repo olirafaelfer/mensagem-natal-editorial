@@ -106,6 +106,7 @@ export function bootGameCore(app){
   let levelIndex = 0;
   let fixedRuleIds = new Set();
   let currentText = "";
+  let currentLevel = null;
   let currentRules = [];
   let levelLocked = false;
 
@@ -998,6 +999,7 @@ export function bootGameCore(app){
    * ========================= */
   function startLevel(){
     const lvl = levels[levelIndex];
+    currentLevel = lvl;
     if (!lvl) return;
 
     fixedRuleIds = new Set();
