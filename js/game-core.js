@@ -52,7 +52,7 @@ export function bootGameCore(app){
   let levels = mainLevels;
   app.levels = levels;
 
-  // Tutorial
+  // Tutorial (3 níveis)
   const tutorialLevels = getTutorialLevels();
   let inTutorial = false;
 
@@ -68,10 +68,6 @@ export function bootGameCore(app){
   const userNameEl = document.getElementById("userName");
   const userSectorEl = document.getElementById("userSector");
   const startBtn = document.getElementById("startBtn");
-  // Trilha (home)
-  const challengeBtn1 = document.getElementById("challengeBtn1");
-  const challengeBtn2 = document.getElementById("challengeBtn2");
-  const challengeBtn3 = document.getElementById("challengeBtn3");
 
   const levelLabel = document.getElementById("levelLabel");
   const remainingCount = document.getElementById("remainingCount");
@@ -726,16 +722,14 @@ export function bootGameCore(app){
     currentTextByLevel[levelIndex] = currentText;
 
     if (isLast){
-      // Se estamos no tutorial, ao finalizar volta para o desafio principal
       if (inTutorial){
         openModal({
           title: "Tutorial concluído 🎄",
           bodyHTML: `<p>Perfeito! Agora você já sabe como jogar.</p>`,
-          buttons: [{ label:"Iniciar Desafio 1", onClick: async () => { closeModal(); await beginMainMission(); } }]
+          buttons: [{ label:"Iniciar Desafio 1", onClick: () => { closeModal(); beginMainMission(); } }]
         });
         return;
       }
-
       await app.finishMission?.({ score, correctCount, wrongCount, taskScore, taskCorrect, taskWrong, autoUsed });
       showFinal();
       return;
@@ -936,25 +930,23 @@ export function bootGameCore(app){
   reviewBtn3?.addEventListener("click", () => openReviewModal(2));
 
 
-  // ===== Início da missão via trilha (sem startBtn) =====
-  function resetMissionCounters(){
+  // ===== Fluxo Desafio 1 + Tutorial (corrige bug de não iniciar) =====
+  function resetRun(){
     levelIndex = 0;
     score = 0;
     wrongCount = 0;
     correctCount = 0;
     hintsUsed = 0;
     autoUsed = 0;
-
     taskScore[0]=taskScore[1]=taskScore[2]=0;
     taskCorrect[0]=taskCorrect[1]=taskCorrect[2]=0;
     taskWrong[0]=taskWrong[1]=taskWrong[2]=0;
-
     currentTextByLevel[0] = "";
     currentTextByLevel[1] = "";
     currentTextByLevel[2] = "";
   }
 
-  async function beginMainMission(){
+  function beginMainMission(){
     inTutorial = false;
     levels = mainLevels;
     app.levels = levels;
@@ -963,7 +955,7 @@ export function bootGameCore(app){
     startLevel();
   }
 
-  async function beginTutorialThenMain(){
+  function beginTutorial(){
     inTutorial = true;
     levels = tutorialLevels;
     app.levels = levels;
@@ -975,20 +967,18 @@ export function bootGameCore(app){
   function startChallenge1Flow(){
     const name = getUserName();
     const sector = getUserSector();
-
     if (!name){
-      openModal({ title:"Atenção", bodyHTML:`<p>Por favor, informe seu nome.</p>`, buttons:[{label:"Ok", onClick: closeModal}] });
+      openModal({ title:"Atenção", bodyHTML:`<p>Por favor, informe seu nome.</p>`, buttons:[{label:"OK", onClick: closeModal}] });
       return;
     }
     if (!sector){
-      openModal({ title:"Atenção", bodyHTML:`<p>Por favor, selecione seu setor.</p>`, buttons:[{label:"Ok", onClick: closeModal}] });
+      openModal({ title:"Atenção", bodyHTML:`<p>Por favor, selecione seu setor.</p>`, buttons:[{label:"OK", onClick: closeModal}] });
       return;
     }
-
     localStorage.setItem("mission_name", name);
     localStorage.setItem("mission_sector", sector);
 
-    resetMissionCounters();
+    resetRun();
 
     openModal({
       title: "Antes de começar",
@@ -997,8 +987,8 @@ export function bootGameCore(app){
         <p class="muted" style="margin-top:10px">Se você já conhece, pode pular.</p>
       `,
       buttons: [
-        { label:"Pular", variant:"ghost", onClick: async () => { closeModal(); await beginMainMission(); } },
-        { label:"Ver tutorial", onClick: async () => { closeModal(); await beginTutorialThenMain(); } }
+        { label:"Pular", variant:"ghost", onClick: () => { closeModal(); beginMainMission(); } },
+        { label:"Ver tutorial", onClick: () => { closeModal(); beginTutorial(); } }
       ]
     });
   }
@@ -1095,10 +1085,22 @@ openModal({
 });
 });
 
-  // Trilha: iniciar pelo botão do desafio 1 (sem botão iniciar missão)
-  challengeBtn1?.addEventListener("click", () => startChallenge1Flow());
-
   restartBtn?.addEventListener("click", () => showOnly(screenForm));
+
+
+  // ✅ Captura cliques do Desafio 1 antes de qualquer listener antigo (evita modal fechar e não iniciar)
+  const challenge1Btn = document.getElementById("challenge1Btn");
+  const challengeBtn1 = document.getElementById("challengeBtn1");
+  const bindStart = (btn) => {
+    if (!btn) return;
+    btn.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      startChallenge1Flow();
+    }, true);
+  };
+  bindStart(challenge1Btn);
+  bindStart(challengeBtn1);
 
   /** =========================
    * Boot visual
