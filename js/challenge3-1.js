@@ -1,8 +1,5 @@
-// js/challenge3-1.js
-// Conteúdo da atividade 1 do Desafio 3
-// (Por enquanto, cópia das atividades originais. Depois é só editar este arquivo.)
-
-export default {
+// Auto-generated activity module
+const base = {
     name: "Fácil",
     intro: `O Papai Noel, editor-chefe, pediu sua ajuda para revisar a Mensagem de Natal.
 Ele escreveu tão rápido que acabou deixando três errinhos para trás.`,
@@ -14,3 +11,8 @@ Ele escreveu tão rápido que acabou deixando três errinhos para trás.`,
       { id:"f3", label:"Ortografia", wrong:/\bxeia\b/g, correct:"cheia", reason:"Erro ortográfico. A palavra correta é 'cheia'." }
     ]
   };
+
+export default {
+  ...base,
+  name: "Desafio 3 \u2014 Atividade 1",
+};

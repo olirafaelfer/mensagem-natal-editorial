@@ -1,8 +1,5 @@
-// js/challenge2-3.js
-// Conteúdo da atividade 3 do Desafio 2
-// (Por enquanto, cópia das atividades originais. Depois é só editar este arquivo.)
-
-export default {
+// Auto-generated activity module
+const base = {
     name: "Difícil",
     intro: `Nível difícil: desafios reais de edição.`,
     instruction: `Pontuação, gramática e colocação pronominal.`,
@@ -13,3 +10,8 @@ export default {
       { id:"d3", label:"Pontuação", wrong:/(?<=\batitudes),/g, correct:"", reason:"Vírgula indevida entre sujeito e predicado." }
     ]
   };
+
+export default {
+  ...base,
+  name: "Desafio 2 \u2014 Atividade 3",
+};

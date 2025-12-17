@@ -1,8 +1,5 @@
-// js/challenge3-2.js
-// Conteúdo da atividade 2 do Desafio 3
-// (Por enquanto, cópia das atividades originais. Depois é só editar este arquivo.)
-
-export default {
+// Auto-generated activity module
+const base = {
     name: "Médio",
     intro: `Nível médio: erros editoriais objetivos.`,
     instruction: `Atenção a vírgulas indevidas e concordância.`,
@@ -15,3 +12,8 @@ export default {
       { id:"m5", label:"Concordância", wrong:/\bexige\b/g, correct:"exigem", reason:"Sujeito plural exige verbo no plural." }
     ]
   };
+
+export default {
+  ...base,
+  name: "Desafio 3 \u2014 Atividade 2",
+};
