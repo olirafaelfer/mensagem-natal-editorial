@@ -1,3 +1,5 @@
+import { getTutorialLevels } from "./tutorial.js";
+import { getTutorialLevels } from "./tutorial.js";
 // js/game-core.js — núcleo do jogo (níveis, render, correções, final interativo)
 
 export function bootGameCore(app){
@@ -45,11 +47,15 @@ export function bootGameCore(app){
   app.SCORE_RULES = SCORE_RULES;
 
   let autoUsed = 0;
-  let hintRule = null;
 
   /** Levels */
-  const levels = app.data?.levels || app.levels || [];
+  const mainLevels = app.data?.levels || app.levels || [];
+  let levels = mainLevels;
   app.levels = levels;
+
+  // Tutorial (3 níveis)
+  const tutorialLevels = getTutorialLevels();
+  let inTutorial = false;
 
   /** =========================
    * Elementos
@@ -296,30 +302,6 @@ export function bootGameCore(app){
     }
   }
 
-  function highlightTutorialFocus(lvl){
-    if (!inTutorial) return;
-    const area = messageArea;
-    if (!area) return;
-
-    // focus by ruleId
-    if (lvl && lvl.focusRuleId){
-      const el = area.querySelector(`[data-rule-id="${lvl.focusRuleId}"]`);
-      if (el) el.classList.add("pulse");
-    }
-
-    // focus plain by matching text
-    if (lvl && lvl.focusPlain){
-      const tokens = [...area.querySelectorAll(".token")];
-      const target = String(lvl.focusPlain);
-      for (const t of tokens){
-        if ((t.dataset.kind||"") === "plain" && (t.textContent||"").trim() === target){
-          t.classList.add("pulse");
-          break;
-        }
-      }
-    }
-  }
-
   function renderMessage(){
     if (!messageArea) return;
     messageArea.classList.remove("show");
@@ -432,33 +414,57 @@ export function bootGameCore(app){
     });
   }
 
+  function openConfirmSelection(selectedText, onConfirm){
+    const safe = escapeHtml(selectedText || "");
+    openModal({
+      title: "Confirmar",
+      bodyHTML: `
+        <p><strong>Tem certeza que deseja corrigir este trecho?</strong></p>
+        <p style="margin-top:8px;padding:10px;border-radius:10px;background:rgba(255,255,255,.06)">${safe}</p>
+      `,
+      buttons: [
+        { label: "Cancelar", variant: "ghost", onClick: closeModal },
+        { label: "Sim, corrigir", onClick: () => { closeModal(); onConfirm(); } }
+      ]
+    });
+  }
+
   function onPlainClick(span){
     if (levelLocked){
       onLockedTextClick();
       return;
     }
 
-    // ✅ NOVO: persiste o erro (não some após render)
     const start = Number(span.dataset.start || "NaN");
     const len = Number(span.dataset.len || "NaN");
+    const selectedText = span.textContent || "";
 
-    if (span.dataset.misclick !== "1"){
+    // Se já foi marcado como "misclick", não repune
+    if (span.dataset.misclick === "1" || hasMisclickAt(start, len)){
+      openModal({
+        title: "Revisão",
+        bodyHTML: `<p>Esse trecho já foi marcado.</p>`,
+        buttons: [{ label:"Ok", onClick: closeModal }]
+      });
+      return;
+    }
+
+    // Confirmação antes de punir
+    openConfirmSelection(selectedText, () => {
       span.dataset.misclick = "1";
       span.classList.add("error");
-
-      addMisclickAt(start, len); // 👈 salva no estado do jogo
+      addMisclickAt(start, len);
 
       registerWrong();
       updateHUD();
-    }
 
-    openModal({
-      title: "Revisão",
-      bodyHTML: `<p><strong>Hmmm…</strong> Esse trecho já está correto.</p>`,
-      buttons: [{ label:"Entendi", onClick: closeModal }]
+      openModal({
+        title: "Já está correto!",
+        bodyHTML: `<p>A palavra <strong>“${escapeHtml(selectedText)}”</strong> já está correta! Que pena, você perdeu <strong>${Math.abs(SCORE_RULES.wrong)}</strong> pontos.</p>`,
+        buttons: [{ label:"Entendi", onClick: closeModal }]
+      });
     });
   }
-
   function applyReplacementAt(start, len, replacement){
     const before = currentText.slice(0, start);
     const after = currentText.slice(start + len);
@@ -507,8 +513,28 @@ export function bootGameCore(app){
 
       openModal({
         title: "Ops!",
-        bodyHTML: `<p>Ops, você errou. O correto seria <strong>${escapeHtml(expected === "" ? "(remover)" : expected)}</strong>.</p>`,
-        buttons: [{ label:"Ok", onClick: closeModal }]
+        bodyHTML: `
+          <p><strong>Ops, a correção não está certa!</strong> Você perdeu <strong>${Math.abs(SCORE_RULES.wrong)}</strong> pontos.</p>
+          <p>Gostaria de tentar de novo ou prefere uma correção automática? (Você perderá <strong>${Math.abs(SCORE_RULES.auto)}</strong> pontos se usar a correção automática).</p>
+        `,
+        buttons: [
+          { label:"Tentar de novo", variant:"ghost", onClick: () => { closeModal(); onErrorClick(errSpan, rule); } },
+          { label:"Correção automática", onClick: () => {
+              closeModal();
+              const start = Number(errSpan.dataset.start);
+              const len = Number(errSpan.dataset.len);
+              const repl = rule.correct;
+
+              applyReplacementAt(start, len, repl);
+              fixedRuleIds.add(rule.id);
+              if (repl !== "") markCorrected(rule.id, start, repl);
+
+              registerAutoCorrect();
+              renderMessage();
+              finalizeIfDone();
+            }
+          }
+        ]
       });
       return;
     }
@@ -518,7 +544,6 @@ export function bootGameCore(app){
 
     applyReplacementAt(start, len, expected);
     fixedRuleIds.add(rule.id);
-
     if (expected !== "") markCorrected(rule.id, start, expected);
 
     registerCorrect();
@@ -526,48 +551,50 @@ export function bootGameCore(app){
     renderMessage();
     finalizeIfDone();
   }
-
   function onErrorClick(errSpan, rule){
     if (levelLocked){
       onLockedTextClick();
       return;
     }
 
-    const wrongText = errSpan.textContent || "";
-    const expected = rule.correct;
+    const selectedText = errSpan.textContent || "";
 
-    if (expected === "" && wrongText === ","){
+    openConfirmSelection(selectedText, () => {
+      const wrongText = errSpan.textContent || "";
+      const expected = rule.correct;
+
+      if (expected === "" && wrongText === ","){
+        openModal({
+          title: "Remover vírgula",
+          bodyHTML: `<p>Você quer <strong>remover</strong> esta vírgula?</p>`,
+          buttons: [
+            { label:"Cancelar", variant:"ghost", onClick: closeModal },
+            { label:"Remover", onClick: () => { closeModal(); confirmCommaRemoval(errSpan, rule); } }
+          ]
+        });
+        return;
+      }
+
       openModal({
-        title: "Remover vírgula",
-        bodyHTML: `<p>Você quer <strong>remover</strong> esta vírgula?</p>`,
+        title: `Corrigir (${rule.label})`,
+        bodyHTML: `
+          <p>Trecho selecionado:</p>
+          <p style="margin:8px 0 0"><strong>${escapeHtml(wrongText)}</strong></p>
+
+          <p style="margin:12px 0 6px">Digite a forma correta:</p>
+          <input class="input" id="fixInput" type="text" autocomplete="off"
+            placeholder="${expected === "" ? "Deixe em branco para remover" : "Digite aqui..."}" />
+
+          <p class="muted" style="margin:10px 0 0">Erros podem ser de acentuação, ortografia, gramática, pontuação etc.</p>
+        `,
         buttons: [
-          { label:"Cancelar", variant:"ghost", onClick: closeModal },
-          { label:"Remover", onClick: () => { closeModal(); confirmCommaRemoval(errSpan, rule); } }
+          { label:"Confirmar correção", onClick: () => confirmTyped(errSpan, rule) }
         ]
       });
-      return;
-    }
 
-    openModal({
-      title: `Corrigir (${rule.label})`,
-      bodyHTML: `
-        <p>Trecho selecionado:</p>
-        <p style="margin:8px 0 0"><strong>${escapeHtml(wrongText)}</strong></p>
-
-        <p style="margin:12px 0 6px">Digite a forma correta:</p>
-        <input class="input" id="fixInput" type="text" autocomplete="off"
-          placeholder="${expected === "" ? "Deixe em branco para remover" : "Digite aqui..."}" />
-
-        <p class="muted" style="margin:10px 0 0">Erros podem ser de acentuação, ortografia, gramática, pontuação etc.</p>
-      `,
-      buttons: [
-        { label:"Confirmar correção", onClick: () => confirmTyped(errSpan, rule) }
-      ]
+      setTimeout(() => document.getElementById("fixInput")?.focus(), 30);
     });
-
-    setTimeout(() => document.getElementById("fixInput")?.focus(), 30);
   }
-
   function finalizeIfDone(){
     updateHUD();
     const done = fixedRuleIds.size >= currentRules.length;
@@ -696,6 +723,14 @@ export function bootGameCore(app){
     currentTextByLevel[levelIndex] = currentText;
 
     if (isLast){
+      if (inTutorial){
+        openModal({
+          title: "Tutorial concluído 🎄",
+          bodyHTML: `<p>Perfeito! Agora você já sabe como jogar.</p>`,
+          buttons: [{ label:"Iniciar Desafio 1", onClick: () => { closeModal(); beginMainMission(); } }]
+        });
+        return;
+      }
       await app.finishMission?.({ score, correctCount, wrongCount, taskScore, taskCorrect, taskWrong, autoUsed });
       showFinal();
       return;
@@ -895,6 +930,70 @@ export function bootGameCore(app){
   reviewBtn2?.addEventListener("click", () => openReviewModal(1));
   reviewBtn3?.addEventListener("click", () => openReviewModal(2));
 
+
+  // ===== Fluxo Desafio 1 + Tutorial (corrige bug de não iniciar) =====
+  function resetRun(){
+    levelIndex = 0;
+    score = 0;
+    wrongCount = 0;
+    correctCount = 0;
+    hintsUsed = 0;
+    autoUsed = 0;
+    taskScore[0]=taskScore[1]=taskScore[2]=0;
+    taskCorrect[0]=taskCorrect[1]=taskCorrect[2]=0;
+    taskWrong[0]=taskWrong[1]=taskWrong[2]=0;
+    currentTextByLevel[0] = "";
+    currentTextByLevel[1] = "";
+    currentTextByLevel[2] = "";
+  }
+
+  function beginMainMission(){
+    inTutorial = false;
+    levels = mainLevels;
+    app.levels = levels;
+    levelIndex = 0;
+    showOnly(screenGame);
+    startLevel();
+  }
+
+  function beginTutorial(){
+    inTutorial = true;
+    levels = tutorialLevels;
+    app.levels = levels;
+    levelIndex = 0;
+    showOnly(screenGame);
+    startLevel();
+  }
+
+  function startChallenge1Flow(){
+    const name = getUserName();
+    const sector = getUserSector();
+    if (!name){
+      openModal({ title:"Atenção", bodyHTML:`<p>Por favor, informe seu nome.</p>`, buttons:[{label:"OK", onClick: closeModal}] });
+      return;
+    }
+    if (!sector){
+      openModal({ title:"Atenção", bodyHTML:`<p>Por favor, selecione seu setor.</p>`, buttons:[{label:"OK", onClick: closeModal}] });
+      return;
+    }
+    localStorage.setItem("mission_name", name);
+    localStorage.setItem("mission_sector", sector);
+
+    resetRun();
+
+    openModal({
+      title: "Antes de começar",
+      bodyHTML: `
+        <p>Este tutorial explicará brevemente a dinâmica do jogo.</p>
+        <p class="muted" style="margin-top:10px">Se você já conhece, pode pular.</p>
+      `,
+      buttons: [
+        { label:"Pular", variant:"ghost", onClick: () => { closeModal(); beginMainMission(); } },
+        { label:"Ver tutorial", onClick: () => { closeModal(); beginTutorial(); } }
+      ]
+    });
+  }
+
   /** =========================
    * Início / nível
    * ========================= */
@@ -922,7 +1021,6 @@ export function bootGameCore(app){
 
     updateHUD();
     renderMessage();
-    highlightTutorialFocus(lvl);
 
     openModal({
       title: `🎅 ${lvl.name}`,
@@ -989,6 +1087,21 @@ openModal({
 });
 
   restartBtn?.addEventListener("click", () => showOnly(screenForm));
+
+
+  // ✅ Captura cliques do Desafio 1 antes de qualquer listener antigo (evita modal fechar e não iniciar)
+  const challenge1Btn = document.getElementById("challenge1Btn");
+  const challengeBtn1 = document.getElementById("challengeBtn1");
+  const bindStart = (btn) => {
+    if (!btn) return;
+    btn.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      startChallenge1Flow();
+    }, true);
+  };
+  bindStart(challenge1Btn);
+  bindStart(challengeBtn1);
 
   /** =========================
    * Boot visual
