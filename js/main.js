@@ -2,6 +2,18 @@
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js";
 import { getAuth } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
+
+// ===== Conteúdo (atividades) separado por arquivo =====
+import c11 from "./challenge1-1.js";
+import c12 from "./challenge1-2.js";
+import c13 from "./challenge1-3.js";
+import c21 from "./challenge2-1.js";
+import c22 from "./challenge2-2.js";
+import c23 from "./challenge2-3.js";
+import c31 from "./challenge3-1.js";
+import c32 from "./challenge3-2.js";
+import c33 from "./challenge3-3.js";
+
 import {
   getFirestore,
   doc, getDoc, runTransaction, serverTimestamp,
@@ -9,16 +21,6 @@ import {
   query, orderBy, limit
 } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
 
-
-import ch1_1 from "./challenge1-1.js";
-import ch1_2 from "./challenge1-2.js";
-import ch1_3 from "./challenge1-3.js";
-import ch2_1 from "./challenge2-1.js";
-import ch2_2 from "./challenge2-2.js";
-import ch2_3 from "./challenge2-3.js";
-import ch3_1 from "./challenge3-1.js";
-import ch3_2 from "./challenge3-2.js";
-import ch3_3 from "./challenge3-3.js";
 /* =========================
    THEME PRESETS
 ========================= */
@@ -102,22 +104,47 @@ const SCORE_RULES = {
   auto: -2
 };
 
-const CHALLENGES = {
-  1: { id: 1, title: "Desafio 1 — Fácil", correctMult: 1.0, levels: [ch1_1, ch1_2, ch1_3] },
-  2: { id: 2, title: "Desafio 2 — Intermediário", correctMult: 1.2, levels: [ch2_1, ch2_2, ch2_3] },
-  3: { id: 3, title: "Desafio 3 — Difícil", correctMult: 1.2, levels: [ch3_1, ch3_2, ch3_3] },
-};
-
-function clampChallengeId(v){
-  const n = Number(v);
-  if (n === 2 || n === 3) return n;
-  return 1;
-}
-
 /* =========================
-   Conteúdo (Desafios/Atividades)
-   - Cada Desafio tem 3 atividades (o game-core usa app.data.levels)
+   Levels / Conteúdo (o game-core usa app.data.levels)
 ========================= */
+const levels = [
+  {
+    name: "Fácil",
+    intro: `O Papai Noel, editor-chefe, pediu sua ajuda para revisar a Mensagem de Natal.
+Ele escreveu tão rápido que acabou deixando três errinhos para trás.`,
+    instruction: `Os erros podem envolver acentuação, ortografia, gramática etc. Clique nos trechos incorretos para corrigir!`,
+    raw: `Mais do que presentes e refeissões caprichadas, o Natal é a época de lembrar o valor de um abraço apertado e de um sorriso sincero! Que para voces, meus amigos, seja uma época xeia de carinho e amor, preenchida pelo que realmente importa nessa vida!`,
+    rules: [
+      { id:"f1", label:"Ortografia", wrong:/\brefeissões\b/g, correct:"refeições", reason:"Erro ortográfico. A forma correta do substantivo é 'refeições'." },
+      { id:"f2", label:"Acentuação", wrong:/\bvoces\b/g, correct:"vocês", reason:"Erro de acentuação gráfica." },
+      { id:"f3", label:"Ortografia", wrong:/\bxeia\b/g, correct:"cheia", reason:"Erro ortográfico. A palavra correta é 'cheia'." }
+    ]
+  },
+  {
+    name: "Médio",
+    intro: `Nível médio: erros editoriais objetivos.`,
+    instruction: `Atenção a vírgulas indevidas e concordância.`,
+    raw: `O Natal, é um momento especial para celebrar a união e a esperança. As mensagens, que circulam nessa época, precisam transmitir carinho e acolhimento, mas muitas vezes, acabam sendo escritas de forma apressada. Os textos natalinos, exige atenção aos detalhes, para que a mensagem chegue clara ao leitor.`,
+    rules: [
+      { id:"m1", label:"Pontuação", wrong:/(?<=\bNatal),/g, correct:"", reason:"Vírgula indevida entre sujeito e verbo." },
+      { id:"m2", label:"Pontuação", wrong:/(?<=\bmensagens),/g, correct:"", reason:"Vírgula indevida em oração restritiva." },
+      { id:"m3", label:"Pontuação", wrong:/(?<=\bvezes),/g, correct:"", reason:"Vírgula indevida entre adjunto e verbo." },
+      { id:"m4", label:"Pontuação", wrong:/(?<=\bnatalinos),/g, correct:"", reason:"Vírgula indevida separando termos essenciais." },
+      { id:"m5", label:"Concordância", wrong:/\bexige\b/g, correct:"exigem", reason:"Sujeito plural exige verbo no plural." }
+    ]
+  },
+  {
+    name: "Difícil",
+    intro: `Nível difícil: desafios reais de edição.`,
+    instruction: `Pontuação, gramática e colocação pronominal.`,
+    raw: `No Natal, se deve pensar no amor ao próximo e na importância da empatia. Aos pais, respeite-os; aos filhos, os ame; aos necessitados, ajude-os. Essas atitudes, reforçam os valores natalinos.`,
+    rules: [
+      { id:"d1", label:"Colocação pronominal", wrong:/No Natal,\s*se deve pensar/g, correct:"No Natal, deve-se pensar", reason:"Colocação pronominal correta: deve-se." },
+      { id:"d2", label:"Colocação pronominal", wrong:/aos filhos,\s*os ame/gi, correct:"aos filhos, ame-os", reason:"Colocação pronominal adequada." },
+      { id:"d3", label:"Pontuação", wrong:/(?<=\batitudes),/g, correct:"", reason:"Vírgula indevida entre sujeito e predicado." }
+    ]
+  }
+];
 
 /* =========================
    Utils compartilhados
@@ -225,8 +252,7 @@ const app = {
   data: {
     SECTORS,
     SCORE_RULES,
-    // levels serão definidos via app.game.setChallenge(id)
-    levels: [],
+    levels,
     CHALLENGES,
     THEME_PRESETS
   },
@@ -244,44 +270,225 @@ const app = {
   ui: { showOnly }
 };
 
+// debug opcional
+window.__MISSION_APP__ = app;
+// Alias para debug no console
+window.app = app;
 
 /* =========================
-   API do jogo (Desafios)
+   Boot seguro
 ========================= */
-app.game = {
-  setChallenge(id, { openGate = true } = {}) {
-    const cid = clampChallengeId(id);
+function pickBoot(mod, candidates){
+  if (!mod) return null;
 
-    // Gate: Desafios 2 e 3 só para logados
-    if (cid !== 1 && openGate && app.auth?.isLogged && !app.auth.isLogged()) {
-      app.auth.openGate?.();
-      return false;
-    }
-
-    const ch = CHALLENGES[cid];
-    app.data.challenge = ch;
-    app.data.levels = ch.levels.map((lvl, i) => ({
-      // copia rasa para evitar mutação do conteúdo base
-      ...lvl,
-      // padroniza nome visível do "nível" como Atividade 1/2/3 (se o conteúdo não definir)
-      name: lvl.name || `Atividade ${i+1}`
-    }));
-
-    localStorage.setItem("mission_current_challenge", String(cid));
-    return true;
-  },
-
-  getChallenge() {
-    const cid = clampChallengeId(localStorage.getItem("mission_current_challenge"));
-    return CHALLENGES[cid];
+  for (const k of candidates){
+    if (typeof mod[k] === "function") return mod[k];
   }
+
+  if (typeof mod.default === "function") return mod.default;
+
+  if (mod.default && typeof mod.default === "object"){
+    for (const k of candidates){
+      if (typeof mod.default[k] === "function") return mod.default[k];
+    }
+  }
+
+  return null;
+}
+
+async function bootAll(){
+  try {
+    const modalMod   = await import("./ui-modal.js");
+    const themeMod   = await import("./theme-fx.js");
+    const rankingMod = await import("./ranking.js");
+    const gameMod    = await import("./game-core.js");
+    const adminMod   = await import("./admin.js");
+    const authMod    = await import("./auth.js"); // ✅ auth
+
+    const bootModal   = pickBoot(modalMod,   ["bootModal", "boot", "init"]);
+    const bootThemeFx = pickBoot(themeMod,   ["bootThemeFx", "bootTheme", "boot", "init"]);
+    const bootRanking = pickBoot(rankingMod, ["bootRanking", "boot", "init"]);
+    const bootGame    = pickBoot(gameMod,    ["bootGame", "bootGameCore", "boot", "init"]);
+    const bootAdmin   = pickBoot(adminMod,   ["bootAdmin", "boot", "init"]);
+    const bootAuth    = pickBoot(authMod,    ["bootAuth", "boot", "init"]); // ✅ auth
+
+    bootModal?.(app);
+    bootThemeFx?.(app);
+    bootRanking?.(app);
+    bootGame?.(app);
+    bootAdmin?.(app);
+    bootAuth?.(app); // ✅ inicializa auth
+
+    /* =========================
+       🔐 ABRIR AUTH AUTOMATICAMENTE
+       ========================= */
+
+    // espera o loading fake terminar
+    setTimeout(() => {
+      if (app.auth?.isLogged?.()) {
+        // usuário já logado → não força auth
+        return;
+      }
+
+      // abre login/cadastro/anônimo automaticamente
+      app.auth?.openAuthGate?.();
+    }, 1200);
+
+  } catch (err) {
+    console.error("❌ Falha no boot dos módulos:", err);
+    app.ui.showOnly(app.dom.screenForm);
+  }
+}
+
+bootAll();
+
+
+
+
+
+
+
+
+const CHALLENGES = [
+  { id: 1, name: "Desafio 1", correctMult: 1.0, levels: [c11, c12, c13], requiresLogin: false },
+  { id: 2, name: "Desafio 2", correctMult: 1.2, levels: [c21, c22, c23], requiresLogin: true  },
+  { id: 3, name: "Desafio 3", correctMult: 1.2, levels: [c31, c32, c33], requiresLogin: true  },
+];
+
+// Desafio ativo (default: 1)
+let ACTIVE_CHALLENGE_ID = 1;
+
+// levels apontam sempre para o desafio ativo (o motor do jogo lê app.data.levels)
+const levels = CHALLENGES[0].levels;
+
+
+/* =========================
+   Utils compartilhados
+========================= */
+function escapeHtml(s){
+  return String(s)
+    .replaceAll("&","&amp;")
+    .replaceAll("<","&lt;")
+    .replaceAll(">","&gt;")
+    .replaceAll('"',"&quot;")
+    .replaceAll("'","&#039;");
+}
+
+function normalize(str){
+  return (str || "")
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "");
+}
+
+function ensureGlobal(re){
+  const flags = re.flags.includes("g") ? re.flags : (re.flags + "g");
+  return new RegExp(re.source, flags);
+}
+
+function clampName(name){
+  const n = (name || "").trim().replace(/\s+/g, " ");
+  return n.length > 60 ? n.slice(0,60) : n;
+}
+
+function medalFor(i){
+  if (i === 0) return { t:"🥇", top:true };
+  if (i === 1) return { t:"🥈", top:true };
+  if (i === 2) return { t:"🥉", top:true };
+  return { t:`${i+1}º`, top:false };
+}
+
+function keyify(s){
+  return normalize(String(s || ""))
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)+/g, "")
+    .slice(0, 80);
+}
+
+function individualDocId(name, sector){
+  return `n_${keyify(name)}__s_${keyify(sector)}`;
+}
+
+/* =========================
+   DOM centralizado
+========================= */
+const dom = {
+  screenLoading: document.getElementById("screenLoading"),
+  screenAuth: document.getElementById("screenAuth"), // ✅ NOVO
+  screenForm: document.getElementById("screenForm"),
+  screenGame: document.getElementById("screenGame"),
+  screenFinal: document.getElementById("screenFinal"),
+
+
+  headerTitle: document.getElementById("headerTitle"),
+  rankingBtn: document.getElementById("rankingBtn"),
+  customizeBtn: document.getElementById("customizeBtn"),
+
+  userNameEl: document.getElementById("userName"),
+  userSectorEl: document.getElementById("userSector"),
+  startBtn: document.getElementById("startBtn"),
+  optRankingEl: document.getElementById("optRanking"),
+
+  finalRankingBtn: document.getElementById("finalRankingBtn"),
+  openCustomizeInline: document.getElementById("openCustomizeInline"),
+
+  reindeerLayer: document.getElementById("reindeerLayer"),
+  snowCanvas: document.getElementById("snow")
 };
 
-// Desafio inicial (sempre deixa o jogo pronto)
-app.game.setChallenge(app.game.getChallenge().id, { openGate: false });
+/* =========================
+   Helpers UI
+========================= */
+function showOnly(screen){
+  [
+    dom.screenLoading,
+    dom.screenAuth,   // ✅ NOVO
+    dom.screenForm,
+    dom.screenGame,
+    dom.screenFinal
+  ].forEach(el => el && el.classList.toggle("hidden", el !== screen));
+}
+
+
+function getUserName(){
+  return clampName((dom.userNameEl?.value || localStorage.getItem("mission_name") || "").trim());
+}
+function getUserSector(){
+  return (dom.userSectorEl?.value || localStorage.getItem("mission_sector") || "").trim();
+}
+
+/* =========================
+   Contexto global do app
+========================= */
+const app = {
+  firebase,
+  dom,
+
+  data: {
+    SECTORS,
+    SCORE_RULES,
+    levels,
+    THEME_PRESETS
+  },
+
+  utils: {
+    escapeHtml,
+    normalize,
+    ensureGlobal,
+    clampName,
+    medalFor,
+    individualDocId
+  },
+
+  user: { getUserName, getUserSector },
+  ui: { showOnly }
+};
 
 // debug opcional
 window.__MISSION_APP__ = app;
+// Alias para debug no console
+window.app = app;
 
 /* =========================
    Boot seguro

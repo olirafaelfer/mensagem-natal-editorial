@@ -44,14 +44,15 @@ export function bootGameCore(app){
   };
   app.SCORE_RULES = SCORE_RULES;
 
-  
-  // Multiplicador de acertos por desafio (penas NÃO são multiplicadas)
-  const CORRECT_MULT = app.data?.challenge?.correctMult || 1;
-let autoUsed = 0;
+  let autoUsed = 0;
 
   /** Levels */
-  const levels = app.data?.levels || app.levels || [];
+  let levels = app.data?.levels || app.levels || [];
   app.levels = levels;
+
+  // Desafio ativo (controla multiplicador de acertos)
+  let activeChallengeId = 1;
+  let correctMult = 1.0;
 
   /** =========================
    * Elementos
@@ -392,8 +393,7 @@ let autoUsed = 0;
   function registerCorrect(){
     correctCount += 1;
     taskCorrect[levelIndex] += 1;
-    const delta = Math.round(SCORE_RULES.correct * CORRECT_MULT);
-    addScore(delta);
+    addScore(Math.round(SCORE_RULES.correct * correctMult));
   }
 
   function registerAutoCorrect(){
@@ -413,39 +413,44 @@ let autoUsed = 0;
 
   function onPlainClick(span){
     if (levelLocked){
-      onLockedTextClick();
+      onLocked();
+      return;
+    }
+
+    // Se já foi marcado como "erro por engano", não repune nem abre confirmação.
+    if (span.dataset.misclick === "1"){
+      openModal({
+        title: "Revisão",
+        bodyHTML: `<p>Você já marcou este trecho. (Sem nova penalidade.)</p>`,
+        buttons: [{ label:"Entendi", onClick: closeModal }]
+      });
       return;
     }
 
     const start = Number(span.dataset.start || "NaN");
     const len = Number(span.dataset.len || "NaN");
 
-    // Se já foi marcado como "misclick" antes, não repune e nem reabre confirmação
-    if (span.dataset.misclick === "1"){
-      openModal({
-        title: "Revisão",
-        bodyHTML: `<p>Você já marcou esse trecho como incorreto.</p>`,
-        buttons: [{ label:"Ok", onClick: closeModal }]
-      });
-      return;
-    }
-
+    // ✅ CONFIRMAÇÃO antes de punir (evita perder ponto por esbarrão)
     openModal({
       title: "Confirmar marcação",
       bodyHTML: `
-        <p><strong>Atenção:</strong> esse trecho já está correto.</p>
-        <p>Se você marcar como erro, perderá <strong>${Math.abs(SCORE_RULES.wrong)}</strong> pontos.</p>
+        <p>Esse trecho parece estar <strong>correto</strong>.</p>
+        <p>Deseja mesmo marcar como erro?</p>
+        <p class="muted" style="margin-top:10px">Penalidade: <strong>${SCORE_RULES.wrong}</strong> ponto(s)</p>
       `,
       buttons: [
         { label:"Cancelar", onClick: closeModal },
         { label:"Marcar como erro", primary:true, onClick: () => {
-            // persiste o erro (não some após render)
+            closeModal();
+
+            // marca visual + persistência (misclickRanges) + pontuação
             span.dataset.misclick = "1";
             span.classList.add("error");
-            addMisclickAt(start, len);
+            if (!Number.isNaN(start) && !Number.isNaN(len)){
+              addMisclickAt(start, len);
+            }
             registerWrong();
             updateHUD();
-            closeModal();
           }
         }
       ]
@@ -993,7 +998,53 @@ openModal({
   }, 1100);
 
   // expõe estado necessário pros outros módulos (ranking)
-  app.gameState = {
+  
+  /** =========================
+   * API do jogo (controle externo)
+   * ========================= */
+  function setLevels(newLevels, { reset = true } = {}){
+    if (!Array.isArray(newLevels) || newLevels.length === 0) return;
+    levels = newLevels;
+    app.levels = levels;
+
+    // zera arrays por nível (mantém compatibilidade)
+    taskScore.length = levels.length; taskScore.fill(0);
+    taskCorrect.length = levels.length; taskCorrect.fill(0);
+    taskWrong.length = levels.length; taskWrong.fill(0);
+    currentTextByLevel.length = levels.length; currentTextByLevel.fill("");
+
+    if (reset){
+      levelIndex = 0;
+      score = 0;
+      wrongCount = 0;
+      correctCount = 0;
+      hintsUsed = 0;
+      autoUsed = 0;
+      showOnly(screenForm);
+    }
+  }
+
+  function setChallenge(challengeId){
+    const challenges = app.data?.CHALLENGES;
+    if (!Array.isArray(challenges)) return false;
+
+    const ch = challenges.find(c => Number(c.id) === Number(challengeId));
+    if (!ch) return false;
+
+    // Gate de login
+    if (ch.requiresLogin && app.auth?.isLogged && !app.auth.isLogged()){
+      app.auth.openGate?.();
+      return false;
+    }
+
+    activeChallengeId = Number(ch.id);
+    correctMult = Number(ch.correctMult || 1) || 1;
+
+    setLevels(ch.levels, { reset: true });
+    return true;
+  }
+
+app.gameState = {
     get score(){ return score; },
     get correctCount(){ return correctCount; },
     get wrongCount(){ return wrongCount; },
@@ -1004,4 +1055,12 @@ openModal({
     getUserName,
     getUserSector,
   };
+
+  // Expor controles do jogo (debug/testes/integração UI)
+  app.game = {
+    setChallenge,
+    setLevels,
+    getChallenge: () => ({ id: activeChallengeId, correctMult }),
+  };
+
 }
