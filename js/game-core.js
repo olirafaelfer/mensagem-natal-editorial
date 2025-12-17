@@ -44,7 +44,10 @@ export function bootGameCore(app){
   };
   app.SCORE_RULES = SCORE_RULES;
 
-  let autoUsed = 0;
+  
+  // Multiplicador de acertos por desafio (penas NÃO são multiplicadas)
+  const CORRECT_MULT = app.data?.challenge?.correctMult || 1;
+let autoUsed = 0;
 
   /** Levels */
   const levels = app.data?.levels || app.levels || [];
@@ -389,7 +392,8 @@ export function bootGameCore(app){
   function registerCorrect(){
     correctCount += 1;
     taskCorrect[levelIndex] += 1;
-    addScore(SCORE_RULES.correct);
+    const delta = Math.round(SCORE_RULES.correct * CORRECT_MULT);
+    addScore(delta);
   }
 
   function registerAutoCorrect(){
@@ -413,24 +417,38 @@ export function bootGameCore(app){
       return;
     }
 
-    // ✅ NOVO: persiste o erro (não some após render)
     const start = Number(span.dataset.start || "NaN");
     const len = Number(span.dataset.len || "NaN");
 
-    if (span.dataset.misclick !== "1"){
-      span.dataset.misclick = "1";
-      span.classList.add("error");
-
-      addMisclickAt(start, len); // 👈 salva no estado do jogo
-
-      registerWrong();
-      updateHUD();
+    // Se já foi marcado como "misclick" antes, não repune e nem reabre confirmação
+    if (span.dataset.misclick === "1"){
+      openModal({
+        title: "Revisão",
+        bodyHTML: `<p>Você já marcou esse trecho como incorreto.</p>`,
+        buttons: [{ label:"Ok", onClick: closeModal }]
+      });
+      return;
     }
 
     openModal({
-      title: "Revisão",
-      bodyHTML: `<p><strong>Hmmm…</strong> Esse trecho já está correto.</p>`,
-      buttons: [{ label:"Entendi", onClick: closeModal }]
+      title: "Confirmar marcação",
+      bodyHTML: `
+        <p><strong>Atenção:</strong> esse trecho já está correto.</p>
+        <p>Se você marcar como erro, perderá <strong>${Math.abs(SCORE_RULES.wrong)}</strong> pontos.</p>
+      `,
+      buttons: [
+        { label:"Cancelar", onClick: closeModal },
+        { label:"Marcar como erro", primary:true, onClick: () => {
+            // persiste o erro (não some após render)
+            span.dataset.misclick = "1";
+            span.classList.add("error");
+            addMisclickAt(start, len);
+            registerWrong();
+            updateHUD();
+            closeModal();
+          }
+        }
+      ]
     });
   }
 

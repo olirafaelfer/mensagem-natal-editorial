@@ -9,6 +9,16 @@ import {
   query, orderBy, limit
 } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
 
+
+import ch1_1 from "./challenge1-1.js";
+import ch1_2 from "./challenge1-2.js";
+import ch1_3 from "./challenge1-3.js";
+import ch2_1 from "./challenge2-1.js";
+import ch2_2 from "./challenge2-2.js";
+import ch2_3 from "./challenge2-3.js";
+import ch3_1 from "./challenge3-1.js";
+import ch3_2 from "./challenge3-2.js";
+import ch3_3 from "./challenge3-3.js";
 /* =========================
    THEME PRESETS
 ========================= */
@@ -92,47 +102,22 @@ const SCORE_RULES = {
   auto: -2
 };
 
+const CHALLENGES = {
+  1: { id: 1, title: "Desafio 1 — Fácil", correctMult: 1.0, levels: [ch1_1, ch1_2, ch1_3] },
+  2: { id: 2, title: "Desafio 2 — Intermediário", correctMult: 1.2, levels: [ch2_1, ch2_2, ch2_3] },
+  3: { id: 3, title: "Desafio 3 — Difícil", correctMult: 1.2, levels: [ch3_1, ch3_2, ch3_3] },
+};
+
+function clampChallengeId(v){
+  const n = Number(v);
+  if (n === 2 || n === 3) return n;
+  return 1;
+}
+
 /* =========================
-   Levels / Conteúdo (o game-core usa app.data.levels)
+   Conteúdo (Desafios/Atividades)
+   - Cada Desafio tem 3 atividades (o game-core usa app.data.levels)
 ========================= */
-const levels = [
-  {
-    name: "Fácil",
-    intro: `O Papai Noel, editor-chefe, pediu sua ajuda para revisar a Mensagem de Natal.
-Ele escreveu tão rápido que acabou deixando três errinhos para trás.`,
-    instruction: `Os erros podem envolver acentuação, ortografia, gramática etc. Clique nos trechos incorretos para corrigir!`,
-    raw: `Mais do que presentes e refeissões caprichadas, o Natal é a época de lembrar o valor de um abraço apertado e de um sorriso sincero! Que para voces, meus amigos, seja uma época xeia de carinho e amor, preenchida pelo que realmente importa nessa vida!`,
-    rules: [
-      { id:"f1", label:"Ortografia", wrong:/\brefeissões\b/g, correct:"refeições", reason:"Erro ortográfico. A forma correta do substantivo é 'refeições'." },
-      { id:"f2", label:"Acentuação", wrong:/\bvoces\b/g, correct:"vocês", reason:"Erro de acentuação gráfica." },
-      { id:"f3", label:"Ortografia", wrong:/\bxeia\b/g, correct:"cheia", reason:"Erro ortográfico. A palavra correta é 'cheia'." }
-    ]
-  },
-  {
-    name: "Médio",
-    intro: `Nível médio: erros editoriais objetivos.`,
-    instruction: `Atenção a vírgulas indevidas e concordância.`,
-    raw: `O Natal, é um momento especial para celebrar a união e a esperança. As mensagens, que circulam nessa época, precisam transmitir carinho e acolhimento, mas muitas vezes, acabam sendo escritas de forma apressada. Os textos natalinos, exige atenção aos detalhes, para que a mensagem chegue clara ao leitor.`,
-    rules: [
-      { id:"m1", label:"Pontuação", wrong:/(?<=\bNatal),/g, correct:"", reason:"Vírgula indevida entre sujeito e verbo." },
-      { id:"m2", label:"Pontuação", wrong:/(?<=\bmensagens),/g, correct:"", reason:"Vírgula indevida em oração restritiva." },
-      { id:"m3", label:"Pontuação", wrong:/(?<=\bvezes),/g, correct:"", reason:"Vírgula indevida entre adjunto e verbo." },
-      { id:"m4", label:"Pontuação", wrong:/(?<=\bnatalinos),/g, correct:"", reason:"Vírgula indevida separando termos essenciais." },
-      { id:"m5", label:"Concordância", wrong:/\bexige\b/g, correct:"exigem", reason:"Sujeito plural exige verbo no plural." }
-    ]
-  },
-  {
-    name: "Difícil",
-    intro: `Nível difícil: desafios reais de edição.`,
-    instruction: `Pontuação, gramática e colocação pronominal.`,
-    raw: `No Natal, se deve pensar no amor ao próximo e na importância da empatia. Aos pais, respeite-os; aos filhos, os ame; aos necessitados, ajude-os. Essas atitudes, reforçam os valores natalinos.`,
-    rules: [
-      { id:"d1", label:"Colocação pronominal", wrong:/No Natal,\s*se deve pensar/g, correct:"No Natal, deve-se pensar", reason:"Colocação pronominal correta: deve-se." },
-      { id:"d2", label:"Colocação pronominal", wrong:/aos filhos,\s*os ame/gi, correct:"aos filhos, ame-os", reason:"Colocação pronominal adequada." },
-      { id:"d3", label:"Pontuação", wrong:/(?<=\batitudes),/g, correct:"", reason:"Vírgula indevida entre sujeito e predicado." }
-    ]
-  }
-];
 
 /* =========================
    Utils compartilhados
@@ -240,7 +225,9 @@ const app = {
   data: {
     SECTORS,
     SCORE_RULES,
-    levels,
+    // levels serão definidos via app.game.setChallenge(id)
+    levels: [],
+    CHALLENGES,
     THEME_PRESETS
   },
 
@@ -256,6 +243,42 @@ const app = {
   user: { getUserName, getUserSector },
   ui: { showOnly }
 };
+
+
+/* =========================
+   API do jogo (Desafios)
+========================= */
+app.game = {
+  setChallenge(id, { openGate = true } = {}) {
+    const cid = clampChallengeId(id);
+
+    // Gate: Desafios 2 e 3 só para logados
+    if (cid !== 1 && openGate && app.auth?.isLogged && !app.auth.isLogged()) {
+      app.auth.openGate?.();
+      return false;
+    }
+
+    const ch = CHALLENGES[cid];
+    app.data.challenge = ch;
+    app.data.levels = ch.levels.map((lvl, i) => ({
+      // copia rasa para evitar mutação do conteúdo base
+      ...lvl,
+      // padroniza nome visível do "nível" como Atividade 1/2/3 (se o conteúdo não definir)
+      name: lvl.name || `Atividade ${i+1}`
+    }));
+
+    localStorage.setItem("mission_current_challenge", String(cid));
+    return true;
+  },
+
+  getChallenge() {
+    const cid = clampChallengeId(localStorage.getItem("mission_current_challenge"));
+    return CHALLENGES[cid];
+  }
+};
+
+// Desafio inicial (sempre deixa o jogo pronto)
+app.game.setChallenge(app.game.getChallenge().id, { openGate: false });
 
 // debug opcional
 window.__MISSION_APP__ = app;
