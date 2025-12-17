@@ -95,30 +95,44 @@ const SCORE_RULES = {
 /* =========================
    Levels / Conteúdo (o game-core usa app.data.levels)
 ========================= */
-import c11 from "./challenge1-1.js";
-import c12 from "./challenge1-2.js";
-import c13 from "./challenge1-3.js";
-import c21 from "./challenge2-1.js";
-import c22 from "./challenge2-2.js";
-import c23 from "./challenge2-3.js";
-import c31 from "./challenge3-1.js";
-import c32 from "./challenge3-2.js";
-import c33 from "./challenge3-3.js";
-
-/* =========================
-   Níveis / Conteúdo (separados por arquivo)
-   - challenges[1..3] cada um com 3 atividades
-   - `levels` é um array MUTÁVEL que o game-core lê por referência
-========================= */
-const challenges = {
-  1: [c11, c12, c13],
-  2: [c21, c22, c23],
-  3: [c31, c32, c33],
-};
-
-// Array de trabalho (mutável) usado pelo motor do jogo
-const levels = [...challenges[1]];
-
+const levels = [
+  {
+    name: "Fácil",
+    intro: `O Papai Noel, editor-chefe, pediu sua ajuda para revisar a Mensagem de Natal.
+Ele escreveu tão rápido que acabou deixando três errinhos para trás.`,
+    instruction: `Os erros podem envolver acentuação, ortografia, gramática etc. Clique nos trechos incorretos para corrigir!`,
+    raw: `Mais do que presentes e refeissões caprichadas, o Natal é a época de lembrar o valor de um abraço apertado e de um sorriso sincero! Que para voces, meus amigos, seja uma época xeia de carinho e amor, preenchida pelo que realmente importa nessa vida!`,
+    rules: [
+      { id:"f1", label:"Ortografia", wrong:/\brefeissões\b/g, correct:"refeições", reason:"Erro ortográfico. A forma correta do substantivo é 'refeições'." },
+      { id:"f2", label:"Acentuação", wrong:/\bvoces\b/g, correct:"vocês", reason:"Erro de acentuação gráfica." },
+      { id:"f3", label:"Ortografia", wrong:/\bxeia\b/g, correct:"cheia", reason:"Erro ortográfico. A palavra correta é 'cheia'." }
+    ]
+  },
+  {
+    name: "Médio",
+    intro: `Nível médio: erros editoriais objetivos.`,
+    instruction: `Atenção a vírgulas indevidas e concordância.`,
+    raw: `O Natal, é um momento especial para celebrar a união e a esperança. As mensagens, que circulam nessa época, precisam transmitir carinho e acolhimento, mas muitas vezes, acabam sendo escritas de forma apressada. Os textos natalinos, exige atenção aos detalhes, para que a mensagem chegue clara ao leitor.`,
+    rules: [
+      { id:"m1", label:"Pontuação", wrong:/(?<=\bNatal),/g, correct:"", reason:"Vírgula indevida entre sujeito e verbo." },
+      { id:"m2", label:"Pontuação", wrong:/(?<=\bmensagens),/g, correct:"", reason:"Vírgula indevida em oração restritiva." },
+      { id:"m3", label:"Pontuação", wrong:/(?<=\bvezes),/g, correct:"", reason:"Vírgula indevida entre adjunto e verbo." },
+      { id:"m4", label:"Pontuação", wrong:/(?<=\bnatalinos),/g, correct:"", reason:"Vírgula indevida separando termos essenciais." },
+      { id:"m5", label:"Concordância", wrong:/\bexige\b/g, correct:"exigem", reason:"Sujeito plural exige verbo no plural." }
+    ]
+  },
+  {
+    name: "Difícil",
+    intro: `Nível difícil: desafios reais de edição.`,
+    instruction: `Pontuação, gramática e colocação pronominal.`,
+    raw: `No Natal, se deve pensar no amor ao próximo e na importância da empatia. Aos pais, respeite-os; aos filhos, os ame; aos necessitados, ajude-os. Essas atitudes, reforçam os valores natalinos.`,
+    rules: [
+      { id:"d1", label:"Colocação pronominal", wrong:/No Natal,\s*se deve pensar/g, correct:"No Natal, deve-se pensar", reason:"Colocação pronominal correta: deve-se." },
+      { id:"d2", label:"Colocação pronominal", wrong:/aos filhos,\s*os ame/gi, correct:"aos filhos, ame-os", reason:"Colocação pronominal adequada." },
+      { id:"d3", label:"Pontuação", wrong:/(?<=\batitudes),/g, correct:"", reason:"Vírgula indevida entre sujeito e predicado." }
+    ]
+  }
+];
 
 /* =========================
    Utils compartilhados
@@ -186,6 +200,14 @@ const dom = {
   userNameEl: document.getElementById("userName"),
   userSectorEl: document.getElementById("userSector"),
   startBtn: document.getElementById("startBtn"),
+  challengeBtn1: document.getElementById("challengeBtn1"),
+  challengeBtn2: document.getElementById("challengeBtn2"),
+  challengeBtn3: document.getElementById("challengeBtn3"),
+  profileStats: document.getElementById("profileStats"),
+  profC1: document.getElementById("profC1"),
+  profC2: document.getElementById("profC2"),
+  profC3: document.getElementById("profC3"),
+  profOverall: document.getElementById("profOverall"),
   optRankingEl: document.getElementById("optRanking"),
 
   finalRankingBtn: document.getElementById("finalRankingBtn"),
@@ -227,7 +249,6 @@ const app = {
     SECTORS,
     SCORE_RULES,
     levels,
-    challenges,
     THEME_PRESETS
   },
 
@@ -245,8 +266,96 @@ const app = {
 };
 
 // debug opcional
+window.app = app;
 window.__MISSION_APP__ = app;
-window.app = app; // alias p/ console/debug
+/* =========================
+   Desafios / Atividades (3x3) — loader
+========================= */
+app.game = app.game || {};
+app.game.currentChallenge = 1;
+
+async function loadChallengeActivities(ch){
+  const mods = await Promise.all([
+    import(`./challenge${ch}-1.js`),
+    import(`./challenge${ch}-2.js`),
+    import(`./challenge${ch}-3.js`)
+  ]);
+  return mods.map(m => m.default || m.level || m);
+}
+
+async function applyChallenge(ch){
+  const activities = await loadChallengeActivities(ch);
+
+  // cada "atividade" reaproveita o mesmo formato já usado pelo game-core (level object)
+  app.data.levels = activities;
+
+  // multiplicador em acertos (somente)
+  app.data.correctMult = (ch === 2) ? 1.2 : (ch === 3 ? 1.2 : 1);
+
+  app.game.currentChallenge = ch;
+
+  // feedback visual (home)
+  renderTrail();
+  renderProfileStats();
+}
+
+function isLogged(){
+  return !!(app.auth && app.auth.isLogged && app.auth.isLogged());
+}
+
+app.game.setChallenge = async (ch) => {
+  if ((ch === 2 || ch === 3) && !isLogged()){
+    app.auth?.openGate?.();
+    return;
+  }
+  await applyChallenge(ch);
+};
+
+function renderTrail(){
+  const b1 = app.dom.challengeBtn1;
+  const b2 = app.dom.challengeBtn2;
+  const b3 = app.dom.challengeBtn3;
+
+  const logged = isLogged();
+
+  if (b1){
+    b1.classList.toggle("active", app.game.currentChallenge === 1);
+    b1.disabled = false;
+    b1.dataset.locked = "0";
+  }
+
+  if (b2){
+    const locked = !logged;
+    b2.classList.toggle("active", app.game.currentChallenge === 2);
+    b2.disabled = locked;
+    b2.dataset.locked = locked ? "1" : "0";
+    b2.title = locked ? "Faça login para acessar o Desafio 2" : "";
+  }
+
+  if (b3){
+    const locked = !logged;
+    b3.classList.toggle("active", app.game.currentChallenge === 3);
+    b3.disabled = locked;
+    b3.dataset.locked = locked ? "1" : "0";
+    b3.title = locked ? "Faça login para acessar o Desafio 3" : "";
+  }
+}
+
+function renderProfileStats(){
+  // Por enquanto: apenas espelha o que estiver salvo no localStorage (será substituído pelo ranking real por desafio)
+  const c1 = Number(localStorage.getItem("mission_best_c1") || "0");
+  const c2 = Number(localStorage.getItem("mission_best_c2") || "0");
+  const c3 = Number(localStorage.getItem("mission_best_c3") || "0");
+
+  const overall = (c1 && c2 && c3) ? Math.round((c1 + c2 + c3) / 3) : 0;
+
+  if (app.dom.profC1) app.dom.profC1.textContent = String(c1);
+  if (app.dom.profC2) app.dom.profC2.textContent = String(c2);
+  if (app.dom.profC3) app.dom.profC3.textContent = String(c3);
+  if (app.dom.profOverall) app.dom.profOverall.textContent = String(overall);
+}
+
+
 
 /* =========================
    Boot seguro
@@ -288,9 +397,22 @@ async function bootAll(){
     bootModal?.(app);
     bootThemeFx?.(app);
     bootRanking?.(app);
+
+    // Carrega Desafio 1 (padrão) antes do game-core ler app.data.levels
+    await applyChallenge(1);
+
     bootGame?.(app);
     bootAdmin?.(app);
     bootAuth?.(app); // ✅ inicializa auth
+
+    // Desafios — listeners
+    app.dom.challengeBtn1?.addEventListener('click', () => app.game.setChallenge(1));
+    app.dom.challengeBtn2?.addEventListener('click', () => app.game.setChallenge(2));
+    app.dom.challengeBtn3?.addEventListener('click', () => app.game.setChallenge(3));
+    // Atualiza locks após auth (login/logout)
+    renderTrail();
+    renderProfileStats();
+
 
     /* =========================
        🔐 ABRIR AUTH AUTOMATICAMENTE

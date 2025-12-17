@@ -1,5 +1,8 @@
-// Auto-generated activity module
-const base = {
+// js/challenge2-1.js
+// Conteúdo da Atividade 1 do Desafio 2
+// (por enquanto, espelha as atividades originais; basta substituir este objeto depois)
+
+const level = {
     name: "Fácil",
     intro: `O Papai Noel, editor-chefe, pediu sua ajuda para revisar a Mensagem de Natal.
 Ele escreveu tão rápido que acabou deixando três errinhos para trás.`,
@@ -12,7 +15,5 @@ Ele escreveu tão rápido que acabou deixando três errinhos para trás.`,
     ]
   };
 
-export default {
-  ...base,
-  name: "Desafio 2 \u2014 Atividade 1",
-};
+export default level;
+export { level };

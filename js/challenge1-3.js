@@ -1,5 +1,8 @@
-// Auto-generated activity module
-const base = {
+// js/challenge1-3.js
+// Conteúdo da Atividade 3 do Desafio 1
+// (por enquanto, espelha as atividades originais; basta substituir este objeto depois)
+
+const level = {
     name: "Difícil",
     intro: `Nível difícil: desafios reais de edição.`,
     instruction: `Pontuação, gramática e colocação pronominal.`,
@@ -11,7 +14,5 @@ const base = {
     ]
   };
 
-export default {
-  ...base,
-  name: "Desafio 1 \u2014 Atividade 3",
-};
+export default level;
+export { level };

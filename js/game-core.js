@@ -46,6 +46,9 @@ export function bootGameCore(app){
 
   let autoUsed = 0;
 
+  // multiplicador aplicado SOMENTE em acertos (Desafio 2/3)
+  let correctMult = 1;
+
   /** Levels */
   const levels = app.data?.levels || app.levels || [];
   app.levels = levels;
@@ -390,11 +393,9 @@ export function bootGameCore(app){
     correctCount += 1;
     taskCorrect[levelIndex] += 1;
 
-    // ✅ Multiplicador só nos acertos (penalidades não mudam)
-    const mult = (currentChallenge === 2) ? 1.2 : (currentChallenge === 3 ? 1.2 : 1);
-    const delta = Math.round(SCORE_RULES.correct * mult);
+    const gained = Math.round(SCORE_RULES.correct * (isFinite(correctMult) ? correctMult : 1));
 
-    addScore(delta);
+    addScore(gained);
   }
 
   function registerAutoCorrect(){
@@ -418,43 +419,59 @@ export function bootGameCore(app){
       return;
     }
 
+    const selected = span.textContent || "";
     const start = Number(span.dataset.start || "NaN");
     const len = Number(span.dataset.len || "NaN");
 
-    // Se já marcou esse trecho como erro anteriormente, não repune.
-    if (span.dataset.misclick === "1"){
+    // Já marcado como "tentativa indevida" -> não repune
+    if (span.dataset.misclick === "1" || hasMisclickAt(start, len)){
       openModal({
         title: "Revisão",
-        bodyHTML: `<p>Você já marcou este trecho como incorreto antes.</p>`,
+        bodyHTML: `
+          <p><strong>A palavra “${escapeHtml(selected)}”</strong> já foi marcada como correta anteriormente.</p>
+          <p class="muted" style="margin-top:8px">Siga para outra correção.</p>
+        `,
         buttons: [{ label:"Ok", onClick: closeModal }]
       });
       return;
     }
 
-    // ✅ CONFIRMAÇÃO ANTES DE PUNIR (evita perder ponto ao “esbarrar”)
+    // ✅ NOVO: confirmar intenção ANTES de punir
     openModal({
-      title: "Confirmar marcação",
+      title: "Revisão",
       bodyHTML: `
-        <p><strong>Atenção:</strong> esse trecho já está correto.</p>
-        <p>Deseja mesmo marcar como erro e perder pontos?</p>
+        <p><strong>Tem certeza que deseja corrigir este trecho?</strong></p>
+        <p style="margin:10px 0 0"><strong>${escapeHtml(selected)}</strong></p>
       `,
       buttons: [
-        { label:"Cancelar", onClick: closeModal },
-        { label:"Marcar como erro", onClick: () => {
-            // aplica marcação + pontuação somente após confirmar
+        { label:"Cancelar", variant:"ghost", onClick: closeModal },
+        { label:"Sim", onClick: () => {
+            closeModal();
+
+            // agora sim: marca e pune
             span.dataset.misclick = "1";
             span.classList.add("error");
             addMisclickAt(start, len);
+
             registerWrong();
             updateHUD();
-            closeModal();
-          }
-        }
+
+            openModal({
+              title: "Atenção",
+              bodyHTML: `
+                <p>A palavra <strong>“${escapeHtml(selected)}”</strong> já está correta!</p>
+                <p style="margin-top:8px">Que pena, você perdeu <strong>${Math.abs(SCORE_RULES.wrong)}</strong> pontos.</p>
+              `,
+              buttons: [{ label:"Entendi", onClick: closeModal }]
+            });
+          } }
       ]
     });
   }
 
-function applyReplacementAt(start, len, replacement){
+  function applyReplacementAt
+
+  function applyReplacementAt(start, len, replacement){
     const before = currentText.slice(0, start);
     const after = currentText.slice(start + len);
     currentText = before + replacement + after;
@@ -500,11 +517,23 @@ function applyReplacementAt(start, len, replacement){
       registerWrong();
       updateHUD();
 
+      const lost = Math.abs(SCORE_RULES.wrong);
+      const autoLost = Math.abs(SCORE_RULES.auto);
+
       openModal({
         title: "Ops!",
-        bodyHTML: `<p>Ops, você errou. O correto seria <strong>${escapeHtml(expected === "" ? "(remover)" : expected)}</strong>.</p>`,
-        buttons: [{ label:"Ok", onClick: closeModal }]
+        bodyHTML: `
+          <p><strong>Ops, a correção não está certa!</strong></p>
+          <p style="margin-top:8px">Você perdeu <strong>${lost}</strong> pontos.</p>
+          <p style="margin-top:12px">Gostaria de tentar de novo ou prefere uma correção automática?</p>
+          <p class="muted" style="margin-top:8px">Se usar a correção automática, você perderá <strong>${autoLost}</strong> pontos.</p>
+        `,
+        buttons: [
+          { label:"Tentar de novo", variant:"ghost", onClick: () => { closeModal(); openCorrectionModal(errSpan, rule); } },
+          { label:`Correção automática (-${autoLost})`, onClick: () => { closeModal(); autoFixRule(rule); } }
+        ]
       });
+
       return;
     }
 
@@ -523,6 +552,27 @@ function applyReplacementAt(start, len, replacement){
   }
 
   function onErrorClick(errSpan, rule){
+    if (levelLocked){
+      onLockedTextClick();
+      return;
+    }
+
+    const selected = errSpan.textContent || "";
+
+    openModal({
+      title: "Revisão",
+      bodyHTML: `
+        <p><strong>Tem certeza que deseja corrigir este trecho?</strong></p>
+        <p style="margin:10px 0 0"><strong>${escapeHtml(selected)}</strong></p>
+      `,
+      buttons: [
+        { label:"Cancelar", variant:"ghost", onClick: closeModal },
+        { label:"Sim", onClick: () => { closeModal(); openCorrectionModal(errSpan, rule); } }
+      ]
+    });
+  }
+
+  function openCorrectionModal(errSpan, rule){
     if (levelLocked){
       onLockedTextClick();
       return;
@@ -577,6 +627,45 @@ function applyReplacementAt(start, len, replacement){
   /** =========================
    * Auto-fix (1 correção por clique)
    * ========================= */
+  function autoFixRule(rule){
+    if (levelLocked){
+      onLockedTextClick();
+      return;
+    }
+
+    if (!rule || fixedRuleIds.has(rule.id)) return;
+
+    // Tenta usar a posição do último clique (span) se disponível
+    // Caso não, procura a próxima ocorrência da regra
+    let start = null;
+    let len = null;
+
+    // se o usuário clicou em um span de erro, ele carrega dataset.start/len
+    // mas aqui recebemos só a rule; então fazemos busca
+    const m = findNextMatch(currentText, 0, rule);
+    if (m){
+      start = m.index;
+      len = m.len;
+    }
+
+    if (start == null || len == null){
+      openModal({
+        title: "Nada a corrigir",
+        bodyHTML: `<p>Não encontrei mais ocorrências desse erro no texto atual.</p>`,
+        buttons: [{ label:"Ok", onClick: closeModal }]
+      });
+      return;
+    }
+
+    applyReplacementAt(start, len, rule.correct);
+    fixedRuleIds.add(rule.id);
+    correctedSegmentsByRule.set(rule.id, { start, len: rule.correct.length });
+
+    registerAutoCorrect();
+    renderMessage();
+    finalizeIfDone();
+  }
+
   function autoFixOne(){
     if (levelLocked){
       onLockedTextClick();
@@ -944,6 +1033,9 @@ function applyReplacementAt(start, len, replacement){
     localStorage.setItem("mission_name", name);
     localStorage.setItem("mission_sector", sector);
 
+    correctMult = Number(app.data?.correctMult ?? 1);
+    if (!isFinite(correctMult) || correctMult <= 0) correctMult = 1;
+
     levelIndex = 0;
     score = 0;
     wrongCount = 0;
@@ -994,80 +1086,7 @@ openModal({
     if (userSectorEl) userSectorEl.value = localStorage.getItem("mission_sector") || "";
   }, 1100);
 
-  
-  // =============================
-  // API do jogo (controle de desafio) — usado pela trilha/home e testes
-  // =============================
-  app.game = app.game || {};
-
-  let currentChallenge = 1;
-
-  function isLogged(){
-    return !!app.auth?.isLogged?.();
-  }
-
-  function setChallenge(challengeId, { start = true } = {}){
-    const id = Number(challengeId);
-    if (![1,2,3].includes(id)) return;
-
-    // Gate: desafios 2 e 3 exigem login
-    if (id > 1 && !isLogged()){
-      app.auth?.openGate?.();
-      return;
-    }
-
-    const all = app.data?.challenges;
-    const nextLevels = all?.[id];
-    if (!Array.isArray(nextLevels) || nextLevels.length !== 3){
-      console.warn("Desafio sem 3 atividades:", id, nextLevels);
-      return;
-    }
-
-    // Troca as atividades mutando o array `levels` (referência capturada pelo motor)
-    levels.length = 0;
-    levels.push(...nextLevels);
-
-    currentChallenge = id;
-    app.game.currentChallenge = id;
-
-    if (!start) return;
-
-    // Reinicia uma run (sem obrigar o usuário a preencher novamente)
-    const name = getUserName();
-    const sector = getUserSector();
-    if (!name){
-      showOnly(screenForm);
-      openModal({
-        title: "Antes de começar",
-        bodyHTML: "<p>Preencha seu nome para iniciar o desafio.</p>",
-        buttons: [{ label:"Ok", onClick: closeModal }]
-      });
-      return;
-    }
-
-    levelIndex = 0;
-    score = 0;
-    wrongCount = 0;
-    correctCount = 0;
-    hintsUsed = 0;
-    autoUsed = 0;
-
-    taskScore[0]=taskScore[1]=taskScore[2]=0;
-    taskCorrect[0]=taskCorrect[1]=taskCorrect[2]=0;
-    taskWrong[0]=taskWrong[1]=taskWrong[2]=0;
-
-    currentTextByLevel[0] = "";
-    currentTextByLevel[1] = "";
-    currentTextByLevel[2] = "";
-
-    showOnly(screenGame);
-    startLevel();
-  }
-
-  app.game.setChallenge = setChallenge;
-  app.game.getChallenge = () => currentChallenge;
-
-// expõe estado necessário pros outros módulos (ranking)
+  // expõe estado necessário pros outros módulos (ranking)
   app.gameState = {
     get score(){ return score; },
     get correctCount(){ return correctCount; },
@@ -1076,6 +1095,7 @@ openModal({
     get taskCorrect(){ return taskCorrect; },
     get taskWrong(){ return taskWrong; },
     get autoUsed(){ return autoUsed; },
+    get correctMult(){ return correctMult; },
     getUserName,
     getUserSector,
   };
