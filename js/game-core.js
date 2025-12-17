@@ -1,5 +1,4 @@
 import { getTutorialLevels } from "./tutorial.js";
-import { getTutorialLevels } from "./tutorial.js";
 // js/game-core.js — núcleo do jogo (níveis, render, correções, final interativo)
 
 export function bootGameCore(app){
