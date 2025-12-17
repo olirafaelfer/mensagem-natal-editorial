@@ -1,6 +1,7 @@
-// js/challenge3-3.js — Desafio 3 / Atividade 3 (placeholder - copie e edite)
-// Conteúdo puro (sem lógica). Pode editar livremente.
-// Exporta um objeto no mesmo formato que o game-core já espera em app.data.levels[i].
+// js/challenge3-3.js
+// Conteúdo da atividade 3 do Desafio 3
+// (Por enquanto, cópia das atividades originais. Depois é só editar este arquivo.)
+
 export default {
     name: "Difícil",
     intro: `Nível difícil: desafios reais de edição.`,

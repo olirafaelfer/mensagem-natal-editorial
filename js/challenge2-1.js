@@ -1,6 +1,7 @@
-// js/challenge2-1.js — Desafio 2 / Atividade 1 (placeholder - copie e edite)
-// Conteúdo puro (sem lógica). Pode editar livremente.
-// Exporta um objeto no mesmo formato que o game-core já espera em app.data.levels[i].
+// js/challenge2-1.js
+// Conteúdo da atividade 1 do Desafio 2
+// (Por enquanto, cópia das atividades originais. Depois é só editar este arquivo.)
+
 export default {
     name: "Fácil",
     intro: `O Papai Noel, editor-chefe, pediu sua ajuda para revisar a Mensagem de Natal.

@@ -1,6 +1,7 @@
-// js/challenge1-2.js — Desafio 1 / Atividade 2
-// Conteúdo puro (sem lógica). Pode editar livremente.
-// Exporta um objeto no mesmo formato que o game-core já espera em app.data.levels[i].
+// js/challenge1-2.js
+// Conteúdo da atividade 2 do Desafio 1
+// (Por enquanto, cópia das atividades originais. Depois é só editar este arquivo.)
+
 export default {
     name: "Médio",
     intro: `Nível médio: erros editoriais objetivos.`,
