@@ -952,3 +952,18 @@ body.modal-open #overlay{
 
 /* Hide final mission special by default; JS will toggle */
 #finalMissionSpecialBtn{display:none;}
+
+
+/* Header minimal: logo + ações apenas */
+.topbar-row-1{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  position: relative;
+}
+.topbar-row-1 .top-actions{
+  position:absolute;
+  right: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+}
