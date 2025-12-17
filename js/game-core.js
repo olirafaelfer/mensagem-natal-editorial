@@ -1,3 +1,4 @@
+import { getTutorialLevels } from "./tutorial.js";
 // js/game-core.js — núcleo do jogo (níveis, render, correções, final interativo)
 
 export function bootGameCore(app){
@@ -47,8 +48,13 @@ export function bootGameCore(app){
   let autoUsed = 0;
 
   /** Levels */
-  const levels = app.data?.levels || app.levels || [];
+  const mainLevels = app.data?.levels || app.levels || [];
+  let levels = mainLevels;
   app.levels = levels;
+
+  // Tutorial
+  const tutorialLevels = getTutorialLevels();
+  let inTutorial = false;
 
   /** =========================
    * Elementos
@@ -62,6 +68,10 @@ export function bootGameCore(app){
   const userNameEl = document.getElementById("userName");
   const userSectorEl = document.getElementById("userSector");
   const startBtn = document.getElementById("startBtn");
+  // Trilha (home)
+  const challengeBtn1 = document.getElementById("challengeBtn1");
+  const challengeBtn2 = document.getElementById("challengeBtn2");
+  const challengeBtn3 = document.getElementById("challengeBtn3");
 
   const levelLabel = document.getElementById("levelLabel");
   const remainingCount = document.getElementById("remainingCount");
@@ -716,6 +726,16 @@ export function bootGameCore(app){
     currentTextByLevel[levelIndex] = currentText;
 
     if (isLast){
+      // Se estamos no tutorial, ao finalizar volta para o desafio principal
+      if (inTutorial){
+        openModal({
+          title: "Tutorial concluído 🎄",
+          bodyHTML: `<p>Perfeito! Agora você já sabe como jogar.</p>`,
+          buttons: [{ label:"Iniciar Desafio 1", onClick: async () => { closeModal(); await beginMainMission(); } }]
+        });
+        return;
+      }
+
       await app.finishMission?.({ score, correctCount, wrongCount, taskScore, taskCorrect, taskWrong, autoUsed });
       showFinal();
       return;
@@ -915,6 +935,74 @@ export function bootGameCore(app){
   reviewBtn2?.addEventListener("click", () => openReviewModal(1));
   reviewBtn3?.addEventListener("click", () => openReviewModal(2));
 
+
+  // ===== Início da missão via trilha (sem startBtn) =====
+  function resetMissionCounters(){
+    levelIndex = 0;
+    score = 0;
+    wrongCount = 0;
+    correctCount = 0;
+    hintsUsed = 0;
+    autoUsed = 0;
+
+    taskScore[0]=taskScore[1]=taskScore[2]=0;
+    taskCorrect[0]=taskCorrect[1]=taskCorrect[2]=0;
+    taskWrong[0]=taskWrong[1]=taskWrong[2]=0;
+
+    currentTextByLevel[0] = "";
+    currentTextByLevel[1] = "";
+    currentTextByLevel[2] = "";
+  }
+
+  async function beginMainMission(){
+    inTutorial = false;
+    levels = mainLevels;
+    app.levels = levels;
+    levelIndex = 0;
+    showOnly(screenGame);
+    startLevel();
+  }
+
+  async function beginTutorialThenMain(){
+    inTutorial = true;
+    levels = tutorialLevels;
+    app.levels = levels;
+    levelIndex = 0;
+    showOnly(screenGame);
+    startLevel();
+  }
+
+  function startChallenge1Flow(){
+    const name = getUserName();
+    const sector = getUserSector();
+
+    if (!name){
+      openModal({ title:"Atenção", bodyHTML:`<p>Por favor, informe seu nome.</p>`, buttons:[{label:"Ok", onClick: closeModal}] });
+      return;
+    }
+    if (!sector){
+      openModal({ title:"Atenção", bodyHTML:`<p>Por favor, selecione seu setor.</p>`, buttons:[{label:"Ok", onClick: closeModal}] });
+      return;
+    }
+
+    localStorage.setItem("mission_name", name);
+    localStorage.setItem("mission_sector", sector);
+
+    resetMissionCounters();
+
+    openModal({
+      title: "Antes de começar",
+      bodyHTML: `
+        <p>Este tutorial explicará brevemente a dinâmica do jogo.</p>
+        <p class="muted" style="margin-top:10px">Se você já conhece, pode pular.</p>
+      `,
+      buttons: [
+        { label:"Pular", variant:"ghost", onClick: async () => { closeModal(); await beginMainMission(); } },
+        { label:"Ver tutorial", onClick: async () => { closeModal(); await beginTutorialThenMain(); } }
+      ]
+    });
+  }
+
   /** =========================
    * Início / nível
    * ========================= */
@@ -1006,6 +1094,9 @@ openModal({
   buttons: [{ label:"Começar", onClick: () => { closeModal(); showOnly(screenGame); startLevel(); } }]
 });
 });
+
+  // Trilha: iniciar pelo botão do desafio 1 (sem botão iniciar missão)
+  challengeBtn1?.addEventListener("click", () => startChallenge1Flow());
 
   restartBtn?.addEventListener("click", () => showOnly(screenForm));
 
