@@ -17,6 +17,13 @@
   --radius: 18px;
 
   --container: 1060px;
+   
+}
+:root { color-scheme: light; }
+
+/* Evita que alguns modos forçados mexam em logo/imagens */
+img, svg, video, canvas { 
+  filter: none !important;
 }
 
 *{ box-sizing:border-box; }
