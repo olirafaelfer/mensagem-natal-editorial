@@ -13,6 +13,7 @@ export function bootModal(app){
   if (!overlay) return;
 
   let lastActiveEl = null;
+  let closeTimer = null;
   let scrollYBefore = 0;
 
   // =========================
@@ -59,6 +60,9 @@ export function bootModal(app){
   // API do modal
   // =========================
   function openModal({ title, bodyHTML, buttons = [] }){
+    if (closeTimer) { clearTimeout(closeTimer); closeTimer = null; }
+    // garante overlay visível caso um close anterior esteja animando
+    overlay.classList.remove("hidden");
     lockBodyScroll();
 
     if (modalTitle) modalTitle.textContent = title || "";
@@ -103,8 +107,9 @@ export function bootModal(app){
     overlay.classList.remove("show");
 
     // fecha com animação
-    setTimeout(() => {
+    closeTimer = setTimeout(() => {
       overlay.classList.add("hidden");
+      closeTimer = null;
       unlockBodyScroll();
 
       // restaura posição do scroll exatamente onde estava
