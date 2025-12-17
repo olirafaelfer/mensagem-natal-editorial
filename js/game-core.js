@@ -35,6 +35,24 @@ export function bootGameCore(app){
 
   const { openModal, closeModal } = app.modal;
 
+  function modalOk(title, bodyHTML){
+    return new Promise((resolve) => {
+      openModal({ title, bodyHTML, buttons:[{label:"OK", onClick: () => { closeModal(); resolve(true); }}] });
+    });
+  }
+  function modalConfirm(title, bodyHTML, okLabel="OK", cancelLabel="Cancelar"){
+    return new Promise((resolve) => {
+      openModal({
+        title,
+        bodyHTML,
+        buttons:[
+          {label: cancelLabel, variant:"ghost", onClick: () => { closeModal(); resolve(false); }},
+          {label: okLabel, onClick: () => { closeModal(); resolve(true); }}
+        ]
+      });
+    });
+  }
+
   /** Pontuação */
   const SCORE_RULES = app.data?.SCORE_RULES || {
     correct: +5,
@@ -382,7 +400,27 @@ export function bootGameCore(app){
   /** =========================
    * Pontuação + feedback simples
    * ========================= */
-  function addScore(delta){
+  function ensureScoreFloatLayer(){
+  let layer = document.getElementById('scoreFloatLayer');
+  if (!layer){
+    layer = document.createElement('div');
+    layer.id = 'scoreFloatLayer';
+    document.body.appendChild(layer);
+  }
+}
+
+function scoreFloat(delta){
+  ensureScoreFloatLayer();
+  const layer = document.getElementById('scoreFloatLayer');
+  if (!layer) return;
+  const el = document.createElement('div');
+  el.className = 'score-float';
+  el.textContent = (delta > 0 ? `+${delta}` : `${delta}`) + ' pts';
+  layer.appendChild(el);
+  setTimeout(() => el.remove(), 1400);
+}
+
+function addScore(delta){
     score += delta;
     taskScore[levelIndex] += delta;
   }
@@ -465,7 +503,25 @@ export function bootGameCore(app){
       });
     });
   }
-  function applyReplacementAt(start, len, replacement){
+  
+  function applyAutoFix(rule){
+    // aplica a primeira ocorrência do "wrong"
+    const re = rule.wrong;
+    re.lastIndex = 0;
+    const m = re.exec(currentText);
+    if (!m){
+      modalOk("Ops", "<p>Não encontrei este erro no texto atual.</p>");
+      return;
+    }
+    const start = m.index;
+    const len = m[0].length;
+    const replacement = rule.correct || "";
+    applyReplacementAt(start, len, replacement);
+    fixedRuleIds.add(rule.id);
+    renderMessage();
+    finalizeIfDone();
+  }
+function applyReplacementAt(start, len, replacement){
     const before = currentText.slice(0, start);
     const after = currentText.slice(start + len);
     currentText = before + replacement + after;
@@ -495,6 +551,10 @@ export function bootGameCore(app){
     fixedRuleIds.add(rule.id);
     registerCorrect();
 
+    // Tutorial: escurece/blur e permite clique apenas no alvo
+    if (messageArea){
+      messageArea.classList.toggle('tutorial-mode', !!inTutorial && !!(lvl.focusRuleId || lvl.focusPlain));
+    }
     renderMessage();
     finalizeIfDone();
   }
@@ -530,7 +590,11 @@ export function bootGameCore(app){
               if (repl !== "") markCorrected(rule.id, start, repl);
 
               registerAutoCorrect();
-              renderMessage();
+              // Tutorial: escurece/blur e permite clique apenas no alvo
+    if (messageArea){
+      messageArea.classList.toggle('tutorial-mode', !!inTutorial && !!(lvl.focusRuleId || lvl.focusPlain));
+    }
+    renderMessage();
               finalizeIfDone();
             }
           }
@@ -548,6 +612,10 @@ export function bootGameCore(app){
 
     registerCorrect();
     closeModal();
+    // Tutorial: escurece/blur e permite clique apenas no alvo
+    if (messageArea){
+      messageArea.classList.toggle('tutorial-mode', !!inTutorial && !!(lvl.focusRuleId || lvl.focusPlain));
+    }
     renderMessage();
     finalizeIfDone();
   }
@@ -600,7 +668,11 @@ export function bootGameCore(app){
     const done = fixedRuleIds.size >= currentRules.length;
     if (done){
       levelLocked = true;
-      renderMessage();
+      // Tutorial: escurece/blur e permite clique apenas no alvo
+    if (messageArea){
+      messageArea.classList.toggle('tutorial-mode', !!inTutorial && !!(lvl.focusRuleId || lvl.focusPlain));
+    }
+    renderMessage();
       nextLevelBtn?.classList.remove("btn-disabled");
       nextLevelBtn?.setAttribute("aria-disabled", "false");
     }
@@ -641,6 +713,10 @@ export function bootGameCore(app){
     if (expected !== "") markCorrected(rule.id, start, expected);
 
     registerAutoCorrect();
+    // Tutorial: escurece/blur e permite clique apenas no alvo
+    if (messageArea){
+      messageArea.classList.toggle('tutorial-mode', !!inTutorial && !!(lvl.focusRuleId || lvl.focusPlain));
+    }
     renderMessage();
     finalizeIfDone();
   }
@@ -1021,6 +1097,10 @@ export function bootGameCore(app){
     }
 
     updateHUD();
+    // Tutorial: escurece/blur e permite clique apenas no alvo
+    if (messageArea){
+      messageArea.classList.toggle('tutorial-mode', !!inTutorial && !!(lvl.focusRuleId || lvl.focusPlain));
+    }
     renderMessage();
 
     openModal({
