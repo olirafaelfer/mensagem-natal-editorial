@@ -61,7 +61,9 @@ export function bootGameCore(app){
   const headerTitle = document.getElementById("headerTitle");
   const userNameEl = document.getElementById("userName");
   const userSectorEl = document.getElementById("userSector");
-  const startBtn = document.getElementById("startBtn");
+  const challenge1Btn = document.getElementById("challenge1Btn");
+  const challenge2Btn = document.getElementById("challenge2Btn");
+  const challenge3Btn = document.getElementById("challenge3Btn");
 
   const levelLabel = document.getElementById("levelLabel");
   const remainingCount = document.getElementById("remainingCount");
@@ -407,57 +409,59 @@ export function bootGameCore(app){
     });
   }
 
-  function openConfirmSelection(selectedText, onConfirm){
-    const safe = escapeHtml(selectedText || "");
-    openModal({
-      title: "Confirmar",
-      bodyHTML: `
-        <p><strong>Tem certeza que deseja corrigir este trecho?</strong></p>
-        <p style="margin-top:8px;padding:10px;border-radius:10px;background:rgba(255,255,255,.06)">${safe}</p>
-      `,
-      buttons: [
-        { label: "Cancelar", variant: "ghost", onClick: closeModal },
-        { label: "Sim, corrigir", onClick: () => { closeModal(); onConfirm(); } }
-      ]
-    });
-  }
-
   function onPlainClick(span){
     if (levelLocked){
       onLockedTextClick();
       return;
     }
 
-    const start = Number(span.dataset.start || "NaN");
-    const len = Number(span.dataset.len || "NaN");
-    const selectedText = span.textContent || "";
-
-    // Se já foi marcado como "misclick", não repune
-    if (span.dataset.misclick === "1" || hasMisclickAt(start, len)){
+    // já marcado como misclick? não repune
+    if (span.dataset.misclick === "1"){
       openModal({
-        title: "Revisão",
-        bodyHTML: `<p>Esse trecho já foi marcado.</p>`,
-        buttons: [{ label:"Ok", onClick: closeModal }]
+        title: "Já marcado",
+        bodyHTML: `<p>Esse trecho já foi marcado como erro.</p>`,
+        buttons: [{ label:"OK", onClick: closeModal }]
       });
       return;
     }
 
-    // Confirmação antes de punir
-    openConfirmSelection(selectedText, () => {
-      span.dataset.misclick = "1";
-      span.classList.add("error");
-      addMisclickAt(start, len);
+    const selected = span.textContent || "";
 
-      registerWrong();
-      updateHUD();
+    openModal({
+      title: "Confirmar ação",
+      bodyHTML: `
+        <p><strong>Tem certeza que deseja corrigir este trecho?</strong></p>
+        <p class="quote" style="margin-top:10px">“${escapeHtml(selected)}”</p>
+      `,
+      buttons: [
+        { label:"Cancelar", variant:"ghost", onClick: closeModal },
+        { label:"Sim, corrigir", onClick: () => {
+            closeModal();
 
-      openModal({
-        title: "Já está correto!",
-        bodyHTML: `<p>A palavra <strong>“${escapeHtml(selectedText)}”</strong> já está correta! Que pena, você perdeu <strong>${Math.abs(SCORE_RULES.wrong)}</strong> pontos.</p>`,
-        buttons: [{ label:"Entendi", onClick: closeModal }]
-      });
+            // aplica penalidade e marca vermelho persistente
+            const start = Number(span.dataset.start || "NaN");
+            const len = Number(span.dataset.len || "NaN");
+
+            span.dataset.misclick = "1";
+            span.classList.add("error");
+            addMisclickAt(start, len);
+            registerWrong();
+            updateHUD();
+
+            openModal({
+              title: "Trecho já correto",
+              bodyHTML: `
+                <p>A palavra <strong>“${escapeHtml(selected)}”</strong> já está correta!</p>
+                <p>Que pena, você perdeu <strong>${Math.abs(SCORE_RULES.wrong)}</strong> pontos.</p>
+              `,
+              buttons: [{ label:"OK", onClick: closeModal }]
+            });
+          } }
+      ]
     });
   }
+
+
   function applyReplacementAt(start, len, replacement){
     const before = currentText.slice(0, start);
     const after = currentText.slice(start + len);
@@ -501,93 +505,143 @@ export function bootGameCore(app){
       : normalize(typed) === normalize(expected);
 
     if (!ok){
+      // penaliza e oferece tentar de novo ou correção automática
       registerWrong();
       updateHUD();
 
+      const selected = errSpan.textContent || "";
+
       openModal({
-        title: "Ops!",
+        title: "Ops, a correção não está certa!",
         bodyHTML: `
-          <p><strong>Ops, a correção não está certa!</strong> Você perdeu <strong>${Math.abs(SCORE_RULES.wrong)}</strong> pontos.</p>
-          <p>Gostaria de tentar de novo ou prefere uma correção automática? (Você perderá <strong>${Math.abs(SCORE_RULES.auto)}</strong> pontos se usar a correção automática).</p>
+          <p>Ops, a correção não está certa! Você perdeu <strong>${Math.abs(SCORE_RULES.wrong)}</strong> pontos.</p>
+          <p style="margin-top:10px">Gostaria de tentar de novo ou prefere uma correção automática?</p>
+          <p class="muted" style="margin-top:8px">
+            (Você perderá <strong>${Math.abs(SCORE_RULES.auto)}</strong> pontos se usar a correção automática).
+          </p>
         `,
         buttons: [
-          { label:"Tentar de novo", variant:"ghost", onClick: () => { closeModal(); onErrorClick(errSpan, rule); } },
-          { label:"Correção automática", onClick: () => {
+          { label:"Tentar de novo", variant:"ghost", onClick: () => {
               closeModal();
+              openCorrectionUI(errSpan, rule);
+            } },
+          { label:"Correção automática", onClick: () => {
+              // aplica a correção certa com penalidade de auto
               const start = Number(errSpan.dataset.start);
               const len = Number(errSpan.dataset.len);
-              const repl = rule.correct;
 
-              applyReplacementAt(start, len, repl);
+              applyReplacementAt(start, len, expected);
               fixedRuleIds.add(rule.id);
-              if (repl !== "") markCorrected(rule.id, start, repl);
+              if (expected !== "") markCorrected(rule.id, start, expected);
 
               registerAutoCorrect();
+              closeModal();
               renderMessage();
               finalizeIfDone();
-            }
-          }
+
+              openModal({
+                title: "Correção automática aplicada",
+                bodyHTML: `
+                  <p>Aplicamos a correção correta para <strong>“${escapeHtml(selected)}”</strong>.</p>
+                  <p>Você perdeu <strong>${Math.abs(SCORE_RULES.auto)}</strong> pontos por usar a correção automática.</p>
+                `,
+                buttons: [{ label:"OK", onClick: closeModal }]
+              });
+            } }
         ]
       });
+
       return;
     }
 
+    // correto: aplica e confirma com OK (não fecha sozinho)
     const start = Number(errSpan.dataset.start);
     const len = Number(errSpan.dataset.len);
 
     applyReplacementAt(start, len, expected);
     fixedRuleIds.add(rule.id);
+
     if (expected !== "") markCorrected(rule.id, start, expected);
 
     registerCorrect();
-    closeModal();
     renderMessage();
     finalizeIfDone();
+
+    openModal({
+      title: "Correção aplicada!",
+      bodyHTML: `<p>Boa! Correção registrada.</p>`,
+      buttons: [{ label:"OK", onClick: closeModal }]
+    });
   }
+
+
   function onErrorClick(errSpan, rule){
     if (levelLocked){
       onLockedTextClick();
       return;
     }
 
-    const selectedText = errSpan.textContent || "";
+    const selected = errSpan.textContent || "";
 
-    openConfirmSelection(selectedText, () => {
-      const wrongText = errSpan.textContent || "";
-      const expected = rule.correct;
-
-      if (expected === "" && wrongText === ","){
-        openModal({
-          title: "Remover vírgula",
-          bodyHTML: `<p>Você quer <strong>remover</strong> esta vírgula?</p>`,
-          buttons: [
-            { label:"Cancelar", variant:"ghost", onClick: closeModal },
-            { label:"Remover", onClick: () => { closeModal(); confirmCommaRemoval(errSpan, rule); } }
-          ]
-        });
-        return;
-      }
-
-      openModal({
-        title: `Corrigir (${rule.label})`,
-        bodyHTML: `
-          <p>Trecho selecionado:</p>
-          <p style="margin:8px 0 0"><strong>${escapeHtml(wrongText)}</strong></p>
-
-          <p style="margin:12px 0 6px">Digite a forma correta:</p>
-          <input class="input" id="fixInput" type="text" autocomplete="off"
-            placeholder="${expected === "" ? "Deixe em branco para remover" : "Digite aqui..."}" />
-
-          <p class="muted" style="margin:10px 0 0">Erros podem ser de acentuação, ortografia, gramática, pontuação etc.</p>
-        `,
-        buttons: [
-          { label:"Confirmar correção", onClick: () => confirmTyped(errSpan, rule) }
-        ]
-      });
-
-      setTimeout(() => document.getElementById("fixInput")?.focus(), 30);
+    openModal({
+      title: "Confirmar ação",
+      bodyHTML: `
+        <p><strong>Tem certeza que deseja corrigir este trecho?</strong></p>
+        <p class="quote" style="margin-top:10px">“${escapeHtml(selected)}”</p>
+      `,
+      buttons: [
+        { label:"Cancelar", variant:"ghost", onClick: closeModal },
+        { label:"Sim, corrigir", onClick: () => {
+            closeModal();
+            // abre a UI de correção (digitada ou remover vírgula)
+            openCorrectionUI(errSpan, rule);
+          } }
+      ]
     });
   }
+
+  function openCorrectionUI(errSpan, rule){
+    const kind = String(rule.kind || "");
+    const expected = rule.correct;
+
+    // caso especial: remover vírgula (expected = "" e token é vírgula)
+    if (expected === "" && (errSpan.textContent || "").trim() === ","){
+      openModal({
+        title: "Remover vírgula",
+        bodyHTML: `
+          <p>Você deseja remover esta vírgula?</p>
+          <p class="quote" style="margin-top:10px">“,”</p>
+        `,
+        buttons: [
+          { label:"Cancelar", variant:"ghost", onClick: closeModal },
+          { label:"Remover", onClick: () => confirmCommaRemoval(errSpan, rule) }
+        ]
+      });
+      return;
+    }
+
+    // correção digitada
+    openModal({
+      title: "Corrigir trecho",
+      bodyHTML: `
+        <p>Digite a correção para:</p>
+        <p class="quote" style="margin-top:10px">“${escapeHtml(errSpan.textContent || "")}”</p>
+        <label class="field" style="margin-top:12px">
+          <span>Correção</span>
+          <input class="input" id="fixInput" placeholder="Digite aqui..." />
+        </label>
+        <p class="muted" style="margin:10px 0 0">Erros podem ser de acentuação, ortografia, gramática ou pontuação.</p>
+      `,
+      buttons: [
+        { label:"Cancelar", variant:"ghost", onClick: closeModal },
+        { label:"Confirmar correção", onClick: () => confirmTyped(errSpan, rule) }
+      ]
+    });
+
+    setTimeout(() => document.getElementById("fixInput")?.focus(), 30);
+  }
+
+
   function finalizeIfDone(){
     updateHUD();
     const done = fixedRuleIds.size >= currentRules.length;
@@ -953,59 +1007,152 @@ export function bootGameCore(app){
     });
   }
 
-  startBtn?.addEventListener("click", () => {
-    const name = getUserName();
-    const sector = getUserSector();
-
-    if (!name){
-      openModal({ title:"Atenção", bodyHTML:`<p>Por favor, informe seu nome.</p>`, buttons:[{label:"Ok", onClick: closeModal}] });
-      return;
+    function isLogged(){
+      return !!(app.auth && app.auth.isLogged && app.auth.isLogged());
     }
-    if (!sector){
-      openModal({ title:"Atenção", bodyHTML:`<p>Por favor, selecione seu setor.</p>`, buttons:[{label:"Ok", onClick: closeModal}] });
-      return;
+  
+    function refreshChallengeButtons(activeId = 1){
+      // trava/destrava 2 e 3
+      const logged = isLogged();
+  
+      const setLocked = (btn, locked) => {
+        if (!btn) return;
+        btn.disabled = !!locked;
+        btn.classList.toggle("btn-disabled", !!locked);
+        // manter texto consistente
+        const base = btn.id === "challenge2Btn" ? "Desafio 2" : (btn.id === "challenge3Btn" ? "Desafio 3" : "Desafio 1");
+        btn.textContent = locked && btn.id !== "challenge1Btn" ? `${base} 🔒` : base;
+      };
+  
+      setLocked(challenge2Btn, !logged);
+      setLocked(challenge3Btn, !logged);
+  
+      // estado ativo (apenas o selecionado muda visual)
+      [challenge1Btn, challenge2Btn, challenge3Btn].forEach((b, i) => {
+        if (!b) return;
+        const id = i + 1;
+        b.classList.toggle("is-active", id === activeId);
+      });
     }
-
-    localStorage.setItem("mission_name", name);
-    localStorage.setItem("mission_sector", sector);
-
-    levelIndex = 0;
-    score = 0;
-    wrongCount = 0;
-    correctCount = 0;
-    hintsUsed = 0;
-    autoUsed = 0;
-
-    taskScore[0]=taskScore[1]=taskScore[2]=0;
-    taskCorrect[0]=taskCorrect[1]=taskCorrect[2]=0;
-    taskWrong[0]=taskWrong[1]=taskWrong[2]=0;
-
-    currentTextByLevel[0] = "";
-    currentTextByLevel[1] = "";
-    currentTextByLevel[2] = "";
-
-openModal({
-  title: "Pontuação da missão",
-  bodyHTML: `
-    <ul style="margin:0; padding-left:18px; color:rgba(255,255,255,.78); line-height:1.7">
-      <li>Correção correta: <strong>+${SCORE_RULES.correct}</strong></li>
-      <li>Correção incorreta: <strong>${SCORE_RULES.wrong}</strong></li>
-      <li>Avançar sem concluir: <strong>${SCORE_RULES.skip}</strong></li>
-      <li>Colas utilizadas: <strong>${SCORE_RULES.hint}</strong></li>
-      <li>Correção automática: <strong>${SCORE_RULES.auto}</strong></li>
-    </ul>
-
-    <hr style="border:0; border-top:1px solid rgba(255,255,255,.10); margin:14px 0">
-
-    <div class="auth-note" style="margin-top:0">
-      <b>Observação</b><br/>
-      Os erros e correções serão apresentados ao final da atividade.
-      Não se preocupe com seu desempenho: esta atividade busca interatividade e curiosidades sobre o trabalho editorial!
-    </div>
-  `,
-  buttons: [{ label:"Começar", onClick: () => { closeModal(); showOnly(screenGame); startLevel(); } }]
-});
-});
+  
+    function ensureNameSectorOrWarn(){
+      const name = getUserName();
+      const sector = getUserSector();
+  
+      if (!name){
+        openModal({ 
+          title:"Atenção", 
+          bodyHTML:`<p>Por favor, informe o seu <strong>nome</strong>.</p>`, 
+          buttons:[{label:"OK", onClick: closeModal}] 
+        });
+        return null;
+      }
+      if (!sector){
+        openModal({ 
+          title:"Atenção", 
+          bodyHTML:`<p>Por favor, selecione o seu <strong>setor</strong>.</p>`, 
+          buttons:[{label:"OK", onClick: closeModal}] 
+        });
+        return null;
+      }
+      return { name, sector };
+    }
+  
+    function showTutorialOfferThen(startFn){
+      // Apenas antes do Desafio 1. Usuário pode pular.
+      openModal({
+        title: "Tutorial",
+        bodyHTML: `
+          <p>O tutorial explicará brevemente a dinâmica do jogo.</p>
+          <p class="muted" style="margin-top:10px">Se preferir, você pode pular.</p>
+        `,
+        buttons: [
+          { label:"Pular", variant:"ghost", onClick: () => { closeModal(); startFn(); } },
+          { label:"Ver tutorial", onClick: () => { closeModal(); runTutorialSlides(startFn); } }
+        ]
+      });
+    }
+  
+    function runTutorialSlides(onDone){
+      const steps = [
+        {
+          title: "Como funciona",
+          html: `<p>Você vai clicar em trechos do texto para <strong>corrigir</strong> erros de revisão editorial.</p>`
+        },
+        {
+          title: "Confirmação",
+          html: `<p>Ao clicar em qualquer trecho, o jogo pergunta se você realmente quer corrigir.</p>`
+        },
+        {
+          title: "Acertos e erros",
+          html: `<p>Se o trecho estiver errado e você corrigir certo, você ganha pontos. Se errar ou tentar corrigir algo que já está correto, você perde pontos.</p>`
+        },
+        {
+          title: "Dica e correção automática",
+          html: `<p>Você pode pedir dica ou usar correção automática, mas isso tem penalidade.</p>`
+        },
+        {
+          title: "Boa sorte!",
+          html: `<p>Pronto! Vamos começar?</p>`
+        }
+      ];
+  
+      let i = 0;
+      const showStep = () => {
+        const step = steps[i];
+        openModal({
+          title: step.title,
+          bodyHTML: step.html,
+          buttons: [
+            ...(i > 0 ? [{ label:"Voltar", variant:"ghost", onClick: () => { closeModal(); i -= 1; showStep(); } }] : []),
+            ...(i < steps.length - 1
+              ? [{ label:"Próximo", onClick: () => { closeModal(); i += 1; showStep(); } }]
+              : [{ label:"Começar", onClick: () => { closeModal(); onDone(); } }])
+          ]
+        });
+      };
+      showStep();
+    }
+  
+    function confirmStartChallenge(challengeId){
+      // gate login para 2 e 3
+      if (challengeId > 1 && !isLogged()){
+        app.auth?.openGate?.();
+        return;
+      }
+  
+      const ok = ensureNameSectorOrWarn();
+      if (!ok) return;
+  
+      refreshChallengeButtons(challengeId);
+  
+      openModal({
+        title: `Iniciar Desafio ${challengeId}`,
+        bodyHTML: `<p>Deseja iniciar o <strong>Desafio ${challengeId}</strong> agora?</p>`,
+        buttons: [
+          { label:"Cancelar", variant:"ghost", onClick: closeModal },
+          { label:"Iniciar", onClick: () => {
+              closeModal();
+              // desafio 1 oferece tutorial; demais começam direto
+              const startNow = () => { showOnly(screenGame); startLevel(); };
+              if (challengeId === 1){
+                showTutorialOfferThen(startNow);
+              } else {
+                startNow();
+              }
+            } }
+        ]
+      });
+    }
+  
+    challenge1Btn?.addEventListener("click", () => confirmStartChallenge(1));
+    challenge2Btn?.addEventListener("click", () => confirmStartChallenge(2));
+    challenge3Btn?.addEventListener("click", () => confirmStartChallenge(3));
+  
+    // Atualiza lock/unlock quando login muda (auth dispara evento simples)
+    app.auth?.onAuthStateChanged?.(() => refreshChallengeButtons());
+    refreshChallengeButtons(1);
+  
 
   restartBtn?.addEventListener("click", () => showOnly(screenForm));
 

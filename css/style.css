@@ -926,57 +926,19 @@ body.modal-open #overlay{
 .tip-muted{ color: rgba(255,255,255,.68); }
 
 
+
 /* =========================
-   Trilha (Desafios)
+   Trilha de desafios (botões)
 ========================= */
-.trail{
+#challengeActions{
   display:flex;
   gap:10px;
   flex-wrap:wrap;
 }
-
-.trail-btn{
-  border:1px solid rgba(255,255,255,.16);
-  background:rgba(255,255,255,.06);
-  color:rgba(255,255,255,.92);
-  padding:10px 12px;
-  border-radius:14px;
-  cursor:pointer;
-  transition:transform .05s ease, background .15s ease, border-color .15s ease;
-  font-weight:700;
+#challengeActions .btn.is-active{
+  box-shadow: 0 0 0 2px rgba(255,255,255,.25) inset;
 }
-
-.trail-btn:hover{ transform: translateY(-1px); }
-
-.trail-btn.active{
-  border-color: rgba(255,255,255,.28);
-  background: rgba(255,255,255,.12);
-}
-
-.trail-btn:disabled,
-.trail-btn[data-locked="1"]{
-  opacity:.55;
+#challengeActions .btn.btn-disabled{
+  opacity:.6;
   cursor:not-allowed;
-}
-
-.profile-stats{
-  display:grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap:10px;
-}
-
-.profile-stats .stat{
-  border:1px solid rgba(255,255,255,.10);
-  background:rgba(255,255,255,.05);
-  border-radius:16px;
-  padding:10px 12px;
-}
-
-.profile-stats .big{
-  font-size:20px;
-  font-weight:900;
-  margin-top:4px;
-}
-@media (max-width: 760px){
-  .profile-stats{ grid-template-columns: repeat(2, minmax(0,1fr)); }
 }
