@@ -90,8 +90,7 @@ function onChallengeClick(ch){
         bodyHTML:`<p>Para liberar este desafio, conclua o desafio anterior.</p>`,
         buttons:[
         {label:"Fechar", variant:"ghost", onClick: closeModal},
-        (first ? {label:"Correção automática", onClick: () => { closeModal(); confirmAuto(first, dom.hintBtn); }} : null)
-      ].filter(Boolean)
+              ].filter(Boolean)
     });
       return;
     }
@@ -318,8 +317,7 @@ function onChallengeClick(ch){
     if (!nextRule){
       openModal({ title:"Dica", bodyHTML:`<p>Você já corrigiu todos os trechos desta tarefa 🎉</p>`, buttons:[
         {label:"Fechar", variant:"ghost", onClick: closeModal},
-        (first ? {label:"Correção automática", onClick: () => { closeModal(); confirmAuto(first, dom.hintBtn); }} : null)
-      ].filter(Boolean)
+              ].filter(Boolean)
     });
       return;
     }
@@ -355,8 +353,7 @@ function onChallengeClick(ch){
             bodyHTML:`<p>A palavra/trecho <b>"${escapeHtml(el.textContent)}"</b> já está correta! Que pena, você perdeu <b>${Math.abs(app.data.SCORE_RULES.wrong)}</b> pontos.</p>`,
             buttons:[
         {label:"Fechar", variant:"ghost", onClick: closeModal},
-        (first ? {label:"Correção automática", onClick: () => { closeModal(); confirmAuto(first, dom.hintBtn); }} : null)
-      ].filter(Boolean)
+              ].filter(Boolean)
     });
         }}
       ]
@@ -519,6 +516,24 @@ function onChallengeClick(ch){
   });
 }
 
+
+
+  function renderFinalMessages(){
+    const wrap = dom.finalMsgsWrap || document.getElementById("finalMsgsWrap");
+    if (!wrap) return;
+    const log = (engine.getFixLog?.() || []).slice(-50);
+    if (!log.length){
+      wrap.innerHTML = `<p class="muted">Nenhuma correção registrada nesta tarefa.</p>`;
+      return;
+    }
+    wrap.innerHTML = log.map(it => `
+      <div class="fix-item">
+        <div class="fix-before">Antes: <b>${escapeHtml(it.before||"")}</b></div>
+        <div class="fix-after">Depois: <b>${escapeHtml(it.after||"")}</b></div>
+        ${it.reason ? `<div class="muted" style="margin-top:6px">${escapeHtml(it.reason)}</div>` : ``}
+      </div>
+    `).join("");
+  }
 
 function onNext(){
   if (!engine.isDone()) return;

@@ -1,4 +1,5 @@
-// js/app/app.js — contexto global (DOM + helpers)
+// js/a
+    populateSectors,pp/app.js — contexto global (DOM + helpers)
 export function createApp({ firebase, THEME_PRESETS, SECTORS, SCORE_RULES }){
   const dom = {
     // Screens
@@ -54,7 +55,12 @@ export function createApp({ firebase, THEME_PRESETS, SECTORS, SCORE_RULES }){
     return clampName((dom.userNameEl?.value || localStorage.getItem("mission_name") || "").trim());
   }
 
-  function getUserSector(){
+  function populateSectors(){
+    if (!dom.userSector) return;
+    dom.userSector.innerHTML = '<option value="">Selecione...</option>' + (SECTORS||[]).map(s=>`<option value="${escapeHtml(s)}">${escapeHtml(s)}</option>`).join("");
+  }
+
+function getUserSector(){
     return (dom.userSectorEl?.value || localStorage.getItem("mission_sector") || "").trim();
   }
 
@@ -70,3 +76,5 @@ export function createApp({ firebase, THEME_PRESETS, SECTORS, SCORE_RULES }){
   window.__MISSION_APP__ = app;
   return app;
 }
+
+function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c])); }

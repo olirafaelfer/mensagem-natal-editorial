@@ -1215,3 +1215,18 @@ img, svg, video, canvas{ filter:none !important; }
   0%,100%{ transform: translateX(-50%) scale(1); opacity: .9; }
   50%{ transform: translateX(-50%) scale(1.18); opacity: 1; }
 }
+
+
+/* ===== Project 2.0 stability overrides ===== */
+:root{ --container: 450px; }
+.container{ max-width: var(--container) !important; margin: 0 auto; }
+.topbar-banner .container{ max-width: var(--container) !important; }
+
+/* ranking */
+.rank-row{ display:flex; align-items:center; gap:10px; padding:10px 12px; border-radius:12px; background: rgba(255,255,255,.05); margin:8px 0; }
+.rank-row.me{ outline:2px solid rgba(255,255,255,.22); }
+.rank-pos{ width:28px; font-weight:800; opacity:.9; }
+.rank-main{ flex:1; min-width:0; }
+.rank-name{ font-weight:800; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.rank-sector{ font-size:12px; opacity:.75; }
+.rank-score{ font-weight:900; }

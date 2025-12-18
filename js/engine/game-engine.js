@@ -12,6 +12,7 @@ export class GameEngine{
     this.levelIndex = 0;
     this.score = 0;
     this.correct = 0;
+    this.wrong = 0;
     this.hints = 0;
     this.autoUsed = 0;
     this.fixedRuleIds = new Set();
@@ -27,6 +28,7 @@ export class GameEngine{
     this.levelIndex = 0;
     this.score = 0;
     this.correct = 0;
+    this.wrong = 0;
     this.hints = 0;
     this.autoUsed = 0;
     this.fixedRuleIds = new Set();
@@ -86,6 +88,7 @@ isDone(){
   }
 
   penalizeMisclick(){
+    this.wrong++;
     this.misclicks += 1;
     return this.addScore(this.scoreRules.wrong);
   }

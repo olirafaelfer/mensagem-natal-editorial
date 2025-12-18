@@ -113,7 +113,6 @@ export function bootModal(app){
       overlay.classList.add("hidden");
       closeTimer = null;
       unlockBodyScroll();
-    currentDismissible = !!dismissible;
 
       // restaura posição do scroll exatamente onde estava
       window.scrollTo(0, scrollYBefore);

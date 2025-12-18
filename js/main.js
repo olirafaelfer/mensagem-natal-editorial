@@ -67,6 +67,7 @@ const firebase = {
 // Cria app e faz boot
 // =========================
 const app = createApp({ firebase, THEME_PRESETS, SECTORS, SCORE_RULES });
+  app.populateSectors?.();
 
 function pickBoot(mod, candidates){
   if (!mod) return null;
