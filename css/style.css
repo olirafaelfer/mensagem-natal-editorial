@@ -131,7 +131,7 @@ hr{
 
 /* wrapper central (igual mobile, mesmo no desktop) */
 .container{
-  width: min(560px, calc(100% - 32px)); /* 560px deixa bem “mobile-like” */
+  width: min(450px, calc(100% - 24px)); /* desktop: no máx. 450px */
   margin-left: auto;
   margin-right: auto;
 }
@@ -1098,4 +1098,29 @@ html, body{
 .topbar-logo{
   display:block;
   max-height: 54px;
+}
+
+
+/* === HARDEN_LIGHT_MODE === */
+
+/* Evita “dark mode” forçado estragar o layout (o máximo que dá via CSS) */
+html{ color-scheme: light; }
+@media (prefers-color-scheme: dark){ html{ color-scheme: light; } }
+
+/* Alguns navegadores podem aplicar filtros em imagens no modo escuro/alto-contraste */
+.topbar-logo, img{ filter:none !important; }
+
+/* Windows/Edge high-contrast (forced colors) */
+@media (forced-colors: active){
+  *{ forced-color-adjust: none; }
+  html, body{
+    background: #0b1220 !important;
+    color: #e9edf7 !important;
+  }
+  a{ color: #7cc7ff !important; }
+  .card, .panel, .modal, .topbar-banner{
+    background: #101a2e !important;
+    border-color: rgba(255,255,255,.18) !important;
+  }
+  .topbar-logo{ filter:none !important; }
 }
