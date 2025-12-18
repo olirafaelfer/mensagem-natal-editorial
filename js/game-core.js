@@ -201,7 +201,6 @@ export function bootGameCore(app){
 
     if (wrongCountEl) wrongCountEl.textContent = String(wrongCount);
     if (scoreCountEl) scoreCountEl.textContent = String(score);
-    scoreFloat(delta);
 
     const isDone = done >= total;
     if (nextLevelBtn){
