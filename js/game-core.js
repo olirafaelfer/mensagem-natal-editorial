@@ -71,7 +71,8 @@ export function bootGameCore(app){
   app.levels = levels;
 
   // Tutorial (3 níveis)
-  const tutorialLevels = getTutorialLevels();
+  let tutorialLevels = [];
+  try { tutorialLevels = getTutorialLevels() || []; } catch (e){ console.warn('Tutorial indisponível:', e); tutorialLevels = []; }
   let inTutorial = false;
 
   /** =========================
@@ -564,7 +565,7 @@ function applyReplacementAt(start, len, replacement){
 
     // Tutorial: escurece/blur e permite clique apenas no alvo
     if (messageArea){
-      messageArea.classList.toggle('tutorial-mode', !!inTutorial && !!(lvl.focusRuleId || lvl.focusPlain));
+      messageArea.classList.toggle('tutorial-mode', !!inTutorial && !!(currentLevel?.focusRuleId || currentLevel?.focusPlain));
     }
     renderMessage();
     finalizeIfDone();
@@ -603,7 +604,7 @@ function applyReplacementAt(start, len, replacement){
               registerAutoCorrect();
               // Tutorial: escurece/blur e permite clique apenas no alvo
     if (messageArea){
-      messageArea.classList.toggle('tutorial-mode', !!inTutorial && !!(lvl.focusRuleId || lvl.focusPlain));
+      messageArea.classList.toggle('tutorial-mode', !!inTutorial && !!(currentLevel?.focusRuleId || currentLevel?.focusPlain));
     }
     renderMessage();
               finalizeIfDone();
@@ -625,7 +626,7 @@ function applyReplacementAt(start, len, replacement){
     closeModal();
     // Tutorial: escurece/blur e permite clique apenas no alvo
     if (messageArea){
-      messageArea.classList.toggle('tutorial-mode', !!inTutorial && !!(lvl.focusRuleId || lvl.focusPlain));
+      messageArea.classList.toggle('tutorial-mode', !!inTutorial && !!(currentLevel?.focusRuleId || currentLevel?.focusPlain));
     }
     renderMessage();
     finalizeIfDone();
@@ -681,7 +682,7 @@ function applyReplacementAt(start, len, replacement){
       levelLocked = true;
       // Tutorial: escurece/blur e permite clique apenas no alvo
     if (messageArea){
-      messageArea.classList.toggle('tutorial-mode', !!inTutorial && !!(lvl.focusRuleId || lvl.focusPlain));
+      messageArea.classList.toggle('tutorial-mode', !!inTutorial && !!(currentLevel?.focusRuleId || currentLevel?.focusPlain));
     }
     renderMessage();
       nextLevelBtn?.classList.remove("btn-disabled");
@@ -726,7 +727,7 @@ function applyReplacementAt(start, len, replacement){
     registerAutoCorrect();
     // Tutorial: escurece/blur e permite clique apenas no alvo
     if (messageArea){
-      messageArea.classList.toggle('tutorial-mode', !!inTutorial && !!(lvl.focusRuleId || lvl.focusPlain));
+      messageArea.classList.toggle('tutorial-mode', !!inTutorial && !!(currentLevel?.focusRuleId || currentLevel?.focusPlain));
     }
     renderMessage();
     finalizeIfDone();
@@ -1172,7 +1173,7 @@ function applyReplacementAt(start, len, replacement){
     resetMisclickRanges(); // ✅ reseta misclick por nível
     levelLocked = false;
 
-    if (headerTitle) headerTitle.textContent = `Revisão da Mensagem de Natal — ${lvl.name}`;
+    /* headerTitle removido por design minimalista */
     if (levelLabel) levelLabel.textContent = lvl.name;
     if (instruction) instruction.textContent = lvl.instruction || "";
 
@@ -1185,7 +1186,7 @@ function applyReplacementAt(start, len, replacement){
     updateHUD();
     // Tutorial: escurece/blur e permite clique apenas no alvo
     if (messageArea){
-      messageArea.classList.toggle('tutorial-mode', !!inTutorial && !!(lvl.focusRuleId || lvl.focusPlain));
+      messageArea.classList.toggle('tutorial-mode', !!inTutorial && !!(currentLevel?.focusRuleId || currentLevel?.focusPlain));
     }
     renderMessage();
 

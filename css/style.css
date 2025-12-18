@@ -19,6 +19,16 @@
   --container: 1060px;
 }
 
+
+
+/* ===== Anti "tema escuro forçado" (evita navegador/extensão inverter cores/imagens) ===== */
+:root{ color-scheme: light; }
+html{ forced-color-adjust: none; }
+img{ forced-color-adjust: none; filter: none !important; }
+/* mantém o mesmo visual mesmo que o sistema esteja em dark */
+@media (prefers-color-scheme: dark){
+  :root{ color-scheme: light; }
+}
 *{ box-sizing:border-box; }
 html, body{ height:100%; }
 
@@ -147,9 +157,7 @@ hr{
   gap: 12px;
 }
 
-.topbar-row-1{
-  grid-template-columns: auto 1fr auto;
-}
+.topbar-row-1{ display:flex; align-items:center; justify-content:space-between; }
 
 .topbar-row-2{
   grid-template-columns: 1fr auto;
