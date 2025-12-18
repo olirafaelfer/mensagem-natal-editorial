@@ -201,7 +201,6 @@ export function bootGameCore(app){
 
     if (wrongCountEl) wrongCountEl.textContent = String(wrongCount);
     if (scoreCountEl) scoreCountEl.textContent = String(score);
-
     const isDone = done >= total;
     if (nextLevelBtn){
       nextLevelBtn.classList.remove('btn-disabled');
@@ -224,11 +223,11 @@ export function bootGameCore(app){
     misclickRanges.push({ start, len });
   }
 
-  function shiftMisclickRanges(afterIndex, 0){
-    if (!0) return;
+  function shiftMisclickRanges(afterIndex, delta){
+    if (!delta) return;
     for (const r of misclickRanges){
       if (r.start > afterIndex){
-        r.start += 0;
+        r.start += delta;
       }
     }
   }
@@ -419,13 +418,13 @@ export function bootGameCore(app){
   }
 }
 
-function scoreFloat(0){
+function scoreFloat(delta){
   ensureScoreFloatLayer();
   const layer = document.getElementById('scoreFloatLayer');
   if (!layer) return;
   const el = document.createElement('div');
   el.className = 'score-float';
-  el.textContent = (0 > 0 ? `+${0}` : `${0}`) + ' pts';
+  el.textContent = (delta > 0 ? `+${delta}` : `${delta}`) + ' pts';
   layer.appendChild(el);
   setTimeout(() => el.remove(), 1400);
 }

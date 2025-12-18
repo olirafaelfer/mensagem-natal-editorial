@@ -248,22 +248,30 @@ function pickBoot(mod, candidates){
   return null;
 }
 
-async function safeImport(path, name){
-  try {
-    const mod = await import(path);
-    return mod;
-  } catch (e) {
-    console.error(`❌ Falha ao importar ${name} (${path}):`, e);
-    throw e;
+async function safeImport(pathOrPaths, name){
+  const paths = Array.isArray(pathOrPaths) ? pathOrPaths : [pathOrPaths];
+  let lastErr = null;
+
+  for (const p of paths){
+    try {
+      return await import(p);
+    } catch (e){
+      lastErr = e;
+      // continue tentando (muito comum 404 virar "Unexpected number")
+      console.error(`❌ Falha ao importar ${name} (${p}):`, e);
+    }
   }
+  throw lastErr;
+}
+
 }
 
 async function bootAll(){
   try {
-    const modalMod   = await safeImport("./ui-modal.js?v=20251217fix2", "ui-modal.js");
-    const themeMod   = await safeImport("./theme-fx.js?v=20251217fix2", "theme-fx.js");
-    const rankingMod = await safeImport("./ranking.js?v=20251217fix2", "ranking.js");
-    const gameMod    = await safeImport("./game-core.js?v=20251217fix2", "game-core.js");
+    const modalMod   = await safeImport("./ui-modal.js?v=20251217fix3", "ui-modal.js");
+    const themeMod   = await safeImport("./theme-fx.js?v=20251217fix3", "theme-fx.js");
+    const rankingMod = await safeImport("./ranking.js?v=20251217fix3", "ranking.js");
+    const gameMod    = await safeImport(["./game-core.js?v=20251217fix3","../game-core.js?v=20251217fix3"], "game-core.js");
     const adminMod   = await import("./admin.js");
     const authMod    = await import("./auth.js"); // ✅ auth
 
