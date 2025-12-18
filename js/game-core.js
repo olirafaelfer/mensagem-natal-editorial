@@ -1,4 +1,3 @@
-import { getTutorialLevels } from "./tutorial.js";
 // js/game-core.js — núcleo do jogo (níveis, render, correções, final interativo)
 
 export function bootGameCore(app){
@@ -35,24 +34,6 @@ export function bootGameCore(app){
 
   const { openModal, closeModal } = app.modal;
 
-  function modalOk(title, bodyHTML){
-    return new Promise((resolve) => {
-      openModal({ title, bodyHTML, buttons:[{label:"OK", onClick: () => { closeModal(); resolve(true); }}] });
-    });
-  }
-  function modalConfirm(title, bodyHTML, okLabel="OK", cancelLabel="Cancelar"){
-    return new Promise((resolve) => {
-      openModal({
-        title,
-        bodyHTML,
-        buttons:[
-          {label: cancelLabel, variant:"ghost", onClick: () => { closeModal(); resolve(false); }},
-          {label: okLabel, onClick: () => { closeModal(); resolve(true); }}
-        ]
-      });
-    });
-  }
-
   /** Pontuação */
   const SCORE_RULES = app.data?.SCORE_RULES || {
     correct: +5,
@@ -66,13 +47,8 @@ export function bootGameCore(app){
   let autoUsed = 0;
 
   /** Levels */
-  const mainLevels = app.data?.levels || app.levels || [];
-  let levels = mainLevels;
+  const levels = app.data?.levels || app.levels || [];
   app.levels = levels;
-
-  // Tutorial (3 níveis)
-  const tutorialLevels = getTutorialLevels();
-  let inTutorial = false;
 
   /** =========================
    * Elementos
@@ -124,7 +100,6 @@ export function bootGameCore(app){
   let levelIndex = 0;
   let fixedRuleIds = new Set();
   let currentText = "";
-  let currentLevel = null;
   let currentRules = [];
   let levelLocked = false;
 
@@ -201,13 +176,10 @@ export function bootGameCore(app){
 
     if (wrongCountEl) wrongCountEl.textContent = String(wrongCount);
     if (scoreCountEl) scoreCountEl.textContent = String(score);
+
     const isDone = done >= total;
-    if (nextLevelBtn){
-      nextLevelBtn.classList.remove('btn-disabled');
-      nextLevelBtn.setAttribute('aria-disabled','false');
-      nextLevelBtn.disabled = false;
-      nextLevelBtn.textContent = isDone ? (levelIndex === levels.length - 1 ? 'Finalizar' : 'Próximo nível') : 'Avançar sem concluir (-5)';
-    }
+    nextLevelBtn?.classList.toggle("btn-disabled", !isDone);
+    nextLevelBtn?.setAttribute("aria-disabled", String(!isDone));
   }
 
   /** =========================
@@ -295,12 +267,6 @@ export function bootGameCore(app){
       span.dataset.kind = "plain";
       span.dataset.start = String(t.start);
       span.dataset.len = String(t.len);
-
-      // Tutorial: foco em palavra (clique equivocado)
-      if (inTutorial && currentLevel && currentLevel.focusPlain){
-        const norm = t.v.replace(/[^\p{L}]/gu,'');
-        if (norm === currentLevel.focusPlain){ span.classList.add('pulse'); }
-      }
 
       // ✅ reaplica vermelho persistente
       if (hasMisclickAt(t.start, t.len)){
@@ -409,27 +375,7 @@ export function bootGameCore(app){
   /** =========================
    * Pontuação + feedback simples
    * ========================= */
-  function ensureScoreFloatLayer(){
-  let layer = document.getElementById('scoreFloatLayer');
-  if (!layer){
-    layer = document.createElement('div');
-    layer.id = 'scoreFloatLayer';
-    document.body.appendChild(layer);
-  }
-}
-
-function scoreFloat(delta){
-  ensureScoreFloatLayer();
-  const layer = document.getElementById('scoreFloatLayer');
-  if (!layer) return;
-  const el = document.createElement('div');
-  el.className = 'score-float';
-  el.textContent = (delta > 0 ? `+${delta}` : `${delta}`) + ' pts';
-  layer.appendChild(el);
-  setTimeout(() => el.remove(), 1400);
-}
-
-function addScore(delta){
+  function addScore(delta){
     score += delta;
     taskScore[levelIndex] += delta;
   }
@@ -461,76 +407,34 @@ function addScore(delta){
     });
   }
 
-  function openConfirmSelection(selectedText, onConfirm){
-    const safe = escapeHtml(selectedText || "");
-    openModal({
-      title: "Confirmar",
-      bodyHTML: `
-        <p><strong>Tem certeza que deseja corrigir este trecho?</strong></p>
-        <p style="margin-top:8px;padding:10px;border-radius:10px;background:rgba(255,255,255,.06)">${safe}</p>
-      `,
-      buttons: [
-        { label: "Cancelar", variant: "ghost", onClick: closeModal },
-        { label: "Sim, corrigir", onClick: () => { closeModal(); onConfirm(); } }
-      ]
-    });
-  }
-
   function onPlainClick(span){
     if (levelLocked){
       onLockedTextClick();
       return;
     }
 
+    // ✅ NOVO: persiste o erro (não some após render)
     const start = Number(span.dataset.start || "NaN");
     const len = Number(span.dataset.len || "NaN");
-    const selectedText = span.textContent || "";
 
-    // Se já foi marcado como "misclick", não repune
-    if (span.dataset.misclick === "1" || hasMisclickAt(start, len)){
-      openModal({
-        title: "Revisão",
-        bodyHTML: `<p>Esse trecho já foi marcado.</p>`,
-        buttons: [{ label:"Ok", onClick: closeModal }]
-      });
-      return;
-    }
-
-    // Confirmação antes de punir
-    openConfirmSelection(selectedText, () => {
+    if (span.dataset.misclick !== "1"){
       span.dataset.misclick = "1";
       span.classList.add("error");
-      addMisclickAt(start, len);
+
+      addMisclickAt(start, len); // 👈 salva no estado do jogo
 
       registerWrong();
       updateHUD();
+    }
 
-      openModal({
-        title: "Já está correto!",
-        bodyHTML: `<p>A palavra <strong>“${escapeHtml(selectedText)}”</strong> já está correta! Que pena, você perdeu <strong>${Math.abs(SCORE_RULES.wrong)}</strong> pontos.</p>`,
-        buttons: [{ label:"Entendi", onClick: closeModal }]
-      });
+    openModal({
+      title: "Revisão",
+      bodyHTML: `<p><strong>Hmmm…</strong> Esse trecho já está correto.</p>`,
+      buttons: [{ label:"Entendi", onClick: closeModal }]
     });
   }
-  
-  function applyAutoFix(rule){
-    // aplica a primeira ocorrência do "wrong"
-    const re = rule.wrong;
-    re.lastIndex = 0;
-    const m = re.exec(currentText);
-    if (!m){
-      modalOk("Ops", "<p>Não encontrei este erro no texto atual.</p>");
-      return;
-    }
-    const start = m.index;
-    const len = m[0].length;
-    const replacement = rule.correct || "";
-    applyReplacementAt(start, len, replacement);
-    fixedRuleIds.add(rule.id);
-    renderMessage();
-    finalizeIfDone();
-  }
-function applyReplacementAt(start, len, replacement){
+
+  function applyReplacementAt(start, len, replacement){
     const before = currentText.slice(0, start);
     const after = currentText.slice(start + len);
     currentText = before + replacement + after;
@@ -560,13 +464,6 @@ function applyReplacementAt(start, len, replacement){
     fixedRuleIds.add(rule.id);
     registerCorrect();
 
-    // Tutorial: garante reset do modo guiado
-    if (messageArea){
-      messageArea.classList.remove('tutorial-mode');
-      if (inTutorial && (lvl.focusRuleId || lvl.focusPlain)){
-        messageArea.classList.add('tutorial-mode');
-      }
-    }
     renderMessage();
     finalizeIfDone();
   }
@@ -585,35 +482,8 @@ function applyReplacementAt(start, len, replacement){
 
       openModal({
         title: "Ops!",
-        bodyHTML: `
-          <p><strong>Ops, a correção não está certa!</strong> Você perdeu <strong>${Math.abs(SCORE_RULES.wrong)}</strong> pontos.</p>
-          <p>Gostaria de tentar de novo ou prefere uma correção automática? (Você perderá <strong>${Math.abs(SCORE_RULES.auto)}</strong> pontos se usar a correção automática).</p>
-        `,
-        buttons: [
-          { label:"Tentar de novo", variant:"ghost", onClick: () => { closeModal(); onErrorClick(errSpan, rule); } },
-          { label:"Correção automática", onClick: () => {
-              closeModal();
-              const start = Number(errSpan.dataset.start);
-              const len = Number(errSpan.dataset.len);
-              const repl = rule.correct;
-
-              applyReplacementAt(start, len, repl);
-              fixedRuleIds.add(rule.id);
-              if (repl !== "") markCorrected(rule.id, start, repl);
-
-              registerAutoCorrect();
-              // Tutorial: garante reset do modo guiado
-    if (messageArea){
-      messageArea.classList.remove('tutorial-mode');
-      if (inTutorial && (lvl.focusRuleId || lvl.focusPlain)){
-        messageArea.classList.add('tutorial-mode');
-      }
-    }
-    renderMessage();
-              finalizeIfDone();
-            }
-          }
-        ]
+        bodyHTML: `<p>Ops, você errou. O correto seria <strong>${escapeHtml(expected === "" ? "(remover)" : expected)}</strong>.</p>`,
+        buttons: [{ label:"Ok", onClick: closeModal }]
       });
       return;
     }
@@ -623,77 +493,62 @@ function applyReplacementAt(start, len, replacement){
 
     applyReplacementAt(start, len, expected);
     fixedRuleIds.add(rule.id);
+
     if (expected !== "") markCorrected(rule.id, start, expected);
 
     registerCorrect();
     closeModal();
-    // Tutorial: garante reset do modo guiado
-    if (messageArea){
-      messageArea.classList.remove('tutorial-mode');
-      if (inTutorial && (lvl.focusRuleId || lvl.focusPlain)){
-        messageArea.classList.add('tutorial-mode');
-      }
-    }
     renderMessage();
     finalizeIfDone();
   }
+
   function onErrorClick(errSpan, rule){
     if (levelLocked){
       onLockedTextClick();
       return;
     }
 
-    const selectedText = errSpan.textContent || "";
+    const wrongText = errSpan.textContent || "";
+    const expected = rule.correct;
 
-    openConfirmSelection(selectedText, () => {
-      const wrongText = errSpan.textContent || "";
-      const expected = rule.correct;
-
-      if (expected === "" && wrongText === ","){
-        openModal({
-          title: "Remover vírgula",
-          bodyHTML: `<p>Você quer <strong>remover</strong> esta vírgula?</p>`,
-          buttons: [
-            { label:"Cancelar", variant:"ghost", onClick: closeModal },
-            { label:"Remover", onClick: () => { closeModal(); confirmCommaRemoval(errSpan, rule); } }
-          ]
-        });
-        return;
-      }
-
+    if (expected === "" && wrongText === ","){
       openModal({
-        title: `Corrigir (${rule.label})`,
-        bodyHTML: `
-          <p>Trecho selecionado:</p>
-          <p style="margin:8px 0 0"><strong>${escapeHtml(wrongText)}</strong></p>
-
-          <p style="margin:12px 0 6px">Digite a forma correta:</p>
-          <input class="input" id="fixInput" type="text" autocomplete="off"
-            placeholder="${expected === "" ? "Deixe em branco para remover" : "Digite aqui..."}" />
-
-          <p class="muted" style="margin:10px 0 0">Erros podem ser de acentuação, ortografia, gramática, pontuação etc.</p>
-        `,
+        title: "Remover vírgula",
+        bodyHTML: `<p>Você quer <strong>remover</strong> esta vírgula?</p>`,
         buttons: [
-          { label:"Confirmar correção", onClick: () => confirmTyped(errSpan, rule) }
+          { label:"Cancelar", variant:"ghost", onClick: closeModal },
+          { label:"Remover", onClick: () => { closeModal(); confirmCommaRemoval(errSpan, rule); } }
         ]
       });
+      return;
+    }
 
-      setTimeout(() => document.getElementById("fixInput")?.focus(), 30);
+    openModal({
+      title: `Corrigir (${rule.label})`,
+      bodyHTML: `
+        <p>Trecho selecionado:</p>
+        <p style="margin:8px 0 0"><strong>${escapeHtml(wrongText)}</strong></p>
+
+        <p style="margin:12px 0 6px">Digite a forma correta:</p>
+        <input class="input" id="fixInput" type="text" autocomplete="off"
+          placeholder="${expected === "" ? "Deixe em branco para remover" : "Digite aqui..."}" />
+
+        <p class="muted" style="margin:10px 0 0">Erros podem ser de acentuação, ortografia, gramática, pontuação etc.</p>
+      `,
+      buttons: [
+        { label:"Confirmar correção", onClick: () => confirmTyped(errSpan, rule) }
+      ]
     });
+
+    setTimeout(() => document.getElementById("fixInput")?.focus(), 30);
   }
+
   function finalizeIfDone(){
     updateHUD();
     const done = fixedRuleIds.size >= currentRules.length;
     if (done){
       levelLocked = true;
-      // Tutorial: garante reset do modo guiado
-    if (messageArea){
-      messageArea.classList.remove('tutorial-mode');
-      if (inTutorial && (lvl.focusRuleId || lvl.focusPlain)){
-        messageArea.classList.add('tutorial-mode');
-      }
-    }
-    renderMessage();
+      renderMessage();
       nextLevelBtn?.classList.remove("btn-disabled");
       nextLevelBtn?.setAttribute("aria-disabled", "false");
     }
@@ -734,13 +589,6 @@ function applyReplacementAt(start, len, replacement){
     if (expected !== "") markCorrected(rule.id, start, expected);
 
     registerAutoCorrect();
-    // Tutorial: garante reset do modo guiado
-    if (messageArea){
-      messageArea.classList.remove('tutorial-mode');
-      if (inTutorial && (lvl.focusRuleId || lvl.focusPlain)){
-        messageArea.classList.add('tutorial-mode');
-      }
-    }
     renderMessage();
     finalizeIfDone();
   }
@@ -767,91 +615,6 @@ function applyReplacementAt(start, len, replacement){
   /** =========================
    * Cola
    * ========================= */
-
-  // Avançar sem concluir (-5): pula para o próximo nível mesmo sem corrigir tudo
-  
-  nextLevelBtn?.addEventListener("click", async () => {
-    const done = fixedRuleIds.size >= currentRules.length;
-    const isLast = levelIndex === (levels.length - 1);
-    const lvl = currentLevel;
-
-    // Sempre salva o texto atual para o "Ver mensagens corrigidas"
-    currentTextByLevel[levelIndex] = currentText;
-
-    // Se não concluiu, permitir avançar com penalidade (no tutorial pode exigir concluir, salvo níveis com allowAdvanceWithoutComplete)
-    if (!done){
-      const allow = (!inTutorial) || (inTutorial && lvl && lvl.allowAdvanceWithoutComplete);
-      if (!allow){
-        openModal({ title:"Ainda não", bodyHTML:`<p>Conclua este passo do tutorial para seguir.</p>`, buttons:[{label:"OK", onClick: closeModal}] });
-        return;
-      }
-
-      const ok = await new Promise((resolve) => {
-        openModal({
-          title: "Avançar sem concluir",
-          bodyHTML: `<p>Deseja avançar sem concluir esta atividade?</p><p>Você perderá <strong>5</strong> pontos.</p>`,
-          buttons: [
-            { label:"Cancelar", variant:"ghost", onClick: () => { closeModal(); resolve(false); } },
-            { label:"Sim, avançar", onClick: () => { closeModal(); resolve(true); } }
-          ]
-        });
-      });
-      if (!ok) return;
-      addScore(-5);
-    }
-
-    if (isLast){
-      if (inTutorial){
-        openModal({
-          title: "Tutorial concluído 🎄",
-          bodyHTML: `<p>A pontuação do tutorial não será contabilizada.</p>`,
-          buttons: [{ label:"Iniciar Desafio 1", onClick: () => { closeModal(); beginMainMission(); } }]
-        });
-        return;
-      }
-
-      await app.finishMission?.({ score, correctCount, wrongCount, taskScore, taskCorrect, taskWrong, autoUsed });
-      showFinal();
-      return;
-    }
-
-    levelIndex += 1;
-    startLevel();
-  });
-        return;
-      }
-      const ok = await new Promise((resolve) => {
-        openModal({
-          title: "Avançar sem concluir",
-          bodyHTML: `<p>Deseja avançar sem concluir esta atividade?</p><p>Você perderá <strong>5</strong> pontos.</p>`,
-          buttons: [
-            { label:"Cancelar", variant:"ghost", onClick: () => { closeModal(); resolve(false); } },
-            { label:"Sim, avançar", onClick: () => { closeModal(); resolve(true); } }
-          ]
-        });
-      });
-      if (!ok) return;
-      addScore(-5);
-    }
-
-    if (isLast){
-      if (inTutorial){
-        openModal({
-          title: "Tutorial concluído 🎄",
-          bodyHTML: `<p>A pontuação do tutorial não será contabilizada.</p>`,
-          buttons: [{ label:"Iniciar Desafio 1", onClick: () => { closeModal(); beginMainMission(); } }]
-        });
-        return;
-      }
-      await app.finishMission?.({ score, correctCount, wrongCount, taskScore, taskCorrect, taskWrong, autoUsed });
-      showFinal();
-      return;
-    }
-
-    levelIndex += 1;
-    startLevel();
-  });
-
   hintBtn?.addEventListener("click", () => {
     if (levelLocked){
       onLockedTextClick();
@@ -879,33 +642,7 @@ function applyReplacementAt(start, len, replacement){
     openModal({
       title: "Me dê uma cola!",
       bodyHTML: `<p>${msg}</p><p class="muted" style="margin-top:10px">Colas têm custo de ${SCORE_RULES.hint} ponto.</p>`,
-      buttons: [
-        { label:"Entendi", onClick: closeModal },
-        { label:"Corrigir automaticamente", variant:"ghost", onClick: async () => {
-            closeModal();
-            const remaining2 = currentRules.filter(r => !fixedRuleIds.has(r.id));
-            if (!remaining2.length){
-              openModal({ title:"Tudo certo", bodyHTML:`<p>Não há mais correções neste nível.</p>`, buttons:[{label:"OK", onClick: closeModal}] });
-              return;
-            }
-            const target = remaining2[0];
-            const penalty = - (4 + autoUsed); // cresce 1 a cada uso
-            openModal({
-              title: "Correção automática",
-              bodyHTML: `<p>Deseja aplicar a correção automaticamente?</p><p>Você perderá <strong>${Math.abs(penalty)}</strong> pontos.</p>`,
-              buttons: [
-                { label:"Cancelar", variant:"ghost", onClick: closeModal },
-                { label:"Sim, corrigir", onClick: () => {
-                    closeModal();
-                    autoUsed += 1;
-                    addScore(penalty);
-                    applyAutoFix(target);
-                    updateHUD();
-                }}
-              ]
-            });
-        }}
-      ]
+      buttons: [{ label:"Entendi", onClick: closeModal }]
     });
 
     updateHUD();
@@ -914,9 +651,37 @@ function applyReplacementAt(start, len, replacement){
   /** =========================
    * Próximo nível / Final
    * ========================= */
+  nextLevelBtn?.addEventListener("click", async () => {
+    const done = fixedRuleIds.size >= currentRules.length;
+    const isLast = levelIndex === (levels.length - 1);
+
+    if (!done){
+      openModal({
+        title: "Você ainda não concluiu o nível",
+        bodyHTML: `<p>Você ainda não concluiu o nível. Se avançar sem concluí-lo perderá <strong>5</strong> pontos. Tem certeza que deseja prosseguir?</p>`,
+        buttons: [
+          { label:"Cancelar", variant:"ghost", onClick: closeModal },
+          { label:"Prosseguir", onClick: async () => { closeModal(); await skipLevel(); } }
+        ]
+      });
+      return;
+    }
+
+    // ✅ guarda SEMPRE o texto do nível atual (mesmo com correções)
+    currentTextByLevel[levelIndex] = currentText;
+
+    if (isLast){
+      await app.finishMission?.({ score, correctCount, wrongCount, taskScore, taskCorrect, taskWrong, autoUsed });
+      showFinal();
+      return;
+    }
+
+    levelIndex += 1;
+    startLevel();
+  });
 
   async function skipLevel(){
-    addScore(-5);
+    addScore(SCORE_RULES.skip);
     currentTextByLevel[levelIndex] = currentText;
 
     levelIndex += 1;
@@ -1105,76 +870,11 @@ function applyReplacementAt(start, len, replacement){
   reviewBtn2?.addEventListener("click", () => openReviewModal(1));
   reviewBtn3?.addEventListener("click", () => openReviewModal(2));
 
-
-  // ===== Fluxo Desafio 1 + Tutorial (corrige bug de não iniciar) =====
-  function resetRun(){
-    levelIndex = 0;
-    score = 0;
-    wrongCount = 0;
-    correctCount = 0;
-    hintsUsed = 0;
-    autoUsed = 0;
-    taskScore[0]=taskScore[1]=taskScore[2]=0;
-    taskCorrect[0]=taskCorrect[1]=taskCorrect[2]=0;
-    taskWrong[0]=taskWrong[1]=taskWrong[2]=0;
-    currentTextByLevel[0] = "";
-    currentTextByLevel[1] = "";
-    currentTextByLevel[2] = "";
-  }
-
-  function beginMainMission(){
-    inTutorial = false;
-    levels = mainLevels;
-    app.levels = levels;
-    levelIndex = 0;
-    showOnly(screenGame);
-    startLevel();
-  }
-
-  function beginTutorial(){
-    inTutorial = true;
-    levels = tutorialLevels;
-    app.levels = levels;
-    levelIndex = 0;
-    showOnly(screenGame);
-    startLevel();
-  }
-
-  function startChallenge1Flow(){
-    const name = getUserName();
-    const sector = getUserSector();
-    if (!name){
-      openModal({ title:"Atenção", bodyHTML:`<p>Por favor, informe seu nome.</p>`, buttons:[{label:"OK", onClick: closeModal}] });
-      return;
-    }
-    if (!sector){
-      openModal({ title:"Atenção", bodyHTML:`<p>Por favor, selecione seu setor.</p>`, buttons:[{label:"OK", onClick: closeModal}] });
-      return;
-    }
-    localStorage.setItem("mission_name", name);
-    localStorage.setItem("mission_sector", sector);
-
-    resetRun();
-
-    openModal({
-      title: "Antes de começar",
-      bodyHTML: `
-        <p>Este tutorial explicará brevemente a dinâmica do jogo.</p>
-        <p class="muted" style="margin-top:10px">Se você já conhece, pode pular.</p>
-      `,
-      buttons: [
-        { label:"Pular", variant:"ghost", onClick: () => { closeModal(); beginMainMission(); } },
-        { label:"Ver tutorial", onClick: () => { closeModal(); beginTutorial(); } }
-      ]
-    });
-  }
-
   /** =========================
    * Início / nível
    * ========================= */
   function startLevel(){
     const lvl = levels[levelIndex];
-    currentLevel = lvl;
     if (!lvl) return;
 
     fixedRuleIds = new Set();
@@ -1196,13 +896,6 @@ function applyReplacementAt(start, len, replacement){
     }
 
     updateHUD();
-    // Tutorial: garante reset do modo guiado
-    if (messageArea){
-      messageArea.classList.remove('tutorial-mode');
-      if (inTutorial && (lvl.focusRuleId || lvl.focusPlain)){
-        messageArea.classList.add('tutorial-mode');
-      }
-    }
     renderMessage();
 
     openModal({
@@ -1211,33 +904,7 @@ function applyReplacementAt(start, len, replacement){
         <p style="white-space:pre-line">${escapeHtml(lvl.intro || "")}</p>
         <p class="muted" style="margin-top:12px">Os erros serão explicados e detalhados ao término da atividade.</p>
       `,
-      buttons: [
-        { label:"Entendi", onClick: closeModal },
-        { label:"Corrigir automaticamente", variant:"ghost", onClick: async () => {
-            closeModal();
-            const remaining2 = currentRules.filter(r => !fixedRuleIds.has(r.id));
-            if (!remaining2.length){
-              openModal({ title:"Tudo certo", bodyHTML:`<p>Não há mais correções neste nível.</p>`, buttons:[{label:"OK", onClick: closeModal}] });
-              return;
-            }
-            const target = remaining2[0];
-            const penalty = - (4 + autoUsed); // cresce 1 a cada uso
-            openModal({
-              title: "Correção automática",
-              bodyHTML: `<p>Deseja aplicar a correção automaticamente?</p><p>Você perderá <strong>${Math.abs(penalty)}</strong> pontos.</p>`,
-              buttons: [
-                { label:"Cancelar", variant:"ghost", onClick: closeModal },
-                { label:"Sim, corrigir", onClick: () => {
-                    closeModal();
-                    autoUsed += 1;
-                    addScore(penalty);
-                    applyAutoFix(target);
-                    updateHUD();
-                }}
-              ]
-            });
-        }}
-      ]
+      buttons: [{ label:"Entendi", onClick: closeModal }]
     });
   }
 
@@ -1296,21 +963,6 @@ openModal({
 });
 
   restartBtn?.addEventListener("click", () => showOnly(screenForm));
-
-
-  // ✅ Captura cliques do Desafio 1 antes de qualquer listener antigo (evita modal fechar e não iniciar)
-  const challenge1Btn = document.getElementById("challenge1Btn");
-  const challengeBtn1 = document.getElementById("challengeBtn1");
-  const bindStart = (btn) => {
-    if (!btn) return;
-    btn.addEventListener("click", (e) => {
-      e.preventDefault();
-      e.stopImmediatePropagation();
-      startChallenge1Flow();
-    }, true);
-  };
-  bindStart(challenge1Btn);
-  bindStart(challengeBtn1);
 
   /** =========================
    * Boot visual
