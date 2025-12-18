@@ -1,5 +1,4 @@
-// js/a
-    populateSectors,pp/app.js — contexto global (DOM + helpers)
+// js/app/app.js — contexto global (DOM + helpers)
 export function createApp({ firebase, THEME_PRESETS, SECTORS, SCORE_RULES }){
   const dom = {
     // Screens
