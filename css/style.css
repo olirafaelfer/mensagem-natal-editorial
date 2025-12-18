@@ -1125,3 +1125,48 @@ meta[name="color-scheme"]{ content: "only light"; }
 @media (forced-colors: active){
   *{ forced-color-adjust: none; }
 }
+
+
+/* ===== HOTFIX layout ===== */
+:root{ --container: 450px; color-scheme: light; }
+.container{ width:100%; max-width: var(--container); margin: 0 auto; padding: 0 14px; }
+@media (max-width: 540px){
+  :root{ --container: 100%; }
+  .container{ max-width: 100%; padding-left: 12px; padding-right: 12px; }
+}
+.topbar-banner{ width:100%; }
+.topbar-banner .container{ max-width: var(--container); margin: 0 auto; padding: 10px 14px; }
+
+/* texto das tarefas menos “espalhado” */
+#messageArea{ line-height: 1.35 !important; font-size: 16px; }
+#messageArea .token{ line-height: 1.35 !important; }
+
+/* score float */
+#scoreFloatLayer{ position: fixed; inset: 0; pointer-events: none; z-index: 9999; }
+.score-float{ position: absolute; left: 50%; top: 18%; transform: translateX(-50%);
+  padding: 6px 10px; border-radius: 999px; font-weight: 800;
+  background: rgba(0,0,0,.70); color: #fff; opacity: 0;
+  animation: scoreFloatUp 950ms ease-out forwards;
+}
+@keyframes scoreFloatUp{
+  0%{ opacity: 0; transform: translate(-50%, 10px) scale(.98); }
+  20%{ opacity: 1; transform: translate(-50%, 0) scale(1); }
+  100%{ opacity: 0; transform: translate(-50%, -28px) scale(1.02); }
+}
+
+/* hardening contra “dark mode forçado” */
+img, svg, video, canvas{ filter:none !important; }
+@media (forced-colors: active){
+  *{ forced-color-adjust: none; }
+}
+
+/* tutorial highlight */
+.tutorial-focus .token{ opacity: .18; pointer-events: none; }
+.tutorial-focus .token.focus{ opacity: 1; pointer-events: auto; outline: 2px solid rgba(255,255,255,.35); outline-offset: 2px; animation: pulseGlow 900ms ease-in-out infinite; position: relative; }
+.tutorial-focus .token.focus::after{ content: "👇"; position: absolute; top: -22px; left: 50%; transform: translateX(-50%); font-size: 18px; }
+@keyframes pulseGlow{ 0%{ box-shadow:0 0 0 rgba(255,255,255,0); transform: scale(1);} 50%{ box-shadow:0 0 0 6px rgba(255,255,255,.18); transform: scale(1.03);} 100%{ box-shadow:0 0 0 rgba(255,255,255,0); transform: scale(1);} }
+
+/* correções finais */
+.fix-item{ padding:10px 12px; border-radius: 12px; background: rgba(255,255,255,.06); margin: 10px 0; }
+.fix-before{ opacity: .9; }
+.fix-after{ margin-top:6px; }

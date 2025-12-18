@@ -1,12 +1,10 @@
-// js/tutorial.js — tutorial guiado (dados)
-// Objetivo: demonstrar a dinâmica (não é para “testar” conhecimento).
-
+// js/data/tutorial.js — Tutorial guiado (conteúdo somente)
 export function getTutorialLevels(){
   return [
     {
-      name: "Tutorial 1/3 — Correção",
-      intro: "Vamos começar! Clique no trecho destacado e corrija.",
-      instruction: "Clique em “refeissões” e corrija para “refeições”.",
+      name: "Tutorial 1/3 — Ortografia",
+      intro: "Vamos começar! Você vai corrigir uma palavra com erro de grafia.",
+      instruction: "Clique em “refeissões” (destacado) e corrija para “refeições”.",
       raw: "Neste Natal, a mesa terá refeissões deliciosas e muita alegria.",
       focusRuleId: "t1",
       rules: [
@@ -24,13 +22,14 @@ export function getTutorialLevels(){
       ]
     },
     {
-      name: "Tutorial 3/3 — Clique equivocado + dica",
-      intro: "Por fim: clicar em trecho correto também penaliza. Depois, use “Me dê uma dica” e veja a correção automática.",
-      instruction: "Clique em “amor” (está correto) e confirme para ver a penalidade. Depois clique em “Me dê uma dica”.",
-      raw: "O Natal é um tempo de amor, carinho e solidariedade.",
-      focusPlain: "amor",
-      allowAdvanceWithoutComplete: true,
-      rules: []
+      name: "Tutorial 3/3 — Dica e correção automática",
+      intro: "Agora você vai ver a dica e a correção automática em ação.",
+      instruction: "Clique em “caridadee” (erro) e depois clique em “Me dê uma dica”. Use “Correção automática” para concluir.",
+      raw: "Neste Natal, pratique a caridadee e o amor ao próximo.",
+      focusRuleId: "t3",
+      rules: [
+        { id:"t3", label:"Ortografia", wrong:/\bcaridadee\b/g, correct:"caridade", reason:"O correto é “caridade”." }
+      ]
     }
   ];
 }

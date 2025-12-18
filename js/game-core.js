@@ -153,10 +153,14 @@ export function bootGame(app){
     // next button behavior
     if (dom.nextLevelBtn){
       const done = engine.isDone();
-      dom.nextLevelBtn.disabled = false;
+      dom.nextLevelBtn.disabled = !done;
       dom.nextLevelBtn.textContent = done
         ? (st.levelIndex === (engine.levels.length - 1) ? "Finalizar tarefa" : "Próxima tarefa")
-        : "Avançar sem concluir (-5)";
+        : "Resolva para liberar";
+      if (dom.skipLevelBtn){
+        dom.skipLevelBtn.disabled = false;
+        dom.skipLevelBtn.textContent = "Avançar sem concluir (-5)";
+      }
     }
   }
 
@@ -235,11 +239,17 @@ export function bootGame(app){
 
     // plain tokens as selectable spans (for misclicks)
     function appendPlain(seg){
-      // split keeping punctuation/spaces
-      for (const ch of seg){
+      // agrupa por espaços e tokens (palavras/pontuação) — evita “clicar só numa letra”
+      const parts = seg.match(/\s+|[^\s]+/g) || [];
+      for (const part of parts){
+        if (/^\s+$/.test(part)){
+          dom.messageArea.appendChild(document.createTextNode(part));
+          continue;
+        }
         const s = document.createElement("span");
-        s.className = "token plain" + (",.;:!?".includes(ch) ? " punct" : "");
-        s.textContent = ch;
+        const isPunct = /^[,.;:!?]+$/.test(part);
+        s.className = "token plain" + (isPunct ? " punct" : "");
+        s.textContent = part;
         s.dataset.kind = "plain";
         s.addEventListener("click", () => onPlainClick(s));
         dom.messageArea.appendChild(s);
@@ -286,7 +296,27 @@ export function bootGame(app){
     });
   }
 
-  // =========================
+  
+  function openHint(){
+    const nextRule = engine.currentRules.find(r => !engine.fixedRuleIds.has(r.id));
+    if (!nextRule){
+      openModal({ title:"Dica", bodyHTML:`<p>Você já corrigiu todos os trechos desta tarefa 🎉</p>`, buttons:[{label:"Ok", onClick: closeModal}]});
+      return;
+    }
+    openModal({
+      title:"💡 Me dê uma dica",
+      bodyHTML: `
+        <p><b>Dica:</b> ${escapeHtml(nextRule.reason || "Observe o trecho destacado.")}</p>
+        <p class="muted" style="margin-top:10px">Você pode corrigir manualmente ou usar a correção automática (com penalidade crescente).</p>
+      `,
+      buttons:[
+        {label:"Fechar", variant:"ghost", onClick: closeModal},
+        {label:"Correção automática", onClick: () => { closeModal(); confirmAuto(nextRule); }}
+      ]
+    });
+  }
+
+// =========================
   // Token click flows
   // =========================
   function onPlainClick(el){
@@ -358,6 +388,7 @@ export function bootGame(app){
 
           // aplica
           closeModal();
+          engine.logFix({ kind:"manual", label: rule.label||"", before: shownText, after: rule.correct ?? "", reason: rule.reason||"" });
           const delta = engine.applyCorrect(rule.id);
           scoreFloat(delta);
           // aplica no texto (substitui primeira ocorrência não fixa)
@@ -428,7 +459,18 @@ export function bootGame(app){
     nextInternal();
   }
 
-  function onNext(){
+  function onSkipLevel(){
+    openModal({
+      title:"Avançar sem concluir",
+      bodyHTML:`<p>Você deseja avançar sem concluir esta tarefa? Você perderá <b>${Math.abs(app.data.SCORE_RULES.skip)}</b> pontos.</p>`,
+      buttons:[
+        {label:"Cancelar", variant:"ghost", onClick: closeModal},
+        {label:"Avançar", onClick: () => { closeModal(); const delta = engine.addScore(app.data.SCORE_RULES.skip); scoreFloat(delta); nextInternal(); }}
+      ]
+    });
+  }
+
+function onNext(){
     if (engine.isDone()){
       nextInternal();
       return;
@@ -457,6 +499,7 @@ export function bootGame(app){
       }
 
       ui.showOnly(dom.screenFinal);
+      renderFinalMessages();
       dom.finalMsgsWrap && (dom.finalMsgsWrap.innerHTML = "<p class=\"muted\">Em breve: resumo das correções.</p>");
       return;
     }

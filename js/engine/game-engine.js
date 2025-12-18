@@ -15,6 +15,7 @@ export class GameEngine{
     this.hints = 0;
     this.autoUsed = 0;
     this.fixedRuleIds = new Set();
+    this.fixLog = [];
     this.currentText = "";
     this.currentRules = [];
     this.misclicks = 0;
@@ -29,6 +30,7 @@ export class GameEngine{
     this.hints = 0;
     this.autoUsed = 0;
     this.fixedRuleIds = new Set();
+    this.fixLog = [];
     this.currentText = "";
     this.currentRules = [];
     this.misclicks = 0;
@@ -64,7 +66,16 @@ export class GameEngine{
     return lvl;
   }
 
-  isDone(){
+  
+  logFix(entry){
+    if (!entry) return;
+    this.fixLog.push({ at: Date.now(), ...entry });
+  }
+  getFixLog(){
+    return Array.from(this.fixLog || []);
+  }
+
+isDone(){
     return this.fixedRuleIds.size >= this.currentRules.length;
   }
 

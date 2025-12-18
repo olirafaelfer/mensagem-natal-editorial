@@ -1,4 +1,28 @@
-// js/ranking.js — V2 (modelo) ranking por DESAFIO + geral (média)
+// js/r
+    async submitChallengeScore(ch, score){
+      if (!firebase?.auth?.currentUser) return;
+      const u = firebase.auth.currentUser;
+      const uid = u.uid;
+      const profile = await app.auth?.getProfile?.();
+      const name = profile?.name || app.dom?.userName?.value || "Usuário";
+      const sector = profile?.sector || app.dom?.userSector?.value || "(Sem setor)";
+      const ref = firebase.doc(firebase.db, "individualRanking", uid);
+      const snap = await firebase.getDoc(ref);
+      const d = snap.exists() ? snap.data() : {};
+      const payload = {
+        uid, name, sector,
+        updatedAt: firebase.serverTimestamp(),
+        ["c"+ch+"Score"]: Number(score||0)
+      };
+      const c1 = (ch===1?Number(score||0):Number(d.c1Score||0));
+      const c2 = (ch===2?Number(score||0):Number(d.c2Score||0));
+      const c3 = (ch===3?Number(score||0):Number(d.c3Score||0));
+      const have = [c1,c2,c3].filter(v=>v>0);
+      payload.overallAvg = have.length ? Math.round(have.reduce((a,b)=>a+b,0)/have.length) : 0;
+      if (!snap.exists()) payload.createdAt = firebase.serverTimestamp();
+      await firebase.setDoc(ref, { ...d, ...payload }, { merge:true });
+    },
+anking.js — V2 (modelo) ranking por DESAFIO + geral (média)
 // Estrutura sugerida:
 // /rankingByEmail/{emailHashHex}
 // {
