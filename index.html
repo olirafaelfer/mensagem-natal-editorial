@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="color-scheme" content="light dark" />
+  <title>Missão Editorial de Natal</title>
+  <link rel="preload" as="image" href="asset/logo-natal.png" />
+  <link rel="stylesheet" href="css/app.css" />
+</head>
+<body>
+  <div id="snow" aria-hidden="true"></div>
+
+  <header class="topbar">
+    <div class="wrap">
+      <div class="brand">
+        <img class="brand-logo" src="asset/logo-natal.png" alt="Editora Vozes" />
+      </div>
+      <nav class="top-actions">
+        <button class="iconbtn" id="btnTheme" title="Tema">⚙️</button>
+        <button class="iconbtn" id="btnRanking" title="Ranking">🏆</button>
+        <button class="iconbtn" id="btnProfile" title="Perfil">👤</button>
+      </nav>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <!-- Loading -->
+    <section id="screenLoading" class="screen">
+      <div class="card center">
+        <div class="spinner"></div>
+        <p class="muted">Carregando…</p>
+      </div>
+    </section>
+
+    <!-- Gate (nome + setor obrigatório p/ visitante; logado preenche automaticamente) -->
+    <section id="screenGate" class="screen hidden">
+      <div class="card">
+        <h1>Antes de começar</h1>
+        <p class="muted">Informe seu nome e selecione seu setor. Isso ajuda a montar o desempenho por setor.</p>
+
+        <div class="grid2">
+          <div>
+            <label for="gateName">Nome</label>
+            <input id="gateName" type="text" placeholder="Seu nome" autocomplete="name" />
+          </div>
+          <div>
+            <label for="gateSector">Setor</label>
+            <select id="gateSector">
+              <option value="">Selecione…</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="row">
+          <label class="toggle">
+            <input id="gateVisible" type="checkbox" checked />
+            <span>Participar do ranking</span>
+          </label>
+          <button id="gateContinue" class="btn primary">Continuar</button>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="track">
+          <button id="btnTutorial" class="pill">Tutorial (obrigatório)</button>
+          <button id="btnChallenge1" class="pill" disabled>Desafio 1</button>
+          <button id="btnChallenge2" class="pill" disabled>Desafio 2 🔒</button>
+          <button id="btnChallenge3" class="pill" disabled>Desafio 3 🔒</button>
+          <button id="btnSpecial" class="pill" disabled>Missão especial 🎁</button>
+        </div>
+
+        <p class="muted tiny">O Desafio 1 só libera após concluir ou pular o tutorial.</p>
+      </div>
+    </section>
+
+    <!-- Game -->
+    <section id="screenGame" class="screen hidden">
+      <div class="card">
+        <div class="hud">
+          <div class="hud-pill" id="hudLevel">—</div>
+          <div class="hud-pill" id="hudRemaining">Correções: 0/0</div>
+          <div class="hud-pill" id="hudScore">Pontos: 0</div>
+        </div>
+
+        <p id="rulesLine" class="muted">
+          Clique nos trechos incorretos para corrigir. Dicas e correção automática custam pontos.
+        </p>
+
+        <div id="messageArea" class="message"></div>
+
+        <div id="hintBar" class="hint hidden"></div>
+
+        <div class="actions">
+          <button id="btnHint" class="btn">Me dê uma dica!</button>
+          <button id="btnSkip" class="btn">Avançar sem concluir (-5)</button>
+          <button id="btnNext" class="btn primary" disabled>Resolva para liberar</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Final -->
+    <section id="screenFinal" class="screen hidden">
+      <div class="card">
+        <div class="center">
+          <div class="emoji">🎄</div>
+          <h2 id="finalTitle">Missão concluída!</h2>
+          <p id="finalCongrats" class="muted"></p>
+          <p id="finalQuote" class="quote"></p>
+        </div>
+
+        <button id="btnToggleFixes" class="btn wide">Ver mensagens corrigidas</button>
+        <div id="fixesWrap" class="hidden"></div>
+
+        <div class="actions">
+          <button id="btnHome" class="btn">Início</button>
+          <button id="btnOpenRanking" class="btn">Ranking</button>
+          <button id="btnNextMission" class="btn primary">Próxima tarefa</button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Modal layer -->
+  <div id="modalLayer" class="modal-layer hidden" aria-hidden="true">
+    <div class="modal">
+      <div class="modal-head">
+        <h3 id="modalTitle"></h3>
+        <button id="modalX" class="iconbtn" aria-label="Fechar">✕</button>
+      </div>
+      <div id="modalBody" class="modal-body"></div>
+      <div id="modalBtns" class="modal-actions"></div>
+    </div>
+  </div>
+
+  <!-- Score float layer -->
+  <div id="scoreLayer" aria-hidden="true"></div>
+
+  <!-- Firebase config injection (no repo real, coloque seus dados aqui) -->
+  <script>
+    // window.FIREBASE_CONFIG = { apiKey:"...", authDomain:"...", projectId:"...", storageBucket:"...", messagingSenderId:"...", appId:"..." };
+  </script>
+
+  <script type="module" src="js/bootstrap.js"></script>
+</body>
+</html>
