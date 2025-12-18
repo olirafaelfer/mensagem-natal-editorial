@@ -806,6 +806,7 @@ function applyReplacementAt(start, len, replacement){
     levelIndex += 1;
     startLevel();
   });
+
   hintBtn?.addEventListener("click", () => {
     if (levelLocked){
       onLockedTextClick();
