@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="color-scheme" content="light dark">
+  <title>Missão Editorial de Natal</title>
+  <link rel="stylesheet" href="./css/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-left">
+      <!-- OBS: coloque o arquivo em /asset/logo-natal.png (na raiz do repo) -->
+      <img class="logo" src="../asset/logo-natal.png" alt="Editora Vozes">
+    </div>
+    <div class="topbar-right">
+      <button id="btnTheme" class="iconbtn" title="Tema">⚙️</button>
+      <button id="btnRanking" class="iconbtn" title="Ranking">🏆</button>
+      <button id="btnUser" class="iconbtn" title="Conta">👤</button>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <div id="screenLoading" class="card">
+      <h2>Carregando…</h2>
+      <p>Se demorar, abra o console e me mande o primeiro erro.</p>
+    </div>
+
+    <div id="screenHome" class="card hidden">
+      <h2>Antes de começar</h2>
+      <p>Informe seu <strong>nome</strong> e selecione seu <strong>setor</strong>. Visitante joga apenas o Desafio 1.</p>
+
+      <div class="grid2">
+        <div>
+          <label>Nome</label>
+          <input id="guestName" type="text" autocomplete="name" placeholder="Seu nome">
+        </div>
+        <div>
+          <label>Setor</label>
+          <select id="guestSector">
+            <option value="">Selecione…</option>
+            <option>Editorial</option>
+            <option>Comercial</option>
+            <option>Marketing</option>
+            <option>Produção</option>
+            <option>Financeiro</option>
+            <option>TI</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="row">
+        <label class="switch">
+          <input id="optInRanking" type="checkbox" checked>
+          <span class="slider"></span>
+        </label>
+        <div>
+          <div class="labeltitle">Participar do ranking (apenas logados)</div>
+          <div class="labeldesc">Se desligado, seu resultado não entra nas estatísticas.</div>
+        </div>
+      </div>
+
+      <div class="btnrow">
+        <button id="btnD1" class="pill">Desafio 1</button>
+        <button id="btnD2" class="pill" disabled>Desafio 2 🔒</button>
+        <button id="btnD3" class="pill" disabled>Desafio 3 🔒</button>
+        <button id="btnSpecial" class="pill" disabled>Missão especial 🔒</button>
+      </div>
+
+      <div class="note" id="homeNote"></div>
+    </div>
+
+    <div id="screenGame" class="card hidden">
+      <div class="hud">
+        <div id="hudLevel" class="badge">Nível</div>
+        <div id="hudLeft" class="badge">Correções: 0/0</div>
+        <div id="hudScore" class="badge">Pontos: 0</div>
+      </div>
+      <p id="hudHint" class="sub">Clique nos trechos para interagir.</p>
+
+      <div id="gameText" class="gameText" aria-label="Texto do desafio"></div>
+
+      <div class="hintbar" id="hintBar">
+        <span>💡</span><span id="hintText">Dica aparecerá aqui.</span>
+      </div>
+
+      <div class="btnrow">
+        <button id="btnHint" class="pill">Me dê uma cola!</button>
+        <button id="btnSkip" class="pill">Avançar sem concluir (-5)</button>
+        <button id="btnNext" class="pill" disabled>Próxima tarefa</button>
+      </div>
+    </div>
+
+    <div id="screenFinal" class="card hidden">
+      <h2 id="finalTitle">Missão concluída</h2>
+      <div id="finalSub" class="sub"></div>
+      <button id="btnShowFixes" class="pill">Ver mensagens corrigidas</button>
+      <div id="finalFixes" class="finalFixes hidden"></div>
+
+      <div class="quote" id="finalQuote">
+        “Um país se faz com homens e livros.”
+        <span>— Monteiro Lobato</span>
+      </div>
+
+      <div class="btnrow">
+        <button id="btnHome" class="pill">Início</button>
+        <button id="btnRanking2" class="pill">Ranking</button>
+        <button id="btnNextTask" class="pill">Próxima tarefa</button>
+      </div>
+    </div>
+  </main>
+
+  <div id="modalLayer" class="modal-layer hidden" aria-hidden="true"></div>
+
+  <!-- overlay tutorial -->
+  <div id="spotlightLayer" class="spotlight-layer hidden" aria-hidden="true">
+    <div class="spotlight-cutout"></div>
+    <div class="spotlight-hand">👉</div>
+    <div class="spotlight-card">
+      <div id="spotlightText"></div>
+      <div class="btnrow" style="justify-content:flex-end">
+        <button id="spotlightNext" class="pill">Continuar</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="./js/main.js"></script>
+</body>
+</html>
