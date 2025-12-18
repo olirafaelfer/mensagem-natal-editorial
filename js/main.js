@@ -94,10 +94,10 @@ async function bootAll(){
   try {
     const modalMod   = await safeImport("./ui/ui-modal.js", "ui-modal.js");
     const themeMod   = await safeImport("./modules/theme-fx.js", "theme-fx.js");
+    const authMod    = await safeImport("./modules/auth.js", "auth.js");
     const rankingMod = await safeImport("./modules/ranking.js", "ranking.js");
     const gameMod    = await safeImport("./game-core.js", "game-core.js");
     const adminMod   = await safeImport("./modules/admin.js", "admin.js");
-    const authMod    = await safeImport("./modules/auth.js", "auth.js");
 
     const bootModal   = pickBoot(modalMod,   ["bootModal", "boot", "init"]);
     const bootThemeFx = pickBoot(themeMod,   ["bootThemeFx", "bootTheme", "boot", "init"]);

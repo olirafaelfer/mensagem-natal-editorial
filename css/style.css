@@ -1174,3 +1174,25 @@ img, svg, video, canvas{ filter:none !important; }
 
 /* ==== header/body width lock ==== */
 .topbar-banner > .container{ max-width: var(--container) !important; }
+
+/* ===== PATCH: tokens tighter ===== */
+#messageArea .token{ display:inline; padding:0; margin:0; }
+#messageArea .token.rule{ text-decoration: underline; text-underline-offset: 3px; }
+#messageArea .token.correct{ color: #28a745; font-weight: 700; cursor: default; }
+#messageArea .token.wrong{ color: #dc3545; font-weight: 700; cursor: default; }
+#messageArea .token.blocked{ pointer-events:none; }
+
+.topbar-banner .container{ display:flex; align-items:center; justify-content:space-between; }
+.topbar-row{ width:100%; }
+
+/* score float: posicionável */
+.score-float{ animation-duration: 1400ms; }
+.score-float.plus{ background: rgba(20,120,50,.85); }
+.score-float.minus{ background: rgba(150,30,30,.85); }
+
+/* mãozinha do tutorial mais dinâmica */
+.tutorial-focus .token.focus::after{ animation: handPulse 950ms ease-in-out infinite; }
+@keyframes handPulse{
+  0%,100%{ transform: translateX(-50%) scale(1); opacity: .9; }
+  50%{ transform: translateX(-50%) scale(1.18); opacity: 1; }
+}

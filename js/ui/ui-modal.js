@@ -14,6 +14,7 @@ export function bootModal(app){
 
   let lastActiveEl = null;
   let closeTimer = null;
+  let currentDismissible = false;
   let scrollYBefore = 0;
 
   // =========================
@@ -132,7 +133,7 @@ export function bootModal(app){
   });
 
   overlay.addEventListener("click", (e) => {
-    if (e.target === overlay) closeModal();
+    if (e.target === overlay && currentDismissible) closeModal();
   });
 
   document.addEventListener("keydown", (e) => {

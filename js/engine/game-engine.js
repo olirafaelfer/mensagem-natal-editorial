@@ -109,7 +109,8 @@ isDone(){
     return this.addScore(this.scoreRules.correct);
   }
 
-  applyWrong(){
+  applyWrong(ruleId){
+    if (ruleId) this.fixedRuleIds.add(ruleId);
     return this.addScore(this.scoreRules.wrong);
   }
 

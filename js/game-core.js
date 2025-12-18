@@ -63,7 +63,17 @@ export function bootGame(app){
     return isChallengeDone(ch-1);
   }
 
-  function onChallengeClick(ch){
+  
+  function requireNameSector(){
+    const name = app.user?.getUserName?.() || "";
+    const sector = app.user?.getUserSector?.() || "";
+    if (name && sector) return true;
+    // mostrar formulário (sem login)
+    ui.showOnly(dom.screenForm);
+    return false;
+  }
+
+function onChallengeClick(ch){
     if (!canAccessChallenge(ch)){
       if (!app.auth?.isLogged?.()){
         openModal({
@@ -160,6 +170,7 @@ export function bootGame(app){
       if (dom.skipLevelBtn){
         dom.skipLevelBtn.disabled = false;
         dom.skipLevelBtn.textContent = "Avançar sem concluir (-5)";
+        if (done) dom.skipLevelBtn.disabled = true;
       }
     }
   }
@@ -320,6 +331,7 @@ export function bootGame(app){
   // Token click flows
   // =========================
   function onPlainClick(el){
+    if (engine.isDone?.()) return;
     openModal({
       title:"Tem certeza que deseja corrigir este trecho?",
       bodyHTML:`<p><b>${escapeHtml(el.textContent)}</b></p><p class="muted">Este trecho já está correto. Se você confirmar, perderá pontos.</p>`,
@@ -328,7 +340,7 @@ export function bootGame(app){
         {label:"Confirmar", onClick: () => {
           closeModal();
           const delta = engine.penalizeMisclick();
-          scoreFloat(delta);
+          scoreFloat(delta, el);
           openModal({
             title:"Trecho já correto!",
             bodyHTML:`<p>A palavra/trecho <b>"${escapeHtml(el.textContent)}"</b> já está correta! Que pena, você perdeu <b>${Math.abs(app.data.SCORE_RULES.wrong)}</b> pontos.</p>`,
@@ -340,6 +352,7 @@ export function bootGame(app){
   }
 
   function onTokenClick(el, rule){
+    if (engine.isDone?.()) return;
     openModal({
       title:"Tem certeza que deseja corrigir este trecho?",
       bodyHTML:`<p><b>${escapeHtml(el.textContent)}</b></p>`,
@@ -372,8 +385,9 @@ export function bootGame(app){
           // normaliza comparação
           const ok = (v === correct);
           if (!ok){
-            const delta = engine.applyWrong();
-            scoreFloat(delta);
+            el.classList.add("wrong","blocked");
+          const delta = engine.applyWrong(rule.id);
+            scoreFloat(delta, el);
             openModal({
               title:"Ops!",
               bodyHTML:`<p>A correção não está certa! Você perdeu <b>${Math.abs(app.data.SCORE_RULES.wrong)}</b> pontos.</p>
@@ -389,8 +403,9 @@ export function bootGame(app){
           // aplica
           closeModal();
           engine.logFix({ kind:"manual", label: rule.label||"", before: shownText, after: rule.correct ?? "", reason: rule.reason||"" });
+          el.classList.add("correct","blocked");
           const delta = engine.applyCorrect(rule.id);
-          scoreFloat(delta);
+          scoreFloat(delta, el);
           // aplica no texto (substitui primeira ocorrência não fixa)
           engine.currentText = engine.currentText.replace(rule.wrong, rule.correct);
           updateHUD();
@@ -414,7 +429,7 @@ export function bootGame(app){
         {label:"Aplicar", onClick: () => {
           closeModal();
           const delta = engine.autoCorrect(rule.id);
-          scoreFloat(delta);
+          scoreFloat(delta, el);
           engine.currentText = engine.currentText.replace(rule.wrong, rule.correct);
           updateHUD();
           renderMessage(engine.challenge===0);
@@ -437,7 +452,7 @@ export function bootGame(app){
     const first = pending[0];
 
     const delta = engine.useHint();
-    scoreFloat(delta);
+    scoreFloat(delta, el);
 
     openModal({
       title:"💡 Dica",
@@ -455,7 +470,7 @@ export function bootGame(app){
   function onSkip(){
     // igual ao "avançar sem concluir"
     const delta = engine.addScore(app.data.SCORE_RULES.skip);
-    scoreFloat(delta);
+    scoreFloat(delta, el);
     nextInternal();
   }
 
@@ -465,7 +480,7 @@ export function bootGame(app){
       bodyHTML:`<p>Você deseja avançar sem concluir esta tarefa? Você perderá <b>${Math.abs(app.data.SCORE_RULES.skip)}</b> pontos.</p>`,
       buttons:[
         {label:"Cancelar", variant:"ghost", onClick: closeModal},
-        {label:"Avançar", onClick: () => { closeModal(); const delta = engine.addScore(app.data.SCORE_RULES.skip); scoreFloat(delta); nextInternal(); }}
+        {label:"Avançar", onClick: () => { closeModal(); const delta = engine.addScore(app.data.SCORE_RULES.skip); scoreFloat(delta, el); nextInternal(); }}
       ]
     });
   }
@@ -477,7 +492,7 @@ function onNext(){
     }
     // avançar sem concluir
     const delta = engine.addScore(app.data.SCORE_RULES.skip);
-    scoreFloat(delta);
+    scoreFloat(delta, el);
     nextInternal();
   }
 

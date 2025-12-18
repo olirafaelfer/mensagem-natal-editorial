@@ -24,7 +24,7 @@ export function getTutorialLevels(){
     {
       name: "Tutorial 3/3 — Dica e correção automática",
       intro: "Agora você vai ver a dica e a correção automática em ação.",
-      instruction: "Clique em “caridadee” (erro) e depois clique em “Me dê uma dica”. Use “Correção automática” para concluir.",
+      instruction: "Clique direto em “Me dê uma dica” e escolha “Correção automática”. Depois, clique em “Natal” (palavra correta) e confirme para ver a penalidade por tentar corrigir algo certo.",
       raw: "Neste Natal, pratique a caridadee e o amor ao próximo.",
       focusRuleId: "t3",
       rules: [
