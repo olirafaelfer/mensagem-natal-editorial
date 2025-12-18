@@ -71,8 +71,7 @@ export function bootGameCore(app){
   app.levels = levels;
 
   // Tutorial (3 níveis)
-  let tutorialLevels = [];
-  try { tutorialLevels = getTutorialLevels() || []; } catch (e){ console.warn('Tutorial indisponível:', e); tutorialLevels = []; }
+  const tutorialLevels = getTutorialLevels();
   let inTutorial = false;
 
   /** =========================
@@ -563,9 +562,12 @@ function applyReplacementAt(start, len, replacement){
     fixedRuleIds.add(rule.id);
     registerCorrect();
 
-    // Tutorial: escurece/blur e permite clique apenas no alvo
+    // Tutorial: garante reset do modo guiado
     if (messageArea){
-      messageArea.classList.toggle('tutorial-mode', !!inTutorial && !!(currentLevel?.focusRuleId || currentLevel?.focusPlain));
+      messageArea.classList.remove('tutorial-mode');
+      if (inTutorial && (lvl.focusRuleId || lvl.focusPlain)){
+        messageArea.classList.add('tutorial-mode');
+      }
     }
     renderMessage();
     finalizeIfDone();
@@ -602,9 +604,12 @@ function applyReplacementAt(start, len, replacement){
               if (repl !== "") markCorrected(rule.id, start, repl);
 
               registerAutoCorrect();
-              // Tutorial: escurece/blur e permite clique apenas no alvo
+              // Tutorial: garante reset do modo guiado
     if (messageArea){
-      messageArea.classList.toggle('tutorial-mode', !!inTutorial && !!(currentLevel?.focusRuleId || currentLevel?.focusPlain));
+      messageArea.classList.remove('tutorial-mode');
+      if (inTutorial && (lvl.focusRuleId || lvl.focusPlain)){
+        messageArea.classList.add('tutorial-mode');
+      }
     }
     renderMessage();
               finalizeIfDone();
@@ -624,9 +629,12 @@ function applyReplacementAt(start, len, replacement){
 
     registerCorrect();
     closeModal();
-    // Tutorial: escurece/blur e permite clique apenas no alvo
+    // Tutorial: garante reset do modo guiado
     if (messageArea){
-      messageArea.classList.toggle('tutorial-mode', !!inTutorial && !!(currentLevel?.focusRuleId || currentLevel?.focusPlain));
+      messageArea.classList.remove('tutorial-mode');
+      if (inTutorial && (lvl.focusRuleId || lvl.focusPlain)){
+        messageArea.classList.add('tutorial-mode');
+      }
     }
     renderMessage();
     finalizeIfDone();
@@ -680,9 +688,12 @@ function applyReplacementAt(start, len, replacement){
     const done = fixedRuleIds.size >= currentRules.length;
     if (done){
       levelLocked = true;
-      // Tutorial: escurece/blur e permite clique apenas no alvo
+      // Tutorial: garante reset do modo guiado
     if (messageArea){
-      messageArea.classList.toggle('tutorial-mode', !!inTutorial && !!(currentLevel?.focusRuleId || currentLevel?.focusPlain));
+      messageArea.classList.remove('tutorial-mode');
+      if (inTutorial && (lvl.focusRuleId || lvl.focusPlain)){
+        messageArea.classList.add('tutorial-mode');
+      }
     }
     renderMessage();
       nextLevelBtn?.classList.remove("btn-disabled");
@@ -725,9 +736,12 @@ function applyReplacementAt(start, len, replacement){
     if (expected !== "") markCorrected(rule.id, start, expected);
 
     registerAutoCorrect();
-    // Tutorial: escurece/blur e permite clique apenas no alvo
+    // Tutorial: garante reset do modo guiado
     if (messageArea){
-      messageArea.classList.toggle('tutorial-mode', !!inTutorial && !!(currentLevel?.focusRuleId || currentLevel?.focusPlain));
+      messageArea.classList.remove('tutorial-mode');
+      if (inTutorial && (lvl.focusRuleId || lvl.focusPlain)){
+        messageArea.classList.add('tutorial-mode');
+      }
     }
     renderMessage();
     finalizeIfDone();
@@ -798,6 +812,39 @@ function applyReplacementAt(start, len, replacement){
         return;
       }
 
+      await app.finishMission?.({ score, correctCount, wrongCount, taskScore, taskCorrect, taskWrong, autoUsed });
+      showFinal();
+      return;
+    }
+
+    levelIndex += 1;
+    startLevel();
+  });
+        return;
+      }
+      const ok = await new Promise((resolve) => {
+        openModal({
+          title: "Avançar sem concluir",
+          bodyHTML: `<p>Deseja avançar sem concluir esta atividade?</p><p>Você perderá <strong>5</strong> pontos.</p>`,
+          buttons: [
+            { label:"Cancelar", variant:"ghost", onClick: () => { closeModal(); resolve(false); } },
+            { label:"Sim, avançar", onClick: () => { closeModal(); resolve(true); } }
+          ]
+        });
+      });
+      if (!ok) return;
+      addScore(-5);
+    }
+
+    if (isLast){
+      if (inTutorial){
+        openModal({
+          title: "Tutorial concluído 🎄",
+          bodyHTML: `<p>A pontuação do tutorial não será contabilizada.</p>`,
+          buttons: [{ label:"Iniciar Desafio 1", onClick: () => { closeModal(); beginMainMission(); } }]
+        });
+        return;
+      }
       await app.finishMission?.({ score, correctCount, wrongCount, taskScore, taskCorrect, taskWrong, autoUsed });
       showFinal();
       return;
@@ -1140,7 +1187,7 @@ function applyReplacementAt(start, len, replacement){
     resetMisclickRanges(); // ✅ reseta misclick por nível
     levelLocked = false;
 
-    /* headerTitle removido por design minimalista */
+    if (headerTitle) headerTitle.textContent = `Revisão da Mensagem de Natal — ${lvl.name}`;
     if (levelLabel) levelLabel.textContent = lvl.name;
     if (instruction) instruction.textContent = lvl.instruction || "";
 
@@ -1151,9 +1198,12 @@ function applyReplacementAt(start, len, replacement){
     }
 
     updateHUD();
-    // Tutorial: escurece/blur e permite clique apenas no alvo
+    // Tutorial: garante reset do modo guiado
     if (messageArea){
-      messageArea.classList.toggle('tutorial-mode', !!inTutorial && !!(currentLevel?.focusRuleId || currentLevel?.focusPlain));
+      messageArea.classList.remove('tutorial-mode');
+      if (inTutorial && (lvl.focusRuleId || lvl.focusPlain)){
+        messageArea.classList.add('tutorial-mode');
+      }
     }
     renderMessage();
 
