@@ -260,10 +260,10 @@ async function safeImport(path, name){
 
 async function bootAll(){
   try {
-    const modalMod   = await safeImport("./ui-modal.js?v=20251217fix1", "ui-modal.js");
-    const themeMod   = await safeImport("./theme-fx.js?v=20251217fix1", "theme-fx.js");
-    const rankingMod = await safeImport("./ranking.js?v=20251217fix1", "ranking.js");
-    const gameMod    = await safeImport("./game-core.js?v=20251217fix1", "game-core.js");
+    const modalMod   = await safeImport("./ui-modal.js?v=20251217fix2", "ui-modal.js");
+    const themeMod   = await safeImport("./theme-fx.js?v=20251217fix2", "theme-fx.js");
+    const rankingMod = await safeImport("./ranking.js?v=20251217fix2", "ranking.js");
+    const gameMod    = await safeImport("./game-core.js?v=20251217fix2", "game-core.js");
     const adminMod   = await import("./admin.js");
     const authMod    = await import("./auth.js"); // ✅ auth
 
