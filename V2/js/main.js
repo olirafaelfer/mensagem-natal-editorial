@@ -115,7 +115,7 @@ async function bootAll(){
     const bootGame    = pickBoot(gameMod,    ["bootGame", "bootGameCore", "initGame", "init"]);
     const bootAdmin   = pickBoot(adminMod,   ["bootAdmin", "boot", "init"]);
     const bootAuth    = pickBoot(authMod,    ["bootAuth", "boot", "init"]); 
-    const bootGoogle  = pickBoot(googleMod,  ["bootGoogleAuth", "boot", "init"]);
+    //const bootGoogle  = pickBoot(googleMod,  ["bootGoogleAuth", "boot", "init"]);
 
     bootModal?.(app);
     bootThemeFx?.(app);
@@ -123,7 +123,7 @@ async function bootAll(){
     bootGame?.(app);
     bootAdmin?.(app);
     bootAuth?.(app);
-    bootGoogle?.(app);
+    //bootGoogle?.(app);
 
     // abre auth automaticamente se não logado (comporta igual ao que você tinha)
     setTimeout(() => {
