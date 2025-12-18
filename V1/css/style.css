@@ -1,5 +1,7 @@
 
 :root{
+  color-scheme: light;
+
   --bg:#070b16;
   --card:rgba(255,255,255,.03);
   --line:rgba(255,255,255,.09);
@@ -131,4 +133,13 @@ input,select{
 @media (max-width:520px){
   .topbar,.wrap{max-width:100%}
   .grid2{grid-template-columns:1fr}
+}
+
+
+:root[data-theme="light"]{
+  --bg:#f6f7fb;
+  --card:rgba(0,0,0,.03);
+  --line:rgba(0,0,0,.10);
+  --txt:#121528;
+  --muted:rgba(18,21,40,.72);
 }

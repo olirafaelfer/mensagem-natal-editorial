@@ -336,7 +336,7 @@ function onTokenClick(tokenEl){
     message:`Tem certeza que deseja corrigir este trecho?\n\n"${tokenEl.textContent}"`,
     dismissible:false,
     buttons:[
-      { label:"Corrigir", onClick: ()=> showCorrectionModal({ tokenEl, pending }) },
+      { label:"Corrigir", close:false, onClick: ({close})=>{ close(); showCorrectionModal({ tokenEl, pending }); } },
       { label:"Cancelar" }
     ]
   });
