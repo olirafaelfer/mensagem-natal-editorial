@@ -93,7 +93,6 @@ async function safeImport(path, name){
 async function bootAll(){
   try {
     const modalMod   = await safeImport("./ui/ui-modal.js", "ui-modal.js");
-    const modalMod   = await safeImport("./ui/ui-modal.js", "ui-modal.js");
     const themeMod   = await safeImport("./modules/theme-fx.js", "theme-fx.js");
     const rankingMod = await safeImport("./modules/ranking.js", "ranking.js");
     const gameMod    = await safeImport("./game-core.js", "game-core.js");
