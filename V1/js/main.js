@@ -832,4 +832,23 @@ beginChallenge = async (n)=>{
 };
 
 showScreen("home");
-computeLocks();
+computeLocks();function setLogoSrc(){
+  const img = document.getElementById("logoImg") || document.querySelector(".topbar img");
+  if(!img) return;
+  const candidates = [
+    "../asset/logo-natal.png",
+    "./asset/logo-natal.png",
+    "../../asset/logo-natal.png",
+    "/asset/logo-natal.png"
+  ];
+  const tryNext = (i)=>{
+    if(i>=candidates.length) return;
+    const test = new Image();
+    test.onload = ()=>{ img.src = candidates[i]; };
+    test.onerror = ()=>tryNext(i+1);
+    test.src = candidates[i];
+  };
+  tryNext(0);
+}
+
+
