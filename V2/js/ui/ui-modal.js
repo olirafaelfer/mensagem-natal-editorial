@@ -2,6 +2,12 @@
 // Estratégia: NÃO fixar o body com top negativo (isso causa modal “no topo” no 1º paint).
 // Em vez disso: trava scroll via overflow hidden + preserva largura (scrollbar) + restaura foco.
 
+// Back-compat exports: alguns módulos antigos importam openModal/closeModal diretamente.
+// Estes wrappers passam a chamar a API inicializada em bootModal(app).
+let __modalApi = null;
+export function openModal(opts){ return __modalApi?.openModal?.(opts); }
+export function closeModal(){ return __modalApi?.closeModal?.(); }
+
 export function bootModal(app){
   const overlay   = document.getElementById("overlay");
   const modal     = overlay?.querySelector(".modal") || null;
@@ -145,4 +151,5 @@ export function bootModal(app){
   // Expor no app
   // =========================
   app.modal = { openModal, closeModal };
+  __modalApi = app.modal;
 }

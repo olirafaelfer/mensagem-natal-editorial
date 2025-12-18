@@ -1,3 +1,4 @@
+const BUILD_ID = "fix6";
 // js/main.js — BOOTSTRAP (módulos + Firebase) — versão refatorada em pastas
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js";
 import { getAuth } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
@@ -92,7 +93,7 @@ function pickBoot(mod, candidates){
 }
 
 async function safeImport(path, name){
-  try { return await import(path); }
+  try { return await import(`${path}?v=${BUILD_ID}`); }
   catch (e){
     console.error(`❌ Falha ao importar ${name} (${path}):`, e);
     throw e;
