@@ -806,40 +806,6 @@ function applyReplacementAt(start, len, replacement){
     levelIndex += 1;
     startLevel();
   });
-        return;
-      }
-      const ok = await new Promise((resolve) => {
-        openModal({
-          title: "Avançar sem concluir",
-          bodyHTML: `<p>Deseja avançar sem concluir esta atividade?</p><p>Você perderá <strong>5</strong> pontos.</p>`,
-          buttons: [
-            { label:"Cancelar", variant:"ghost", onClick: () => { closeModal(); resolve(false); } },
-            { label:"Sim, avançar", onClick: () => { closeModal(); resolve(true); } }
-          ]
-        });
-      });
-      if (!ok) return;
-      addScore(-5);
-    }
-
-    if (isLast){
-      if (inTutorial){
-        openModal({
-          title: "Tutorial concluído 🎄",
-          bodyHTML: `<p>A pontuação do tutorial não será contabilizada.</p>`,
-          buttons: [{ label:"Iniciar Desafio 1", onClick: () => { closeModal(); beginMainMission(); } }]
-        });
-        return;
-      }
-      await app.finishMission?.({ score, correctCount, wrongCount, taskScore, taskCorrect, taskWrong, autoUsed });
-      showFinal();
-      return;
-    }
-
-    levelIndex += 1;
-    startLevel();
-  });
-
   hintBtn?.addEventListener("click", () => {
     if (levelLocked){
       onLockedTextClick();
@@ -1277,6 +1243,7 @@ openModal({
     </div>
   `,
   buttons: [{ label:"Começar", onClick: () => { closeModal(); showOnly(screenGame); startLevel(); } }]
+});
 });
 
   restartBtn?.addEventListener("click", () => showOnly(screenForm));
