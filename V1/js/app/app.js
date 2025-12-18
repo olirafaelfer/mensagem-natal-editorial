@@ -4,7 +4,27 @@
 //
 // Mantém-se intencionalmente "bobo": não conhece regras do jogo (engine).
 
-export function createApp({ dom, data }) {
+
+function collectDom(){
+  const $ = (id)=>document.getElementById(id);
+  return {
+    // topbar
+    userNameEl: $("userName"),
+    userSectorEl: $("userSector"),
+    // guest / auth profile inputs (ids usados no V2)
+    guestNameInput: $("guestName"),
+    guestSectorSel: $("guestSector"),
+    authSignupNameInput: $("signupName"),
+    authSignupSectorSel: $("signupSector"),
+  };
+}
+
+export function createApp(cfg = {}) {
+  // Compat: o main.js chama createApp({ firebase, THEME_PRESETS, SECTORS, SCORE_RULES })
+  // Este módulo aceita também createApp({ dom, data }).
+  const dom = cfg.dom || collectDom();
+  const data = cfg.data || { SECTORS: cfg.SECTORS || cfg.sectors || [] };
+
   const state = {
     guestName: "",
     guestSector: "",
@@ -45,8 +65,8 @@ export function createApp({ dom, data }) {
 
   function populateSectors(){
     const sectors = (data && Array.isArray(data.SECTORS)) ? data.SECTORS : [];
-    fillSelect(dom.guestSectorSel, sectors);
-    fillSelect(dom.authSignupSectorSel, sectors);
+    if(dom && dom.guestSectorSel) fillSelect(dom.guestSectorSel, sectors);
+    if(dom && dom.authSignupSectorSel) fillSelect(dom.authSignupSectorSel, sectors);
   }
 
   function setUserProfile(u){
