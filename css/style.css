@@ -1170,3 +1170,7 @@ img, svg, video, canvas{ filter:none !important; }
 .fix-item{ padding:10px 12px; border-radius: 12px; background: rgba(255,255,255,.06); margin: 10px 0; }
 .fix-before{ opacity: .9; }
 .fix-after{ margin-top:6px; }
+
+
+/* ==== header/body width lock ==== */
+.topbar-banner > .container{ max-width: var(--container) !important; }

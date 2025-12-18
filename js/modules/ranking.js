@@ -1,234 +1,115 @@
-// js/r
-    async submitChallengeScore(ch, score){
-      if (!firebase?.auth?.currentUser) return;
-      const u = firebase.auth.currentUser;
-      const uid = u.uid;
-      const profile = await app.auth?.getProfile?.();
-      const name = profile?.name || app.dom?.userName?.value || "Usuário";
-      const sector = profile?.sector || app.dom?.userSector?.value || "(Sem setor)";
-      const ref = firebase.doc(firebase.db, "individualRanking", uid);
-      const snap = await firebase.getDoc(ref);
-      const d = snap.exists() ? snap.data() : {};
-      const payload = {
-        uid, name, sector,
-        updatedAt: firebase.serverTimestamp(),
-        ["c"+ch+"Score"]: Number(score||0)
-      };
-      const c1 = (ch===1?Number(score||0):Number(d.c1Score||0));
-      const c2 = (ch===2?Number(score||0):Number(d.c2Score||0));
-      const c3 = (ch===3?Number(score||0):Number(d.c3Score||0));
-      const have = [c1,c2,c3].filter(v=>v>0);
-      payload.overallAvg = have.length ? Math.round(have.reduce((a,b)=>a+b,0)/have.length) : 0;
-      if (!snap.exists()) payload.createdAt = firebase.serverTimestamp();
-      await firebase.setDoc(ref, { ...d, ...payload }, { merge:true });
-    },
-anking.js — V2 (modelo) ranking por DESAFIO + geral (média)
-// Estrutura sugerida:
-// /rankingByEmail/{emailHashHex}
-// {
-//   email: "user@dominio.com",
-//   emailHash: "..." (igual ao docId),
-//   name, sector,
-//   visible: true/false,
-//   c1Score, c2Score, c3Score,
-//   c1Correct, c1Wrong, ...,
-//   overallAvg,  // média dos 3 desafios (quando existir)
-//   createdAt, updatedAt
-// }
+// js/modules/ranking.js — Ranking (individual + destaque do usuário)
 //
-// Observação importante de segurança:
-// - Este modelo impede que alguém escreva no documento de outra pessoa porque exige email == request.auth.token.email.
-// - Ainda assim, como as rules não calculam SHA-256, não dá para provar que docId == hash(email) apenas nas rules.
-//   A solução "perfeita" (privacidade + unicidade) é usar Cloud Function para gerar o hash server-side e escrever no doc certo.
-//   Se você quiser ficar 100% sem brechas, eu te passo a Function também.
+// Coleções (sem Cloud Function):
+// /individualRanking/{uid}
+//  { uid, name, sector, c1Score, c2Score, c3Score, overallAvg, createdAt, updatedAt }
+//
+// Observação: por enquanto usa UID (mesmo modelo das rules atuais).
+// Depois você migra para hash do e-mail.
 
-import { getAuth } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
+function escapeHtml(s){
+  return String(s ?? "").replace(/[&<>"']/g, (c) => ({
+    "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
+  }[c]));
+}
 
 export function bootRanking(app){
+  const { firebase, dom } = app;
   const { openModal, closeModal } = app.modal || {};
-  const fb = app.firebase;
 
-  if (!openModal || !closeModal || !fb?.db) return;
+  async function submitChallengeScore(ch, score){
+    if (!firebase?.auth?.currentUser) return;
+    const u = firebase.auth.currentUser;
+    const uid = u.uid;
 
-  const rankingBtn = document.getElementById("rankingBtn");
-  const finalRankingBtn = document.getElementById("finalRankingBtn");
-  rankingBtn?.addEventListener("click", () => openRankingModal());
-  finalRankingBtn?.addEventListener("click", () => openRankingModal());
+    const profile = await app.auth?.getProfile?.();
+    const name = profile?.name || app.user?.getUserName?.() || "Usuário";
+    const sector = profile?.sector || app.user?.getUserSector?.() || "(Sem setor)";
 
-  // API para o jogo chamar quando finalizar um desafio
-  app.ranking = app.ranking || {};
-  app.ranking.commitChallenge = commitChallengeScore;
-  app.ranking.setVisible = setVisible;
+    const ref = firebase.doc(firebase.db, "individualRanking", uid);
+    const snap = await firebase.getDoc(ref);
+    const d = snap.exists() ? snap.data() : {};
 
-  async function sha256Hex(str){
-    const data = new TextEncoder().encode(str);
-    const hashBuffer = await crypto.subtle.digest("SHA-256", data);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    return hashArray.map(b => b.toString(16).padStart(2, "0")).join("");
+    const payload = {
+      uid,
+      name,
+      sector,
+      updatedAt: firebase.serverTimestamp(),
+      ["c"+ch+"Score"]: Number(score || 0),
+    };
+
+    const c1 = (ch===1 ? Number(score||0) : Number(d.c1Score||0));
+    const c2 = (ch===2 ? Number(score||0) : Number(d.c2Score||0));
+    const c3 = (ch===3 ? Number(score||0) : Number(d.c3Score||0));
+    const have = [c1,c2,c3].filter(v => v > 0);
+    payload.overallAvg = have.length ? Math.round(have.reduce((a,b)=>a+b,0)/have.length) : 0;
+
+    if (!snap.exists()) payload.createdAt = firebase.serverTimestamp();
+
+    await firebase.setDoc(ref, { ...d, ...payload }, { merge:true });
   }
 
-  function getLoggedEmail(){
-    const u = getAuth().currentUser;
-    return u?.email || null;
-  }
-
-  function getProfileSafe(){
-    return app.auth?.getProfile?.() || null;
-  }
-
-  async function commitChallengeScore(challengeId, payload){
-    const email = getLoggedEmail();
-    if (!email) return;
-
-    const emailNorm = email.trim().toLowerCase();
-    const emailHash = await sha256Hex(emailNorm);
-
-    const prof = getProfileSafe();
-    const name = (prof?.name || app.user?.getUserName?.() || "").trim();
-    const sector = (prof?.sector || app.user?.getUserSector?.() || "").trim();
-    if (!name || !sector) return;
-
-    const score = Number(payload?.score ?? 0);
-    const correct = Number(payload?.correct ?? 0);
-    const wrong = Number(payload?.wrong ?? 0);
-
-    const ref = fb.doc(fb.db, "rankingByEmail", emailHash);
-
-    // merge, mas garantindo "melhor pontuação por desafio"
-    await fb.runTransaction(fb.db, async (tx) => {
-      const snap = await tx.get(ref);
-      const data = snap.exists() ? snap.data() : {};
-
-      const base = {
-        email: emailNorm,
-        emailHash,
-        name,
-        sector,
-        visible: (data.visible !== false),
-        updatedAt: fb.serverTimestamp(),
-      };
-      if (!snap.exists()) base.createdAt = fb.serverTimestamp();
-
-      const cKey = `c${challengeId}Score`;
-      const cCKey = `c${challengeId}Correct`;
-      const cWKey = `c${challengeId}Wrong`;
-
-      const prevScore = Number(data[cKey] ?? 0);
-      if (score > prevScore){
-        base[cKey] = score;
-        base[cCKey] = correct;
-        base[cWKey] = wrong;
-      }
-
-      const c1 = Number(base.c1Score ?? data.c1Score ?? 0);
-      const c2 = Number(base.c2Score ?? data.c2Score ?? 0);
-      const c3 = Number(base.c3Score ?? data.c3Score ?? 0);
-
-      base.overallAvg = (c1 && c2 && c3) ? Math.round((c1 + c2 + c3) / 3) : 0;
-
-      tx.set(ref, base, { merge:true });
-    });
-  }
-
-  async function setVisible(visible){
-    const email = getLoggedEmail();
-    if (!email) return;
-
-    const emailHash = await sha256Hex(email.trim().toLowerCase());
-    const ref = fb.doc(fb.db, "rankingByEmail", emailHash);
-
-    await fb.setDoc(ref, { visible: !!visible, updatedAt: fb.serverTimestamp() }, { merge:true });
-  }
-
-  function medalFor(i){
-    if (i === 0) return "🥇";
-    if (i === 1) return "🥈";
-    if (i === 2) return "🥉";
-    return "•";
-  }
-
-  async function fetchTop(field){
-    const q = fb.query(
-      fb.collection(fb.db, "rankingByEmail"),
-      fb.orderBy(field, "desc"),
-      fb.limit(100)
-    );
-    const snap = await fb.getDocs(q);
-    const out = [];
-    snap.forEach(d => {
-      const x = d.data();
-      if (x.visible === false) return;
-      out.push({ id:d.id, ...x });
-    });
-    return out;
-  }
-
-  async function openRankingModal(){
-    openModal({
-      title: "🏆 Ranking",
-      bodyHTML: `
-        <div class="ranking-tabs" id="rankingTabs">
-          <button class="ranking-tab active" data-tab="c1">Desafio 1</button>
-          <button class="ranking-tab" data-tab="c2">Desafio 2</button>
-          <button class="ranking-tab" data-tab="c3">Desafio 3</button>
-          <button class="ranking-tab" data-tab="all">Geral</button>
-        </div>
-        <div id="rankingBody" style="margin-top:12px">
-          <div class="muted">Carregando…</div>
-        </div>
-      `,
-      buttons: [{ label:"Fechar", onClick: closeModal }]
-    });
-
-    const tabs = document.getElementById("rankingTabs");
-    const body = document.getElementById("rankingBody");
-    let current = "c1";
-
-    async function render(){
-      const field =
-        current === "c1" ? "c1Score" :
-        current === "c2" ? "c2Score" :
-        current === "c3" ? "c3Score" :
-        "overallAvg";
-
-      const rows = await fetchTop(field);
-      let html = `<div class="ranking-list">`;
-      rows.forEach((r, i) => {
-        const score =
-          current === "c1" ? (r.c1Score ?? 0) :
-          current === "c2" ? (r.c2Score ?? 0) :
-          current === "c3" ? (r.c3Score ?? 0) :
-          (r.overallAvg ?? 0);
-
-        html += `
-          <div class="ranking-row">
-            <div class="rk-pos">${medalFor(i)} ${i+1}</div>
-            <div class="rk-main">
-              <div class="rk-name">${escapeHtml(r.name || "—")}</div>
-              <div class="rk-sub muted">${escapeHtml(r.sector || "")}</div>
-            </div>
-            <div class="rk-score"><strong>${Number(score || 0)}</strong></div>
-          </div>
-        `;
-      });
-      html += `</div>`;
-      body.innerHTML = html;
+  async function openRanking(){
+    if (!openModal){
+      console.warn("[ranking] modal não inicializado.");
+      return;
     }
 
-    tabs?.addEventListener("click", (e) => {
-      const btn = e.target?.closest?.(".ranking-tab");
-      if (!btn) return;
-      current = btn.dataset.tab;
-      tabs.querySelectorAll(".ranking-tab").forEach(b => b.classList.toggle("active", b === btn));
-      render();
+    // busca top 50 por média
+    const q = firebase.query(
+      firebase.collection(firebase.db, "individualRanking"),
+      firebase.orderBy("overallAvg", "desc"),
+      firebase.limit(50)
+    );
+
+    const snap = await firebase.getDocs(q);
+    const rows = snap.docs.map(d => d.data());
+
+    const meUid = firebase.auth?.currentUser?.uid || null;
+    const myIndex = meUid ? rows.findIndex(r => r.uid === meUid) : -1;
+
+    const body = `
+      <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:10px">
+        <div><b>Ranking geral (média dos desafios)</b></div>
+        ${myIndex>=0 ? `<div class="muted">Sua posição: <b>#${myIndex+1}</b></div>` : `<div class="muted">Entre para aparecer</div>`}
+      </div>
+      <div style="max-height:55vh; overflow:auto; border-radius:12px;">
+        <table class="rank-table" style="width:100%; border-collapse:collapse;">
+          <thead>
+            <tr>
+              <th style="text-align:left; padding:8px 10px">#</th>
+              <th style="text-align:left; padding:8px 10px">Nome</th>
+              <th style="text-align:left; padding:8px 10px">Setor</th>
+              <th style="text-align:right; padding:8px 10px">Média</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rows.map((r,i)=>`
+              <tr style="${r.uid===meUid ? "background: rgba(255,255,255,.08);" : ""}">
+                <td style="padding:8px 10px">${i+1}</td>
+                <td style="padding:8px 10px"><b>${escapeHtml(r.name||"")}</b></td>
+                <td style="padding:8px 10px">${escapeHtml(r.sector||"")}</td>
+                <td style="padding:8px 10px; text-align:right"><b>${Number(r.overallAvg||0)}</b></td>
+              </tr>
+            `).join("")}
+          </tbody>
+        </table>
+      </div>
+      <div class="muted" style="margin-top:10px">
+        * Desafios: D1=${rows[myIndex]?.c1Score||0} · D2=${rows[myIndex]?.c2Score||0} · D3=${rows[myIndex]?.c3Score||0}
+      </div>
+    `;
+
+    openModal({
+      title: "🏆 Ranking",
+      bodyHTML: body,
+      buttons: [{ label:"Fechar", onClick: closeModal }]
     });
-
-    render();
   }
 
-  function escapeHtml(s){
-    return String(s).replace(/[&<>"']/g, c => ({
-      "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#039;"
-    }[c]));
-  }
+  // wires
+  dom.rankingBtn?.addEventListener("click", openRanking);
+  dom.finalRankingBtn?.addEventListener("click", openRanking);
+
+  app.ranking = { openRanking, submitChallengeScore };
 }
