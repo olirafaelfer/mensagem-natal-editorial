@@ -1,4 +1,3 @@
-import { openModal, closeModal } from "../ui/ui-modal.js";
 // js/modules/ranking.js — Ranking V2 (rankingByEmail)
 // - Apenas logados salvam (visitante nunca entra no ranking)
 // - DocId = sha256(email normalizado) (hex 64)
@@ -92,7 +91,7 @@ export function bootRanking(app){
   
   async function open(){
     // Modal simples (sem depender de DOM fixo)
-    openModal({
+    app.modal.openModal({
       title: "🏆 Ranking",
       bodyHTML: `<div class="rank-wrap">
         <div class="muted" style="margin-bottom:10px">Top 50 (média geral)</div>
@@ -111,7 +110,7 @@ export function bootRanking(app){
           </table>
         </div>
       </div>`,
-      buttons: [{ label:"Fechar", variant:"ghost", onClick: closeModal }]
+      buttons: [{ label:"Fechar", variant:"ghost", onClick: app.modal.closeModal }]
     });
 
     try{
