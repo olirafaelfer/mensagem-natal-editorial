@@ -55,8 +55,8 @@ export function createApp({ firebase, THEME_PRESETS, SECTORS, SCORE_RULES }){
   }
 
   function populateSectors(){
-    if (!dom.userSector) return;
-    dom.userSector.innerHTML = '<option value="">Selecione...</option>' + (SECTORS||[]).map(s=>`<option value="${escapeHtml(s)}">${escapeHtml(s)}</option>`).join("");
+    if (!dom.userSectorEl) return;
+    dom.userSectorEl.innerHTML = '<option value="">Selecione...</option>' + (SECTORS||[]).map(s=>`<option value="${escapeHtml(s)}">${escapeHtml(s)}</option>`).join("");
   }
 
 function getUserSector(){

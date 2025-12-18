@@ -372,7 +372,7 @@ function onChallengeClick(ch){
     });
   }
 
-  function openCorrection(rule, shownText){
+  function openCorrection(rule, shownText, tokenEl){
     const correct = rule.correct ?? "";
     const isRemove = correct === "";
 
@@ -394,7 +394,7 @@ function onChallengeClick(ch){
           // normaliza comparação
           const ok = (v === correct);
           if (!ok){
-            el.classList.add("wrong","blocked");
+            if (tokenEl){ tokenEl.classList.add("wrong","blocked"); }
           const delta = engine.applyWrong(rule.id);
             scoreFloat(delta, dom.nextLevelBtn);
             openModal({
@@ -402,7 +402,7 @@ function onChallengeClick(ch){
               bodyHTML:`<p>A correção não está certa! Você perdeu <b>${Math.abs(app.data.SCORE_RULES.wrong)}</b> pontos.</p>
                        <p class="muted">Gostaria de tentar de novo ou prefere uma correção automática? (Você perderá pontos se usar a correção automática.)</p>`,
               buttons:[
-                {label:"Tentar de novo", variant:"ghost", onClick: () => { closeModal(); openCorrection(rule, shownText); }},
+                {label:"Tentar de novo", variant:"ghost", onClick: () => { closeModal(); openCorrection(rule, shownText, el); }},
                 {label:"Correção automática", onClick: () => { closeModal(); confirmAuto(rule); }}
               ]
             });
@@ -412,7 +412,7 @@ function onChallengeClick(ch){
           // aplica
           closeModal();
           engine.logFix({ kind:"manual", label: rule.label||"", before: shownText, after: rule.correct ?? "", reason: rule.reason||"" });
-          el.classList.add("correct","blocked");
+          if (tokenEl){ tokenEl.classList.add("correct","blocked"); }
           const delta = engine.applyCorrect(rule.id);
           scoreFloat(delta, dom.nextLevelBtn);
           // aplica no texto (substitui primeira ocorrência não fixa)
