@@ -1,8 +1,7 @@
 // js/main.js — BOOTSTRAP (módulos + Firebase) — versão refatorada em pastas
+import { firebaseConfig } from "./firebase-config.js";
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js";
 import { getAuth } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
-import { firebaseConfig } from "./firebase-config.js";
-
 import {
   getFirestore,
   doc, getDoc, runTransaction, serverTimestamp,
@@ -41,7 +40,7 @@ const SCORE_RULES = {
 };
 
 // =========================
-// Firebase config (importada)
+// Firebase config
 // =========================
 
 const fbApp = initializeApp(firebaseConfig);
@@ -103,7 +102,7 @@ async function bootAll(){
 
     bootModal?.(app);
     bootThemeFx?.(app);
-    app.ranking = bootRanking?.(app) || {};
+    bootRanking?.(app);
     bootGame?.(app);
     bootAdmin?.(app);
     bootAuth?.(app);

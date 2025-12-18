@@ -8,6 +8,9 @@ import {
   query, orderBy, limit
 } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
 
+// App factory (DOM + helpers)
+import { createApp } from "./app/app.js";
+
 import { bootSnow } from "./ui/snow.js";
 // =========================
 // THEME PRESETS + CONSTANTS

@@ -1,5 +1,5 @@
 // js/firebase-config.js
-// Configuração pública do Firebase (Web App). Não inicializa aqui.
+// Config do Firebase (SDK Web) — exportado para ser usado pelo main.js e módulos.
 export const firebaseConfig = {
   apiKey: "AIzaSyD_-M7m1R2-FKzOHg356vb_IN7bPb6hqJM",
   authDomain: "missao-natal-ranking.firebaseapp.com",

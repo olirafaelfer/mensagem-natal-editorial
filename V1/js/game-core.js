@@ -555,7 +555,7 @@ function onNext(){
       // salva progresso + ranking (logado)
       markChallengeDone(engine.challenge, engine.score);
       if (app.auth?.isLogged?.()){
-        app.ranking?.submitChallengeScore?.(engine.challenge, { score: engine.score, correct: engine.correct, wrong: engine.wrong });
+        app.ranking?.submitChallengeScore?.(engine.challenge, engine.score);
       }
 
       ui.showOnly(dom.screenFinal);

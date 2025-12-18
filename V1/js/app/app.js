@@ -1,109 +1,79 @@
-// js/app/app.js — contexto global do app (DOM + helpers + navegação)
-// Mantém IDs do HTML. Sem dependências de Firebase.
-
-function qs(id){ return document.getElementById(id); }
-
-function escapeHtml(s){
-  return String(s ?? "").replace(/[&<>"']/g, c => ({
-    "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"
-  }[c]));
-}
-
+// js/app/app.js — contexto global (DOM + helpers)
 export function createApp({ firebase, THEME_PRESETS, SECTORS, SCORE_RULES }){
   const dom = {
     // Screens
-    screenLoading: qs("screenLoading"),
-    screenAuth: qs("screenAuth"),
-    screenForm: qs("screenForm"),
-    screenGame: qs("screenGame"),
-    screenFinal: qs("screenFinal"),
+    screenLoading: document.getElementById("screenLoading"),
+    screenAuth: document.getElementById("screenAuth"),
+    screenForm: document.getElementById("screenForm"),
+    screenGame: document.getElementById("screenGame"),
+    screenFinal: document.getElementById("screenFinal"),
 
-    // Top buttons
-    challenge1Btn: qs("challenge1Btn"),
-    challenge2Btn: qs("challenge2Btn"),
-    challenge3Btn: qs("challenge3Btn"),
-    rankingBtn: qs("rankingBtn"),
-    loginBtn: qs("loginBtn"),
-    missionSpecialHomeBtn: qs("missionSpecialHomeBtn"),
+    // Topbar buttons
+    rankingBtn: document.getElementById("rankingBtn"),
+    customizeBtn: document.getElementById("customizeBtn"),
+    challenge1Btn: document.getElementById("challenge1Btn"),
+    challenge2Btn: document.getElementById("challenge2Btn"),
+    challenge3Btn: document.getElementById("challenge3Btn"),
 
-    // Visitor profile
-    userNameEl: qs("userName"),
-    userSectorEl: qs("userSector"),
+    // Form fields (nome/setor)
+    userNameEl: document.getElementById("userName"),
+    userSectorEl: document.getElementById("userSector"),
+    optRankingEl: document.getElementById("optRanking"),
 
-    // HUD
-    hudScore: qs("hudScore"),
-    hudStreak: qs("hudStreak"),
-    hudLevel: qs("hudLevel"),
+    // Game HUD
+    levelLabel: document.getElementById("levelLabel"),
+    instruction: document.getElementById("instruction"),
+    remainingCount: document.getElementById("remainingCount"),
+    totalFixEl: document.getElementById("totalFix"),
+    scoreCountEl: document.getElementById("scoreCount"),
 
-    // Game area
-    messageBox: qs("messageBox"),
-    messageTokens: qs("messageTokens"),
-    hintBtn: qs("hintBtn"),
-    skipLevelBtn: qs("skipLevelBtn"),
-    nextLevelBtn: qs("nextLevelBtn"),
-    challengeActions: qs("challengeActions"),
+    // Game area/buttons
+    messageArea: document.getElementById("messageArea"),
+    hintBtn: document.getElementById("hintBtn"),
+    skipLevelBtn: document.getElementById("skipLevelBtn"),
+    nextLevelBtn: document.getElementById("nextLevelBtn"),
 
-    // Final buttons
-    finalHomeBtn: qs("finalHomeBtn"),
-    finalRankingBtn: qs("finalRankingBtn"),
-    finalNextTaskBtn: qs("finalNextTaskBtn"),
-    finalMissionSpecialBtn: qs("finalMissionSpecialBtn"),
-    reviewBtn1: qs("reviewBtn1"),
-    reviewBtn2: qs("reviewBtn2"),
-    reviewBtn3: qs("reviewBtn3"),
+    // Final screen
+    finalHomeBtn: document.getElementById("finalHomeBtn"),
+    finalRankingBtn: document.getElementById("finalRankingBtn"),
+    finalMsgsWrap: document.getElementById("finalMsgsWrap"),
+    toggleFinalMsgs: document.getElementById("toggleFinalMsgs"),
   };
 
   function showOnly(screen){
-    [dom.screenLoading, dom.screenAuth, dom.screenForm, dom.screenGame, dom.screenFinal].forEach(el=>{
-      if (!el) return;
-      el.style.display = (el === screen) ? "block" : "none";
-    });
+    [dom.screenLoading, dom.screenAuth, dom.screenForm, dom.screenGame, dom.screenFinal]
+      .forEach(el => el && el.classList.toggle("hidden", el !== screen));
   }
 
-  function populateSectors(){
-    const sel = dom.userSectorEl;
-    if (!sel) return;
-    const opts = (SECTORS || []).filter(s => s && s !== "Selecione…" && s !== "Selecione...");
-    const html = ['<option value="">Selecione…</option>']
-      .concat(opts.map(s => '<option value="'+escapeHtml(s)+'">'+escapeHtml(s)+'</option>'))
-      .join("");
-    sel.innerHTML = html;
+  function clampName(name){
+    const n = (name || "").trim().replace(/\s+/g, " ");
+    return n.length > 60 ? n.slice(0,60) : n;
   }
 
   function getUserName(){
-    return (dom.userNameEl?.value || localStorage.getItem("mission_name") || "").trim();
+    return clampName((dom.userNameEl?.value || localStorage.getItem("mission_name") || "").trim());
   }
-  function getUserSector(){
+
+  function populateSectors(){
+    if (!dom.userSectorEl) return;
+    dom.userSectorEl.innerHTML = '<option value="">Selecione...</option>' + (SECTORS||[]).map(s=>`<option value="${escapeHtml(s)}">${escapeHtml(s)}</option>`).join("");
+  }
+
+function getUserSector(){
     return (dom.userSectorEl?.value || localStorage.getItem("mission_sector") || "").trim();
   }
-  function setUserDraft(name, sector){
-    if (typeof name === "string") localStorage.setItem("mission_name", name.trim());
-    if (typeof sector === "string") localStorage.setItem("mission_sector", sector.trim());
-    if (dom.userNameEl) dom.userNameEl.value = localStorage.getItem("mission_name") || "";
-    if (dom.userSectorEl) dom.userSectorEl.value = localStorage.getItem("mission_sector") || "";
-  }
-
-  function clampName(s){
-    const t = (s||"").trim();
-    return t.length > 60 ? t.slice(0,60) : t;
-  }
-
-  const ui = { showOnly, populateSectors };
-
-  populateSectors();
-  setUserDraft(localStorage.getItem("mission_name")||"", localStorage.getItem("mission_sector")||"");
 
   const app = {
     firebase,
     dom,
-    ui,
-    THEME_PRESETS,
-    SECTORS,
-    SCORE_RULES,
-    user: { getUserName, getUserSector, setUserDraft },
-    utils: { clampName, escapeHtml }
+    data: { THEME_PRESETS, SECTORS, SCORE_RULES },
+    ui: { showOnly },
+    user: { getUserName, getUserSector },
+    utils: { clampName }
   };
 
   window.__MISSION_APP__ = app;
   return app;
 }
+
+function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c])); }
