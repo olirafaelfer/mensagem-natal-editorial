@@ -1015,26 +1015,23 @@ html, body{
 
 /* ===== Tutorial: destaca apenas o alvo ===== */
 #messageArea.tutorial-mode .token{
-  filter: blur(2px);
-  opacity: .55;
+  opacity: .18;
   pointer-events: none;
 }
 #messageArea.tutorial-mode .token.pulse{
-  filter: none;
   opacity: 1;
   pointer-events: auto;
-  position: relative;
-  z-index: 2;
+  outline: 3px solid rgba(255,255,255,.55);
+  outline-offset: 3px;
+  border-radius: 8px;
 }
 #messageArea.tutorial-mode::before{
   content:"";
   position:absolute;
   inset:0;
-  background: rgba(0,0,0,.25);
-  backdrop-filter: blur(2px);
+  background: rgba(0,0,0,.35);
   border-radius: 14px;
   pointer-events:none;
-  z-index:1;
 }
 
 /* ===== Pontuação flutuante ===== */
@@ -1064,4 +1061,33 @@ html, body{
   0%   { opacity: 0; transform: translate(-50%, 10px) scale(.98); }
   12%  { opacity: 1; transform: translate(-50%, 0) scale(1); }
   100% { opacity: 0; transform: translate(-50%, -26px) scale(1.02); }
+}
+
+/* Layout: manter conteúdo central e evitar ficar largo demais */
+.app{
+  display:flex;
+  justify-content:center;
+}
+.container{
+  width: 100%;
+  max-width: 980px;
+  margin: 0 auto;
+  padding-left: 14px;
+  padding-right: 14px;
+}
+
+/* Header: logo à esquerda, botões à direita */
+.topbar-row-1{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+}
+.topbar-left{
+  display:flex;
+  align-items:center;
+  justify-content:flex-start;
+}
+.topbar-logo{
+  display:block;
+  max-height: 54px;
 }

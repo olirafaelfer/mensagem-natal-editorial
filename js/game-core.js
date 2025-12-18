@@ -201,10 +201,15 @@ export function bootGameCore(app){
 
     if (wrongCountEl) wrongCountEl.textContent = String(wrongCount);
     if (scoreCountEl) scoreCountEl.textContent = String(score);
+    scoreFloat(delta);
 
     const isDone = done >= total;
-    nextLevelBtn?.classList.toggle("btn-disabled", !isDone);
-    nextLevelBtn?.setAttribute("aria-disabled", String(!isDone));
+    if (nextLevelBtn){
+      nextLevelBtn.classList.remove('btn-disabled');
+      nextLevelBtn.setAttribute('aria-disabled','false');
+      nextLevelBtn.disabled = false;
+      nextLevelBtn.textContent = isDone ? (levelIndex === levels.length - 1 ? 'Finalizar' : 'Próximo nível') : 'Avançar sem concluir (-5)';
+    }
   }
 
   /** =========================
@@ -292,6 +297,12 @@ export function bootGameCore(app){
       span.dataset.kind = "plain";
       span.dataset.start = String(t.start);
       span.dataset.len = String(t.len);
+
+      // Tutorial: foco em palavra (clique equivocado)
+      if (inTutorial && currentLevel && currentLevel.focusPlain){
+        const norm = t.v.replace(/[^\p{L}]/gu,'');
+        if (norm === currentLevel.focusPlain){ span.classList.add('pulse'); }
+      }
 
       // ✅ reaplica vermelho persistente
       if (hasMisclickAt(t.start, t.len)){
@@ -743,6 +754,91 @@ function applyReplacementAt(start, len, replacement){
   /** =========================
    * Cola
    * ========================= */
+
+  // Avançar sem concluir (-5): pula para o próximo nível mesmo sem corrigir tudo
+  
+  nextLevelBtn?.addEventListener("click", async () => {
+    const done = fixedRuleIds.size >= currentRules.length;
+    const isLast = levelIndex === (levels.length - 1);
+    const lvl = currentLevel;
+
+    // Sempre salva o texto atual para o "Ver mensagens corrigidas"
+    currentTextByLevel[levelIndex] = currentText;
+
+    // Se não concluiu, permitir avançar com penalidade (no tutorial pode exigir concluir, salvo níveis com allowAdvanceWithoutComplete)
+    if (!done){
+      const allow = (!inTutorial) || (inTutorial && lvl && lvl.allowAdvanceWithoutComplete);
+      if (!allow){
+        openModal({ title:"Ainda não", bodyHTML:`<p>Conclua este passo do tutorial para seguir.</p>`, buttons:[{label:"OK", onClick: closeModal}] });
+        return;
+      }
+
+      const ok = await new Promise((resolve) => {
+        openModal({
+          title: "Avançar sem concluir",
+          bodyHTML: `<p>Deseja avançar sem concluir esta atividade?</p><p>Você perderá <strong>5</strong> pontos.</p>`,
+          buttons: [
+            { label:"Cancelar", variant:"ghost", onClick: () => { closeModal(); resolve(false); } },
+            { label:"Sim, avançar", onClick: () => { closeModal(); resolve(true); } }
+          ]
+        });
+      });
+      if (!ok) return;
+      addScore(-5);
+    }
+
+    if (isLast){
+      if (inTutorial){
+        openModal({
+          title: "Tutorial concluído 🎄",
+          bodyHTML: `<p>A pontuação do tutorial não será contabilizada.</p>`,
+          buttons: [{ label:"Iniciar Desafio 1", onClick: () => { closeModal(); beginMainMission(); } }]
+        });
+        return;
+      }
+
+      await app.finishMission?.({ score, correctCount, wrongCount, taskScore, taskCorrect, taskWrong, autoUsed });
+      showFinal();
+      return;
+    }
+
+    levelIndex += 1;
+    startLevel();
+  });
+        return;
+      }
+      const ok = await new Promise((resolve) => {
+        openModal({
+          title: "Avançar sem concluir",
+          bodyHTML: `<p>Deseja avançar sem concluir esta atividade?</p><p>Você perderá <strong>5</strong> pontos.</p>`,
+          buttons: [
+            { label:"Cancelar", variant:"ghost", onClick: () => { closeModal(); resolve(false); } },
+            { label:"Sim, avançar", onClick: () => { closeModal(); resolve(true); } }
+          ]
+        });
+      });
+      if (!ok) return;
+      addScore(-5);
+    }
+
+    if (isLast){
+      if (inTutorial){
+        openModal({
+          title: "Tutorial concluído 🎄",
+          bodyHTML: `<p>A pontuação do tutorial não será contabilizada.</p>`,
+          buttons: [{ label:"Iniciar Desafio 1", onClick: () => { closeModal(); beginMainMission(); } }]
+        });
+        return;
+      }
+      await app.finishMission?.({ score, correctCount, wrongCount, taskScore, taskCorrect, taskWrong, autoUsed });
+      showFinal();
+      return;
+    }
+
+    levelIndex += 1;
+    startLevel();
+  });
+
   hintBtn?.addEventListener("click", () => {
     if (levelLocked){
       onLockedTextClick();
@@ -770,7 +866,33 @@ function applyReplacementAt(start, len, replacement){
     openModal({
       title: "Me dê uma cola!",
       bodyHTML: `<p>${msg}</p><p class="muted" style="margin-top:10px">Colas têm custo de ${SCORE_RULES.hint} ponto.</p>`,
-      buttons: [{ label:"Entendi", onClick: closeModal }]
+      buttons: [
+        { label:"Entendi", onClick: closeModal },
+        { label:"Corrigir automaticamente", variant:"ghost", onClick: async () => {
+            closeModal();
+            const remaining2 = currentRules.filter(r => !fixedRuleIds.has(r.id));
+            if (!remaining2.length){
+              openModal({ title:"Tudo certo", bodyHTML:`<p>Não há mais correções neste nível.</p>`, buttons:[{label:"OK", onClick: closeModal}] });
+              return;
+            }
+            const target = remaining2[0];
+            const penalty = - (4 + autoUsed); // cresce 1 a cada uso
+            openModal({
+              title: "Correção automática",
+              bodyHTML: `<p>Deseja aplicar a correção automaticamente?</p><p>Você perderá <strong>${Math.abs(penalty)}</strong> pontos.</p>`,
+              buttons: [
+                { label:"Cancelar", variant:"ghost", onClick: closeModal },
+                { label:"Sim, corrigir", onClick: () => {
+                    closeModal();
+                    autoUsed += 1;
+                    addScore(penalty);
+                    applyAutoFix(target);
+                    updateHUD();
+                }}
+              ]
+            });
+        }}
+      ]
     });
 
     updateHUD();
@@ -779,45 +901,9 @@ function applyReplacementAt(start, len, replacement){
   /** =========================
    * Próximo nível / Final
    * ========================= */
-  nextLevelBtn?.addEventListener("click", async () => {
-    const done = fixedRuleIds.size >= currentRules.length;
-    const isLast = levelIndex === (levels.length - 1);
-
-    if (!done){
-      openModal({
-        title: "Você ainda não concluiu o nível",
-        bodyHTML: `<p>Você ainda não concluiu o nível. Se avançar sem concluí-lo perderá <strong>5</strong> pontos. Tem certeza que deseja prosseguir?</p>`,
-        buttons: [
-          { label:"Cancelar", variant:"ghost", onClick: closeModal },
-          { label:"Prosseguir", onClick: async () => { closeModal(); await skipLevel(); } }
-        ]
-      });
-      return;
-    }
-
-    // ✅ guarda SEMPRE o texto do nível atual (mesmo com correções)
-    currentTextByLevel[levelIndex] = currentText;
-
-    if (isLast){
-      if (inTutorial){
-        openModal({
-          title: "Tutorial concluído 🎄",
-          bodyHTML: `<p>Perfeito! Agora você já sabe como jogar.</p>`,
-          buttons: [{ label:"Iniciar Desafio 1", onClick: () => { closeModal(); beginMainMission(); } }]
-        });
-        return;
-      }
-      await app.finishMission?.({ score, correctCount, wrongCount, taskScore, taskCorrect, taskWrong, autoUsed });
-      showFinal();
-      return;
-    }
-
-    levelIndex += 1;
-    startLevel();
-  });
 
   async function skipLevel(){
-    addScore(SCORE_RULES.skip);
+    addScore(-5);
     currentTextByLevel[levelIndex] = currentText;
 
     levelIndex += 1;
@@ -1109,7 +1195,33 @@ function applyReplacementAt(start, len, replacement){
         <p style="white-space:pre-line">${escapeHtml(lvl.intro || "")}</p>
         <p class="muted" style="margin-top:12px">Os erros serão explicados e detalhados ao término da atividade.</p>
       `,
-      buttons: [{ label:"Entendi", onClick: closeModal }]
+      buttons: [
+        { label:"Entendi", onClick: closeModal },
+        { label:"Corrigir automaticamente", variant:"ghost", onClick: async () => {
+            closeModal();
+            const remaining2 = currentRules.filter(r => !fixedRuleIds.has(r.id));
+            if (!remaining2.length){
+              openModal({ title:"Tudo certo", bodyHTML:`<p>Não há mais correções neste nível.</p>`, buttons:[{label:"OK", onClick: closeModal}] });
+              return;
+            }
+            const target = remaining2[0];
+            const penalty = - (4 + autoUsed); // cresce 1 a cada uso
+            openModal({
+              title: "Correção automática",
+              bodyHTML: `<p>Deseja aplicar a correção automaticamente?</p><p>Você perderá <strong>${Math.abs(penalty)}</strong> pontos.</p>`,
+              buttons: [
+                { label:"Cancelar", variant:"ghost", onClick: closeModal },
+                { label:"Sim, corrigir", onClick: () => {
+                    closeModal();
+                    autoUsed += 1;
+                    addScore(penalty);
+                    applyAutoFix(target);
+                    updateHUD();
+                }}
+              ]
+            });
+        }}
+      ]
     });
   }
 
