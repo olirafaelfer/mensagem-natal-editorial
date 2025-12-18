@@ -33,6 +33,7 @@ const state = {
   pending: [],
   solved: new Set(),
   fixes: [],
+  challengeFixes: [],
   autoHintsUsed: 0,
   mode: "home", // home | game | tutorial
 };
@@ -167,13 +168,16 @@ function updateHUD(){
   $("hudLeft").textContent = `Correções: ${left} / ${state.pending.length}`;
   $("hudScore").textContent = `Pontos: ${state.score}`;
   $("btnNext").disabled = left !== 0;
-  $("btnSkip").disabled = left === 0;
+  $("btnSkip").disabled = (left === 0);
 }
 
 function startLevel({ title, text, targets }){
+  state.skipThisLevel = false;
   state.autoHintsUsed = 0;
   state.solved = new Set();
   state.fixes = [];
+  // mantemos um acumulado por desafio/tutorial
+  if(!Array.isArray(state.challengeFixes)) state.challengeFixes = [];
   const parts = splitText(text);
   state.pending = buildPending(parts, targets);
   renderText(parts);
@@ -210,6 +214,7 @@ function lockToken(el, cls){
 
 function markFix({ before, after, explanation }){
   state.fixes.push({ before, after, explanation });
+  state.challengeFixes.push({ before, after, explanation });
 }
 
 function award(delta, atEl){
@@ -394,11 +399,11 @@ $("btnHint").addEventListener("click", ()=>{
    Skip
    ========================= */
 $("btnSkip").addEventListener("click", ()=>{
+  state.skipThisLevel = true;
   award(-5, $("btnSkip"));
   $("btnNext").disabled = false;
   if(state.mode==="tutorial") tutorialNotify("skipped");
 });
-
 /* =========================
    Próxima tarefa
    ========================= */
@@ -406,38 +411,17 @@ async function finishChallengeIfNeeded(){
   const logged = !!state.user;
   const optIn = $("optInRanking").checked;
 
-  if(state.challenge===1 && state.task===3){
-    state.progress.d1Done = true;
-    saveLS();
+  const finishUI = (title, subtitle, nextLabel)=>{
     showScreen("final");
-
-    $("finalTitle").textContent = "Missão concluída!";
-    $("finalSub").textContent = `Parabéns, ${state.guest.name}! Você ajudou o editor-chefe.`;
+    $("finalTitle").textContent = title;
+    $("finalSub").textContent = subtitle;
     $("finalFixes").classList.add("hidden");
     $("btnShowFixes").disabled = false;
-    $("btnNextTask").textContent = logged ? "Próximo desafio" : "Próxima tarefa";
+    $("btnNextTask").textContent = nextLabel;
     $("btnNextTask").disabled = false;
+  };
 
-    // envia ranking só se logado e optIn
-    if(logged && optIn){
-      await submitChallengeScore({
-        user: state.user,
-        name: state.guest.name,
-        sector: state.guest.sector,
-        visible: true,
-        challenge: 1,
-        score: state.score,
-        correct: state.solved.size,
-        wrong: 0
-      }).catch(e=>{
-        console.warn("Ranking submit falhou:", e);
-      });
-    }
-
-    computeLocks();
-    return true;
-  }
-
+  // Tutorial (4 etapas)
   if(state.challenge===0 && state.task===4){
     state.progress.tutorialDone = true;
     saveLS();
@@ -445,17 +429,55 @@ async function finishChallengeIfNeeded(){
     computeLocks();
     return true;
   }
+
+  // Desafios 1..3 (3 atividades cada)
+  if(state.task===3 && (state.challenge===1 || state.challenge===2 || state.challenge===3)){
+    const ch = state.challenge;
+
+    if(ch===1) state.progress.d1Done = true;
+    if(ch===2) state.progress.d2Done = true;
+    if(ch===3) state.progress.d3Done = true;
+    saveLS();
+
+    const name = state.guest.name || "jogador";
+    const subtitle = `Parabéns, ${name}! Você ajudou o editor-chefe.`;
+    const nextLabel =
+      ch===1 ? (logged ? "Próximo desafio" : "Início") :
+      ch===2 ? "Próximo desafio" :
+      "Missão especial";
+
+    finishUI("Missão concluída!", subtitle, nextLabel);
+
+    // submit ranking por desafio (apenas logado + opt-in)
+    if(logged && optIn){
+      await submitChallengeScore({
+        user: state.user,
+        name: state.guest.name,
+        sector: state.guest.sector,
+        visible: true,
+        challenge: ch,
+        score: state.score,
+        correct: state.solved.size,
+        wrong: 0
+      }).catch(e=> console.warn("Ranking submit falhou:", e));
+    }
+
+    computeLocks();
+    return true;
+  }
+
   return false;
 }
 
 $("btnNext").addEventListener("click", async ()=>{
   const left = state.pending.length - state.solved.size;
-  if(left !== 0){
-    showModal({ title:"Ainda falta", message:"Resolva as pendências para liberar a próxima tarefa.", buttons:[{label:"OK"}] });
+  if(left !== 0 && !state.skipThisLevel){
+    showModal({ title:"Ainda falta", message:"Resolva as pendências ou use \"Avançar sem concluir\".", buttons:[{label:"OK"}] });
     return;
   }
-
-  // avançar tutorial
+  // se pulou, consideramos a etapa concluída para fins de navegação
+  state.skipThisLevel = false;
+// avançar tutorial
   if(state.challenge===0){
     state.task += 1;
     if(await finishChallengeIfNeeded()) return;
@@ -474,10 +496,11 @@ $("btnNext").addEventListener("click", async ()=>{
 $("btnShowFixes").addEventListener("click", ()=>{
   const box = $("finalFixes");
   box.innerHTML = "";
-  if(state.fixes.length===0){
+  const fixes = state.challengeFixes || state.fixes || [];
+  if(fixes.length===0){
     box.innerHTML = "<div class='fixItem'>Sem correções registradas.</div>";
   } else {
-    state.fixes.forEach(f=>{
+    fixes.forEach(f=>{
       const div = document.createElement("div");
       div.className = "fixItem";
       div.innerHTML = `<div><strong>${f.before}</strong> → <strong>${f.after}</strong></div><div class="sub">${f.explanation||""}</div>`;
@@ -494,11 +517,22 @@ $("btnHome").addEventListener("click", ()=>{
 $("btnRanking2").addEventListener("click", ()=> $("btnRanking").click());
 
 $("btnNextTask").addEventListener("click", ()=>{
-  // após finalizar D1, próximo desafio se logado e liberado
+  // Navegação pós-final
+  if(state.challenge===1 && state.progress.d1Done && state.user){
+    if(!$("btnD2").disabled) return beginChallenge(2);
+  }
+  if(state.challenge===2 && state.progress.d2Done && state.user){
+    if(!$("btnD3").disabled) return beginChallenge(3);
+  }
+  if(state.challenge===3 && state.progress.d3Done && state.user){
+    showModal({ title:"Missão especial", message:"Em breve: uma mensagem natalina emocionante. 🎄
+
+Por enquanto: obrigado por participar!", buttons:[{label:"OK"}] });
+    return showScreen("home"), computeLocks();
+  }
   showScreen("home");
   computeLocks();
 });
-
 /* =========================
    Tutorial spotlight (simples)
    ========================= */
@@ -598,6 +632,7 @@ function beginTutorial(force=false){
   state.challenge = 0;
   state.task = 1;
   state.score = 0;
+  state.challengeFixes = [];
   showScreen("game");
   startLevel({ title:"Tutorial — Etapa 1", ...content.tutorial[0] });
 }
@@ -608,6 +643,7 @@ function beginChallenge(n){
   state.challenge = n;
   state.task = 1;
   state.score = 0;
+  state.challengeFixes = [];
   showScreen("game");
   const arr = n===1 ? content.d1 : n===2 ? content.d2 : content.d3;
   startLevel({ title:`Desafio ${n} — Atividade 1`, ...arr[0] });
@@ -650,8 +686,14 @@ function blockedMsg(which){
   showModal({ title:"Ainda não", message:"Primeiro cumpra as tarefas anteriores para liberar este desafio.", buttons:[{label:"OK"}] });
 }
 
-$("btnD2").addEventListener("click", ()=> blockedMsg(2));
-$("btnD3").addEventListener("click", ()=> blockedMsg(3));
+$("btnD2").addEventListener("click", ()=>{
+  if($("btnD2").disabled) return blockedMsg(2);
+  beginChallenge(2);
+});
+$("btnD3").addEventListener("click", ()=>{
+  if($("btnD3").disabled) return blockedMsg(3);
+  beginChallenge(3);
+});
 $("btnSpecial").addEventListener("click", ()=> blockedMsg("special"));
 
 /* =========================
