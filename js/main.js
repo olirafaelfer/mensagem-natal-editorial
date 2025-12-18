@@ -248,12 +248,22 @@ function pickBoot(mod, candidates){
   return null;
 }
 
+async function safeImport(path, name){
+  try {
+    const mod = await import(path);
+    return mod;
+  } catch (e) {
+    console.error(`❌ Falha ao importar ${name} (${path}):`, e);
+    throw e;
+  }
+}
+
 async function bootAll(){
   try {
-    const modalMod   = await import("./ui-modal.js");
-    const themeMod   = await import("./theme-fx.js");
-    const rankingMod = await import("./ranking.js");
-    const gameMod    = await import("./game-core.js");
+    const modalMod   = await safeImport("./ui-modal.js?v=20251217fix1", "ui-modal.js");
+    const themeMod   = await safeImport("./theme-fx.js?v=20251217fix1", "theme-fx.js");
+    const rankingMod = await safeImport("./ranking.js?v=20251217fix1", "ranking.js");
+    const gameMod    = await safeImport("./game-core.js?v=20251217fix1", "game-core.js");
     const adminMod   = await import("./admin.js");
     const authMod    = await import("./auth.js"); // ✅ auth
 

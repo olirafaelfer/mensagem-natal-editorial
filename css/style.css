@@ -131,7 +131,7 @@ hr{
 
 /* wrapper central (igual mobile, mesmo no desktop) */
 .container{
-  width: min(450px, calc(100% - 24px)); /* desktop: no máx. 450px */
+  width: min(560px, calc(100% - 32px)); /* 560px deixa bem “mobile-like” */
   margin-left: auto;
   margin-right: auto;
 }
@@ -1100,27 +1100,33 @@ html, body{
   max-height: 54px;
 }
 
+/* Layout fix: desktop max 450px, mobile full width with padding */
+.container{
+  width: 100%;
+  max-width: 450px;
+  margin: 0 auto;
+  padding-left: 12px;
+  padding-right: 12px;
+}
+@media (min-width: 480px){
+  .container{ padding-left: 16px; padding-right: 16px; }
+}
 
-/* === HARDEN_LIGHT_MODE === */
+/* Header uses same container width */
+.topbar-banner{ width: 100%; }
+.topbar-row-1{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+}
+.topbar-left{ display:flex; align-items:center; justify-content:flex-start; }
+.topbar-logo{ max-height: 52px; }
 
-/* Evita “dark mode” forçado estragar o layout (o máximo que dá via CSS) */
-html{ color-scheme: light; }
-@media (prefers-color-scheme: dark){ html{ color-scheme: light; } }
-
-/* Alguns navegadores podem aplicar filtros em imagens no modo escuro/alto-contraste */
-.topbar-logo, img{ filter:none !important; }
-
-/* Windows/Edge high-contrast (forced colors) */
+/* Mitigação de tema escuro forçado */
+:root{ color-scheme: light; }
+html{ background: #0b1220; }
+body{ background: #0b1220; color: #fff; }
+img, svg{ filter: none !important; mix-blend-mode: normal !important; }
 @media (forced-colors: active){
   *{ forced-color-adjust: none; }
-  html, body{
-    background: #0b1220 !important;
-    color: #e9edf7 !important;
-  }
-  a{ color: #7cc7ff !important; }
-  .card, .panel, .modal, .topbar-banner{
-    background: #101a2e !important;
-    border-color: rgba(255,255,255,.18) !important;
-  }
-  .topbar-logo{ filter:none !important; }
 }
