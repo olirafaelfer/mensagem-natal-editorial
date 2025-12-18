@@ -98,6 +98,7 @@ export function bootGameCore(app){
 
   const hintBtn = document.getElementById("hintBtn");
   const nextLevelBtn = document.getElementById("nextLevelBtn");
+  const skipLevelBtn = document.getElementById("skipLevelBtn");
   const autoFixBtn = document.getElementById("autoFixBtn");
 
   const finalCongrats = document.getElementById("finalCongrats");
@@ -820,22 +821,48 @@ function applyReplacementAt(start, len, replacement){
     levelIndex += 1;
     startLevel();
   });
-        return;
-      }
-      const ok = await new Promise((resolve) => {
-        openModal({
-          title: "Avançar sem concluir",
-          bodyHTML: `<p>Deseja avançar sem concluir esta atividade?</p><p>Você perderá <strong>5</strong> pontos.</p>`,
-          buttons: [
-            { label:"Cancelar", variant:"ghost", onClick: () => { closeModal(); resolve(false); } },
-            { label:"Sim, avançar", onClick: () => { closeModal(); resolve(true); } }
-          ]
-        });
-      });
-      if (!ok) return;
-      addScore(-5);
+  // Botão dedicado: avançar sem concluir (com penalidade)
+  skipLevelBtn?.addEventListener("click", async () => {
+    if (levelLocked){
+      onLockedTextClick();
+      return;
     }
 
+    const done = fixedRuleIds.size >= currentRules.length;
+    if (done){
+      openModal({
+        title: "Tudo certo!",
+        bodyHTML: `<p>Você já concluiu este nível ✅</p>`,
+        buttons: [{ label:"OK", onClick: closeModal }]
+      });
+      return;
+    }
+
+    const lvl = currentLevel;
+    const allow = (!inTutorial) || (inTutorial && lvl && lvl.allowAdvanceWithoutComplete);
+    if (!allow){
+      openModal({ title:"Ainda não", bodyHTML:`<p>Conclua este passo do tutorial para seguir.</p>`, buttons:[{label:"OK", onClick: closeModal}] });
+      return;
+    }
+
+    const ok = await new Promise((resolve) => {
+      openModal({
+        title: "Avançar sem concluir",
+        bodyHTML: `<p>Deseja avançar sem concluir esta atividade?</p><p>Você perderá <strong>${Math.abs(SCORE_RULES.skip)}</strong> pontos.</p>`,
+        buttons: [
+          { label:"Cancelar", variant:"ghost", onClick: () => { closeModal(); resolve(false); } },
+          { label:"Sim, avançar", onClick: () => { closeModal(); resolve(true); } }
+        ]
+      });
+    });
+    if (!ok) return;
+
+    // Sempre salva o texto atual (mesmo incompleto) para "Ver mensagens"
+    currentTextByLevel[levelIndex] = currentText;
+
+    addScore(SCORE_RULES.skip);
+
+    const isLast = levelIndex === (levels.length - 1);
     if (isLast){
       if (inTutorial){
         openModal({
@@ -853,6 +880,7 @@ function applyReplacementAt(start, len, replacement){
     levelIndex += 1;
     startLevel();
   });
+
 
   hintBtn?.addEventListener("click", () => {
     if (levelLocked){

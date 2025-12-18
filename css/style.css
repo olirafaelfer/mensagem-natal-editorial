@@ -1,7 +1,8 @@
 /* =========================
    Base / Theme Variables
    ========================= */
-:root{
+:root{  color-scheme: light;
+
   --bg: #0b1020;
   --accent: #e53935;
   --intensity: 1;
@@ -1102,3 +1103,6 @@ html, body{
   :root{ --container: 100%; }
   .container{ max-width: 100%; padding-left: 12px; padding-right: 12px; }
 }
+
+/* Anti auto-dark (logo) */
+.topbar-logo{ filter:none !important; -webkit-filter:none !important; }
