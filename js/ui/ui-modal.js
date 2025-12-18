@@ -60,11 +60,12 @@ export function bootModal(app){
   // =========================
   // API do modal
   // =========================
-  function openModal({ title, bodyHTML, buttons = [] }){
+  function openModal({ title, bodyHTML, buttons = [], dismissible = false }){
     if (closeTimer) { clearTimeout(closeTimer); closeTimer = null; }
     // garante overlay visível caso um close anterior esteja animando
     overlay.classList.remove("hidden");
     lockBodyScroll();
+    currentDismissible = !!dismissible;
 
     if (modalTitle) modalTitle.textContent = title || "";
     if (modalBody)  modalBody.innerHTML = bodyHTML || "";
@@ -112,6 +113,7 @@ export function bootModal(app){
       overlay.classList.add("hidden");
       closeTimer = null;
       unlockBodyScroll();
+    currentDismissible = !!dismissible;
 
       // restaura posição do scroll exatamente onde estava
       window.scrollTo(0, scrollYBefore);
@@ -137,7 +139,7 @@ export function bootModal(app){
   });
 
   document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape" && !overlay.classList.contains("hidden")) closeModal();
+    if (e.key === "Escape" && !overlay.classList.contains("hidden") && currentDismissible) closeModal();
   });
 
   // =========================

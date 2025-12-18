@@ -1196,3 +1196,22 @@ img, svg, video, canvas{ filter:none !important; }
   0%,100%{ transform: translateX(-50%) scale(1); opacity: .9; }
   50%{ transform: translateX(-50%) scale(1.18); opacity: 1; }
 }
+
+/* header/body mesma largura */
+.topbar-banner{ width:100%; }
+.topbar-banner .container{ width: min(450px, calc(100% - 24px)); }
+
+/* score float cores e duração */
+.score-float.plus{ background: rgba(16, 185, 129, .92); }
+.score-float.minus{ background: rgba(239, 68, 68, .92); }
+.score-float{ animation-duration: 1400ms !important; }
+
+/* mãozinha mais dinâmica */
+.tutorial-focus .token.focus::after{
+  animation: handPulse 900ms ease-in-out infinite;
+  transform-origin: center;
+}
+@keyframes handPulse{
+  0%,100%{ transform: translateX(-50%) scale(1); opacity: .9; }
+  50%{ transform: translateX(-50%) scale(1.18); opacity: 1; }
+}

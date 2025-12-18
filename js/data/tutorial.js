@@ -14,7 +14,7 @@ export function getTutorialLevels(){
     {
       name: "Tutorial 2/3 — Pontuação",
       intro: "Agora uma vírgula indevida. Você vai removê-la.",
-      instruction: "Clique na vírgula destacada após “Natal” para removê-la.",
+      instruction: "Clique na vírgula destacada após “Natal” para removê-la. Depois veja que o botão Próxima libera.",
       raw: "O Natal, é um tempo de amor e esperança.",
       focusRuleId: "t2",
       rules: [

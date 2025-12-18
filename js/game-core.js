@@ -74,6 +74,8 @@ export function bootGame(app){
   }
 
 function onChallengeClick(ch){
+    // visitante precisa informar nome + setor (para frases e ranking por setor depois)
+    if (!app.auth?.isLogged?.() && !requireNameSector()) return;
     if (!canAccessChallenge(ch)){
       if (!app.auth?.isLogged?.()){
         openModal({
@@ -86,8 +88,11 @@ function onChallengeClick(ch){
       openModal({
         title:"🔒 Primeiro cumpra as anteriores",
         bodyHTML:`<p>Para liberar este desafio, conclua o desafio anterior.</p>`,
-        buttons:[{label:"Ok", onClick: closeModal}]
-      });
+        buttons:[
+        {label:"Fechar", variant:"ghost", onClick: closeModal},
+        (first ? {label:"Correção automática", onClick: () => { closeModal(); confirmAuto(first, dom.hintBtn); }} : null)
+      ].filter(Boolean)
+    });
       return;
     }
 
@@ -311,7 +316,11 @@ function onChallengeClick(ch){
   function openHint(){
     const nextRule = engine.currentRules.find(r => !engine.fixedRuleIds.has(r.id));
     if (!nextRule){
-      openModal({ title:"Dica", bodyHTML:`<p>Você já corrigiu todos os trechos desta tarefa 🎉</p>`, buttons:[{label:"Ok", onClick: closeModal}]});
+      openModal({ title:"Dica", bodyHTML:`<p>Você já corrigiu todos os trechos desta tarefa 🎉</p>`, buttons:[
+        {label:"Fechar", variant:"ghost", onClick: closeModal},
+        (first ? {label:"Correção automática", onClick: () => { closeModal(); confirmAuto(first, dom.hintBtn); }} : null)
+      ].filter(Boolean)
+    });
       return;
     }
     openModal({
@@ -331,28 +340,31 @@ function onChallengeClick(ch){
   // Token click flows
   // =========================
   function onPlainClick(el){
-    if (engine.isDone?.()) return;
+    if (engine.isDone?.() && engine.challenge!==0) return;
     openModal({
       title:"Tem certeza que deseja corrigir este trecho?",
-      bodyHTML:`<p><b>${escapeHtml(el.textContent)}</b></p><p class="muted">Este trecho já está correto. Se você confirmar, perderá pontos.</p>`,
+      bodyHTML:`<p><b>${escapeHtml(el.textContent)}</b></p>`,
       buttons:[
         {label:"Cancelar", variant:"ghost", onClick: closeModal},
         {label:"Confirmar", onClick: () => {
           closeModal();
           const delta = engine.penalizeMisclick();
-          scoreFloat(delta, el);
+          scoreFloat(delta, dom.nextLevelBtn);
           openModal({
             title:"Trecho já correto!",
             bodyHTML:`<p>A palavra/trecho <b>"${escapeHtml(el.textContent)}"</b> já está correta! Que pena, você perdeu <b>${Math.abs(app.data.SCORE_RULES.wrong)}</b> pontos.</p>`,
-            buttons:[{label:"Ok", onClick: closeModal}]
-          });
+            buttons:[
+        {label:"Fechar", variant:"ghost", onClick: closeModal},
+        (first ? {label:"Correção automática", onClick: () => { closeModal(); confirmAuto(first, dom.hintBtn); }} : null)
+      ].filter(Boolean)
+    });
         }}
       ]
     });
   }
 
   function onTokenClick(el, rule){
-    if (engine.isDone?.()) return;
+    if (engine.isDone?.() && engine.challenge!==0) return;
     openModal({
       title:"Tem certeza que deseja corrigir este trecho?",
       bodyHTML:`<p><b>${escapeHtml(el.textContent)}</b></p>`,
@@ -387,7 +399,7 @@ function onChallengeClick(ch){
           if (!ok){
             el.classList.add("wrong","blocked");
           const delta = engine.applyWrong(rule.id);
-            scoreFloat(delta, el);
+            scoreFloat(delta, dom.nextLevelBtn);
             openModal({
               title:"Ops!",
               bodyHTML:`<p>A correção não está certa! Você perdeu <b>${Math.abs(app.data.SCORE_RULES.wrong)}</b> pontos.</p>
@@ -405,7 +417,7 @@ function onChallengeClick(ch){
           engine.logFix({ kind:"manual", label: rule.label||"", before: shownText, after: rule.correct ?? "", reason: rule.reason||"" });
           el.classList.add("correct","blocked");
           const delta = engine.applyCorrect(rule.id);
-          scoreFloat(delta, el);
+          scoreFloat(delta, dom.nextLevelBtn);
           // aplica no texto (substitui primeira ocorrência não fixa)
           engine.currentText = engine.currentText.replace(rule.wrong, rule.correct);
           updateHUD();
@@ -419,24 +431,47 @@ function onChallengeClick(ch){
     });
   }
 
-  function confirmAuto(rule){
-    const nextPenalty = Math.abs((app.data.SCORE_RULES.auto - engine.autoUsed));
-    openModal({
-      title:"Correção automática",
-      bodyHTML:`<p>Tem certeza que deseja corrigir automaticamente? Você perderá <b>${nextPenalty}</b> pontos.</p>`,
-      buttons:[
-        {label:"Cancelar", variant:"ghost", onClick: closeModal},
-        {label:"Aplicar", onClick: () => {
-          closeModal();
-          const delta = engine.autoCorrect(rule.id);
-          scoreFloat(delta, el);
-          engine.currentText = engine.currentText.replace(rule.wrong, rule.correct);
-          updateHUD();
-          renderMessage(engine.challenge===0);
-        }}
-      ]
-    });
-  }
+  function confirmAuto(rule, anchorEl){
+  const nextPenalty = Math.abs((app.data.SCORE_RULES.auto - engine.autoUsed));
+  openModal({
+    title:"Correção automática",
+    bodyHTML:`<p>Tem certeza que deseja corrigir automaticamente? Você perderá <b>${nextPenalty}</b> pontos.</p>`,
+    buttons:[
+      {label:"Cancelar", variant:"ghost", onClick: closeModal},
+      {label:"Aplicar", onClick: () => {
+        closeModal();
+
+        const tokenEl = dom.messageArea?.querySelector(`.token.error[data-ruleid="${rule.id}"]`) || null;
+
+        const delta = engine.autoCorrect(rule.id);
+        scoreFloat(delta, tokenEl || anchorEl || dom.hintBtn);
+
+        // marca visualmente como corrigido (verde + bloqueado)
+        if (tokenEl){
+          tokenEl.classList.remove("error");
+          tokenEl.classList.add("correct","blocked");
+          if ((rule.correct ?? "") === "") tokenEl.remove();
+          else tokenEl.textContent = String(rule.correct);
+        }
+
+        engine.logFix({
+          kind:"auto",
+          label: rule.label || "",
+          before: tokenEl?.textContent || "",
+          after: rule.correct ?? "",
+          reason: rule.reason || ""
+        });
+
+        engine.currentText = engine.currentText.replace(rule.wrong, rule.correct);
+        updateHUD();
+        // não re-renderiza imediatamente para preservar o “verde” no token; 
+        // mas se não houver token (casos raros), re-renderiza
+        if (!tokenEl) renderMessage(engine.challenge===0);
+      }}
+    ]
+  });
+}
+
 
   // =========================
   // Hint / Skip / Next
@@ -452,7 +487,7 @@ function onChallengeClick(ch){
     const first = pending[0];
 
     const delta = engine.useHint();
-    scoreFloat(delta, el);
+    scoreFloat(delta, dom.hintBtn);
 
     openModal({
       title:"💡 Dica",
@@ -468,33 +503,28 @@ function onChallengeClick(ch){
   }
 
   function onSkip(){
-    // igual ao "avançar sem concluir"
-    const delta = engine.addScore(app.data.SCORE_RULES.skip);
-    scoreFloat(delta, el);
-    nextInternal();
-  }
+  if (engine.isDone() && engine.challenge !== 0) return;
+  openModal({
+    title:"Avançar sem concluir",
+    bodyHTML:`<p>Deseja avançar sem concluir esta tarefa? Você perderá <b>${Math.abs(app.data.SCORE_RULES.skip)}</b> pontos.</p>`,
+    buttons:[
+      {label:"Cancelar", variant:"ghost", onClick: closeModal},
+      {label:"Avançar", onClick: () => { 
+        closeModal();
+        const delta = engine.addScore(app.data.SCORE_RULES.skip);
+        scoreFloat(delta, dom.skipLevelBtn);
+        nextInternal();
+      }}
+    ]
+  });
+}
 
-  function onSkipLevel(){
-    openModal({
-      title:"Avançar sem concluir",
-      bodyHTML:`<p>Você deseja avançar sem concluir esta tarefa? Você perderá <b>${Math.abs(app.data.SCORE_RULES.skip)}</b> pontos.</p>`,
-      buttons:[
-        {label:"Cancelar", variant:"ghost", onClick: closeModal},
-        {label:"Avançar", onClick: () => { closeModal(); const delta = engine.addScore(app.data.SCORE_RULES.skip); scoreFloat(delta, el); nextInternal(); }}
-      ]
-    });
-  }
 
 function onNext(){
-    if (engine.isDone()){
-      nextInternal();
-      return;
-    }
-    // avançar sem concluir
-    const delta = engine.addScore(app.data.SCORE_RULES.skip);
-    scoreFloat(delta, el);
-    nextInternal();
-  }
+  if (!engine.isDone()) return;
+  nextInternal();
+}
+
 
   function nextInternal(){
     const res = engine.nextLevel();
