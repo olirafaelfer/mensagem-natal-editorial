@@ -201,7 +201,6 @@ export function bootGameCore(app){
 
     if (wrongCountEl) wrongCountEl.textContent = String(wrongCount);
     if (scoreCountEl) scoreCountEl.textContent = String(score);
-
     const isDone = done >= total;
     if (nextLevelBtn){
       nextLevelBtn.classList.remove('btn-disabled');
@@ -819,6 +818,99 @@ function applyReplacementAt(start, len, replacement){
     levelIndex += 1;
     startLevel();
   });
+        return;
+      }
+      const ok = await new Promise((resolve) => {
+        openModal({
+          title: "Avançar sem concluir",
+          bodyHTML: `<p>Deseja avançar sem concluir esta atividade?</p><p>Você perderá <strong>5</strong> pontos.</p>`,
+          buttons: [
+            { label:"Cancelar", variant:"ghost", onClick: () => { closeModal(); resolve(false); } },
+            { label:"Sim, avançar", onClick: () => { closeModal(); resolve(true); } }
+          ]
+        });
+      });
+      if (!ok) return;
+      addScore(-5);
+    }
+
+    if (isLast){
+      if (inTutorial){
+        openModal({
+          title: "Tutorial concluído 🎄",
+          bodyHTML: `<p>A pontuação do tutorial não será contabilizada.</p>`,
+          buttons: [{ label:"Iniciar Desafio 1", onClick: () => { closeModal(); beginMainMission(); } }]
+        });
+        return;
+      }
+      await app.finishMission?.({ score, correctCount, wrongCount, taskScore, taskCorrect, taskWrong, autoUsed });
+      showFinal();
+      return;
+    }
+
+    levelIndex += 1;
+    startLevel();
+  });
+
+  hintBtn?.addEventListener("click", () => {
+    if (levelLocked){
+      onLockedTextClick();
+      return;
+    }
+
+    const remaining = currentRules.filter(r => !fixedRuleIds.has(r.id));
+    if (remaining.length === 0){
+      openModal({
+        title: "Cola",
+        bodyHTML: `<p>Você já corrigiu tudo neste nível! ✅</p>`,
+        buttons: [{ label:"Fechar", onClick: closeModal }]
+      });
+      return;
+    }
+
+    hintsUsed += 1;
+    addScore(SCORE_RULES.hint);
+
+    const pick = remaining[Math.floor(Math.random() * remaining.length)];
+    const msg = pick.correct === ""
+      ? `Procure um sinal que deve ser removido (pontuação indevida).`
+      : `Procure um trecho que deve virar: <strong>${escapeHtml(pick.correct)}</strong>.`;
+
+    openModal({
+      title: "Me dê uma cola!",
+      bodyHTML: `<p>${msg}</p><p class="muted" style="margin-top:10px">Colas têm custo de ${SCORE_RULES.hint} ponto.</p>`,
+      buttons: [
+        { label:"Entendi", onClick: closeModal },
+        { label:"Corrigir automaticamente", variant:"ghost", onClick: async () => {
+            closeModal();
+            const remaining2 = currentRules.filter(r => !fixedRuleIds.has(r.id));
+            if (!remaining2.length){
+              openModal({ title:"Tudo certo", bodyHTML:`<p>Não há mais correções neste nível.</p>`, buttons:[{label:"OK", onClick: closeModal}] });
+              return;
+            }
+            const target = remaining2[0];
+            const penalty = - (4 + autoUsed); // cresce 1 a cada uso
+            openModal({
+              title: "Correção automática",
+              bodyHTML: `<p>Deseja aplicar a correção automaticamente?</p><p>Você perderá <strong>${Math.abs(penalty)}</strong> pontos.</p>`,
+              buttons: [
+                { label:"Cancelar", variant:"ghost", onClick: closeModal },
+                { label:"Sim, corrigir", onClick: () => {
+                    closeModal();
+                    autoUsed += 1;
+                    addScore(penalty);
+                    applyAutoFix(target);
+                    updateHUD();
+                }}
+              ]
+            });
+        }}
+      ]
+    });
+
+    updateHUD();
+  });
+
   /** =========================
    * Próximo nível / Final
    * ========================= */
