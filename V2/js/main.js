@@ -9,7 +9,12 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
 
 // App factory (DOM + helpers)
-import { createApp } from "./app/app.js";
+// App factory (DOM + helpers) — carregamento robusto (import ESM + fallback global)
+let createAppFn = null;
+try { ({ createApp: createAppFn } = await import("./app/app.js")); } catch (e) {
+  console.warn("⚠️ Falha ao importar ./app/app.js (ESM). Tentando fallback global window.createApp", e);
+  createAppFn = window.createApp;
+}
 
 import { bootSnow } from "./ui/snow.js";
 // =========================
@@ -68,7 +73,7 @@ const firebase = {
 // =========================
 // Cria app e faz boot
 // =========================
-const app = createApp({ firebase, THEME_PRESETS, SECTORS, SCORE_RULES });
+const app = (createAppFn ?? window.createApp)({ firebase, THEME_PRESETS, SECTORS, SCORE_RULES });
   app.populateSectors?.();
   bootSnow(app);
 

@@ -77,3 +77,7 @@ function getUserSector(){
 }
 
 function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c])); }
+
+
+// Fallback global (para páginas que carregam scripts fora do contexto de módulos)
+try { window.createApp = createApp; } catch(e) {}
