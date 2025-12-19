@@ -1,296 +1,308 @@
-// js/modules/ranking.js — Ranking V2 (rankingByEmail)
-// - Apenas logados salvam (visitante nunca entra no ranking)
-// - DocId = sha256(email normalizado) (hex 64)
-// - Sem where() para evitar índice composto; filtramos visible no client
-// - Compatível com suas rules (rankingByEmail)
+// js/modules/ranking.js — Ranking V2 (rankingByEmail) — FIX16
+// Objetivos:
+// - Nunca crashar a engine
+// - Compatível com suas Firestore Rules (rankingByEmail)
+// - Visitante NÃO grava
+// - Logado SEMPRE grava (visible apenas controla exibição)
+// - Ranking Geral = média simples dos 3 desafios (faltante = 0)
 
 export function bootRanking(app){
-  const { firebase, dom } = app;
+  const fb = app.firebase;
+  if (!fb?.db) {
+    console.warn('[ranking] firebase indisponível');
+    return { open: () => app.modal?.openModal?.({ title:'Ranking', bodyHTML:'<p>Firebase indisponível.</p>', buttons:[{label:'Ok', onClick: app.modal.closeModal}] }) };
+  }
+
+  const getVisiblePref = () => localStorage.getItem('mission_visible_in_ranking') !== '0';
+  const setVisiblePref = (v) => localStorage.setItem('mission_visible_in_ranking', v ? '1' : '0');
 
   async function sha256Hex(text){
     const enc = new TextEncoder().encode(text);
-    const buf = await crypto.subtle.digest("SHA-256", enc);
-    const arr = Array.from(new Uint8Array(buf));
-    return arr.map(b => b.toString(16).padStart(2,"0")).join("");
+    const buf = await crypto.subtle.digest('SHA-256', enc);
+    return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
   }
 
-  function isOptedOut(){
-    return localStorage.getItem("mission_optout_ranking") === "1";
+  function esc(s){
+    return String(s??'').replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
   }
 
-  async function submitChallengeScore(challenge, metrics){
+  function emptyD(){
+    return { score: -1, correct: 0, wrong: 0, updatedAt: fb.serverTimestamp() };
+  }
+
+  function computeOverall(d1,d2,d3){
+    const s1 = Math.max(0, Number(d1?.score ?? 0));
+    const s2 = Math.max(0, Number(d2?.score ?? 0));
+    const s3 = Math.max(0, Number(d3?.score ?? 0));
+    return (s1+s2+s3)/3;
+  }
+
+  async function upsertForChallenge(ch, metrics){
+    // Visitante nunca grava
     if (!app.auth?.isLogged?.()) return;
 
-    const u = firebase.auth.currentUser;
-    const email = (u?.email || "").trim().toLowerCase();
+    const u = fb.auth.currentUser;
+    const email = (u?.email || '').trim().toLowerCase();
     if (!email) return;
 
     const emailHash = await sha256Hex(email);
-
-    const profile = await app.auth.getProfile?.();
-    const name = profile?.name || app.user.getUserName?.() || "Usuário";
-    const sector = profile?.sector || app.user.getUserSector?.() || "(Sem setor)";
-
-    const score = Number(metrics?.score ?? 0);
-    const correct = Number(metrics?.correct ?? 0);
-    const wrong = Number(metrics?.wrong ?? 0);
-
-    const ref = firebase.doc(firebase.db, "rankingByEmail", emailHash);
-
-    // carrega existente para calcular média e preservar campos
-    const snap = await firebase.getDoc(ref);
+    const ref = fb.doc(fb.db, 'rankingByEmail', emailHash);
+    const snap = await fb.getDoc(ref);
     const prev = snap.exists() ? (snap.data() || {}) : {};
 
-    const now = new Date();
-    const key = challenge === 1 ? "d1" : (challenge === 2 ? "d2" : "d3");
+    const profile = app.auth.getProfile?.();
+    const name = (profile?.name || app.user?.getUserName?.() || u.displayName || 'Usuário');
+    const sector = (profile?.sector || app.user?.getUserSector?.() || '').trim();
 
-    // Importante: desafios ainda não jogados NÃO devem ganhar updatedAt “agora”,
-    // senão parecem concluídos e quebram elegibilidade do Ranking Geral.
-    const empty = { score:-1, correct:0, wrong:0, updatedAt: now };
-    const d1 = key === "d1" ? { score, correct, wrong, updatedAt: now } : (prev.d1 ? {score:Number(prev.d1.score||0), correct:Number(prev.d1.correct||0), wrong:Number(prev.d1.wrong||0), updatedAt: prev.d1.updatedAt || now} : empty);
-    const d2 = key === "d2" ? { score, correct, wrong, updatedAt: now } : (prev.d2 ? {score:Number(prev.d2.score||0), correct:Number(prev.d2.correct||0), wrong:Number(prev.d2.wrong||0), updatedAt: prev.d2.updatedAt || now} : empty);
-    const d3 = key === "d3" ? { score, correct, wrong, updatedAt: now } : (prev.d3 ? {score:Number(prev.d3.score||0), correct:Number(prev.d3.correct||0), wrong:Number(prev.d3.wrong||0), updatedAt: prev.d3.updatedAt || now} : empty);
+    // Rules exigem setor válido
+    if (!sector || sector.length < 2) {
+      console.warn('[ranking] setor inválido, não gravando ranking');
+      return;
+    }
 
-    const scoresPlayed = [d1,d2,d3].map(d => Math.max(0, Number(d?.score ?? 0)));
-    // Ranking Geral: média simples dos 3 desafios (faltante = 0)
-    const overallAvg = (scoresPlayed[0] + scoresPlayed[1] + scoresPlayed[2]) / 3;
+    const nowTs = fb.serverTimestamp();
 
-    const isComplete = [d1,d2,d3].every(d => Number(d?.score ?? -1) >= 0);
+    const normD = (d) => ({
+      score: Number(d?.score ?? -1),
+      correct: Number(d?.correct ?? 0),
+      wrong: Number(d?.wrong ?? 0),
+      updatedAt: d?.updatedAt || nowTs,
+    });
+
+    const d1 = normD(prev.d1 || emptyD());
+    const d2 = normD(prev.d2 || emptyD());
+    const d3 = normD(prev.d3 || emptyD());
+
+    const next = {
+      score: Number(metrics?.score ?? 0),
+      correct: Number(metrics?.correct ?? 0),
+      wrong: Number(metrics?.wrong ?? 0),
+      updatedAt: nowTs,
+    };
+
+    if (ch === 1) Object.assign(d1, next);
+    if (ch === 2) Object.assign(d2, next);
+    if (ch === 3) Object.assign(d3, next);
+
+    const overallAvg = computeOverall(d1,d2,d3);
 
     const payload = {
       emailHash,
       email,
       uid: u.uid,
-      name: String(name).slice(0,60),
-      sector: String(sector).slice(0,120),
-      visible: !isOptedOut(),
-
-      d1, d2, d3,
-      overallAvg,
-      updatedAt: now
+      name: String(name).trim().slice(0,60),
+      sector: String(sector).trim().slice(0,120),
+      visible: getVisiblePref(),
+      d1,
+      d2,
+      d3,
+      overallAvg: Number(overallAvg),
+      createdAt: (snap.exists() ? (prev.createdAt || nowTs) : nowTs),
+      updatedAt: nowTs,
     };
-    payload.createdAt = (snap.exists() ? (snap.data()?.createdAt || now) : now);
 
-    await firebase.setDoc(ref, payload);
+    try {
+      await fb.setDoc(ref, payload);
+    } catch (e){
+      console.error('[ranking] falha ao gravar ranking', e);
+      // não crashar
+    }
   }
 
-  async function loadTop(){
-    const col = firebase.collection(firebase.db, "rankingByEmail");
-    const q = firebase.query(col, firebase.orderBy("overallAvg","desc"), firebase.limit(50));
-    const snap = await firebase.getDocs(q);
+  async function loadTop(kind){
+    // kind: 'd1'|'d2'|'d3'|'overall'
+    const col = fb.collection(fb.db, 'rankingByEmail');
+    // Se não existir índice para d1.score etc, vamos sempre ordenar por overallAvg e ordenar no client.
+    const q = fb.query(col, fb.orderBy('overallAvg','desc'), fb.limit(80));
+    const snap = await fb.getDocs(q);
     const rows = [];
     snap.forEach(docu => {
       const d = docu.data() || {};
       if (d.visible === false) return;
-      rows.push({
-        name: d.name||"",
-        email: d.email||"",
-        sector: d.sector||"",
-        d1: d.d1 || { score:0 },
-        d2: d.d2 || { score:0 },
-        d3: d.d3 || { score:0 },
-        overallAvg: Number(d.overallAvg||0),
-        isComplete: (Number(d?.d1?.updatedAt?.seconds||0)>0 && Number(d?.d2?.updatedAt?.seconds||0)>0 && Number(d?.d3?.updatedAt?.seconds||0)>0)
-      });
-    });
-    return rows;
-  }
-
-  function escapeAttr(s){ return String(s||"").replace(/"/g,'&quot;'); }
-
-function escapeHtml(s){
-    return String(s??"").replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-  }
-
-  // API pública usada pelo game-core
-  
-  async function open(){
-    // Modal com "janelinhas" clicáveis (abre detalhes em popup interno)
-    app.modal.openModal({
-      title: "🏆 Rankings",
-      bodyHTML: `
-        <div class="rank-tiles">
-          <button class="rank-tile" type="button" data-rank="d1" onclick="window.__rankOpen?.('d1')">
-            <div class="rt-title">Desafio 1</div>
-            <div class="rt-sub muted">Top do Desafio 1</div>
-          </button>
-          <button class="rank-tile" type="button" data-rank="d2" onclick="window.__rankOpen?.('d2')">
-            <div class="rt-title">Desafio 2</div>
-            <div class="rt-sub muted">Top do Desafio 2</div>
-          </button>
-          <button class="rank-tile" type="button" data-rank="d3" onclick="window.__rankOpen?.('d3')">
-            <div class="rt-title">Desafio 3</div>
-            <div class="rt-sub muted">Top do Desafio 3</div>
-          </button>
-          <button class="rank-tile" type="button" data-rank="overall" onclick="window.__rankOpen?.('overall')">
-            <div class="rt-title">Ranking geral <span class="rank-help" onclick="window.__rankHelp?.(); event.stopPropagation();">❓</span></div>
-            <div class="rt-sub muted">Média dos 3 desafios</div>
-          </button>
-        </div>
-        <div class="muted" style="margin-top:10px; font-size:.95em">
-          Dica: o <strong>Ranking geral</strong> é calculado pela <strong>média simples</strong> dos 3 desafios. Mostramos também a <strong>% de acertos</strong>.
-        </div>
-      `,
-      actions: [{ label:"Fechar", variant:"primary", onClick: () => app.modal.closeModal?.() }]
+      rows.push(d);
     });
 
-    // expõe handlers globais (simples e resiliente em GH Pages)
-    window.__rankHelp = () => {
-      app.modal.openModal({
-        title:"ℹ️ Ranking geral",
-        body:`<p>O <strong>Ranking geral</strong> é calculado pela <strong>média simples</strong> dos pontos dos 3 desafios.</p>
-              <p>Se você ainda não concluiu os 3, verá um <strong>❌</strong> no lugar do valor no geral.</p>`,
-        actions:[{label:"Ok", variant:"primary", onClick: () => app.modal.closeModal?.()}]
-      });
+    const getPts = (d) => {
+      if (kind === 'd1') return Number(d?.d1?.score ?? 0);
+      if (kind === 'd2') return Number(d?.d2?.score ?? 0);
+      if (kind === 'd3') return Number(d?.d3?.score ?? 0);
+      return Number(d?.overallAvg ?? 0);
     };
 
-    window.__rankOpen = async (kind) => {
-      const map = { d1:"Ranking — Desafio 1", d2:"Ranking — Desafio 2", d3:"Ranking — Desafio 3", overall:"Ranking geral" };
-      const title = map[kind] || "Ranking";
-      app.modal.openModal({
-        title,
-        bodyHTML: `<div class="muted" id="rankMeta">Carregando...</div><div id="rankTableWrap"></div>`,
-        actions:[{label:"Voltar", variant:"ghost", onClick: () => { app.modal.closeModal?.(); open(); } },
-                 {label:"Fechar", variant:"primary", onClick: () => app.modal.closeModal?.()}]
-      });
-
-      const meta = document.getElementById("rankMeta");
-      const wrap = document.getElementById("rankTableWrap");
-      try{
-        const top = await loadTop(kind === "overall" ? "overall" : kind);
-        const my = await getMyEntry();
-        // monta tabela
-        if (wrap){
-          wrap.innerHTML = `<table class="rank-table">
-            <thead><tr><th>#</th><th>Jogador</th><th>Setor</th><th style="text-align:right">Pontuação</th></tr></thead>
-            <tbody id="rankTBody"></tbody>
-          </table>`;
-          const getPts = (r) => {
-            if (kind === "d1") return r?.d1?.score || 0;
-            if (kind === "d2") return r?.d2?.score || 0;
-            if (kind === "d3") return r?.d3?.score || 0;
-            // overall: média simples (faltante=0)
-            const s1 = Number(r?.d1?.score||0);
-            const s2 = Number(r?.d2?.score||0);
-            const s3 = Number(r?.d3?.score||0);
-            return Math.round((s1+s2+s3)/3);
-          };
-          fillRankTable("rankTBody", top, getPts, kind === "overall");
-        }
-
-        if (meta){
-          // status do ranking geral (❌ quando incompleto)
-          if (kind === "overall" && my && my.isComplete === false){
-            meta.innerHTML = `❌ <strong>Você só entra no Ranking geral</strong> ao concluir os 3 desafios.`;
-          } else if (my){
-            meta.textContent = `Você: ${my.name || "—"} • ${my.sector || "—"}`;
-          } else {
-            meta.textContent = "—";
-          }
-        }
-      }catch(err){
-        console.error("[ranking] erro ao abrir", err);
-        if (meta) meta.textContent = "Falha ao carregar ranking.";
-      }
-    };
-  }
-
-  function rankCardHTML(title, bodyId){
-    return `<div class="glass" style="padding:10px">
-      <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:6px">
-        <div style="font-weight:800">${title}</div>
-      </div>
-      <div style="overflow:auto; max-height:32vh">
-        <table class="rank-table" style="width:100%; border-collapse:collapse">
-          <thead>
-            <tr>
-              <th style="text-align:left; padding:6px 4px">#</th>
-              <th style="text-align:left; padding:6px 4px">Jogador</th>
-              <th style="text-align:left; padding:6px 4px">Setor</th>
-              <th style="text-align:right; padding:6px 4px">Pontos</th>
-            </tr>
-          </thead>
-          <tbody id="${bodyId}">
-            <tr><td colspan="4" class="muted" style="padding:10px 4px">Carregando...</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </div>`;
-  }
-
-  function trophy(i){
-    if (i===0) return "🥇";
-    if (i===1) return "🥈";
-    if (i===2) return "🥉";
-    return String(i+1);
-  }
-
-  function fillRankTable(bodyId, rows, getPoints, isOverall=false){
-    const body = document.getElementById(bodyId);
-    if (!body) return;
-    if (!rows.length){
-      body.innerHTML = `<tr><td colspan="4" class="muted" style="padding:10px 4px">Ainda não há resultados.</td></tr>`;
-      return;
-    }
-    body.innerHTML = rows.slice(0,50).map((r,i)=>{
-      const pts = Number(getPoints(r)||0);
-      const c = Number(r?.d1?.correct||0) + Number(r?.d2?.correct||0) + Number(r?.d3?.correct||0);
-      const w = Number(r?.d1?.wrong||0) + Number(r?.d2?.wrong||0) + Number(r?.d3?.wrong||0);
-      const acc = (c+w)>0 ? Math.round((c/(c+w))*100) : 0;
-      const photoData = (r.photoDataUrl || "").trim();
-      const photo = (r.photoURL || "").trim();
-      const icon = (r.photoIcon || "").trim();
-      const avatar = photoData
-        ? `<img src="${escapeAttr(photoData)}" alt="" class="rank-avatar" />`
-        : photo
-        ? `<img src="${escapeAttr(photo)}" alt="" class="rank-avatar" />`
-        : (icon ? `<div class="rank-avatar placeholder">${escapeHtml(icon)}</div>` : `<div class="rank-avatar placeholder">🎄</div>`);
-      const badge = trophy(i);
-      return `<tr>
-        <td style="padding:6px 4px; width:38px">${badge}</td>
-        <td style="padding:6px 4px">
-          <div style="display:flex; align-items:center; gap:8px">
-            ${avatar}
-            <div>
-              <div style="font-weight:700">${escapeHtml(r.name)}</div>
-              <div class="muted" style="font-size:12px">${escapeHtml(r.email || "")}</div>
-            </div>
-          </div>
-        </td>
-        <td style="padding:6px 4px">${escapeHtml(r.sector)}</td>
-        <td style="padding:6px 4px; text-align:right">${(isOverall && !r.isComplete) ? "❌" : pts.toFixed(0)}<div class="muted" style="font-size:11px; line-height:1.1">${acc}% acertos</div></td>
-      </tr>`;
-    }).join("");
+    rows.sort((a,b)=>getPts(b)-getPts(a));
+    return rows.slice(0,50);
   }
 
   async function getMyEntry(){
-    try{
-      if (!app.auth?.isLogged?.()) return null;
-      const u = firebase.auth.currentUser;
-      if (!u?.email) return null;
-      const email = String(u.email).trim().toLowerCase();
-      const emailHash = await sha256Hex(email);
-      const ref = firebase.doc(firebase.db, "rankingByEmail", emailHash);
-      const snap = await firebase.getDoc(ref);
-      return snap.exists() ? snap.data() : null;
-    } catch(e){
-      console.warn("[ranking] getMyEntry falhou", e);
-      return null;
+    if (!app.auth?.isLogged?.()) return null;
+    const u = fb.auth.currentUser;
+    const email = (u?.email || '').trim().toLowerCase();
+    if (!email) return null;
+    const emailHash = await sha256Hex(email);
+    const ref = fb.doc(fb.db, 'rankingByEmail', emailHash);
+    const snap = await fb.getDoc(ref);
+    if (!snap.exists()) return null;
+    return snap.data();
+  }
+
+  function pct(correct, wrong){
+    const c = Number(correct||0);
+    const w = Number(wrong||0);
+    const t = c+w;
+    if (!t) return 0;
+    return Math.round((c/t)*100);
+  }
+
+  function renderTable(rows, kind){
+    const getPts = (d) => {
+      if (kind === 'd1') return Number(d?.d1?.score ?? 0);
+      if (kind === 'd2') return Number(d?.d2?.score ?? 0);
+      if (kind === 'd3') return Number(d?.d3?.score ?? 0);
+      return Math.round(Number(d?.overallAvg ?? 0));
+    };
+
+    return `
+      <div class="rank-list">
+        <div class="rank-head">
+          <div>#</div><div>Jogador</div><div>Setor</div><div style="text-align:right">Pontos</div>
+        </div>
+        ${rows.map((d,i)=>{
+          const pts = getPts(d);
+          const c = Number(d?.d1?.correct||0)+Number(d?.d2?.correct||0)+Number(d?.d3?.correct||0);
+          const w = Number(d?.d1?.wrong||0)+Number(d?.d2?.wrong||0)+Number(d?.d3?.wrong||0);
+          const medal = (i===0?'🥇':i===1?'🥈':i===2?'🥉':String(i+1));
+          return `
+            <div class="rank-row">
+              <div>${medal}</div>
+              <div class="rank-name">${esc(d?.name||'')}</div>
+              <div class="rank-sector">${esc(d?.sector||'')}</div>
+              <div style="text-align:right">${pts}</div>
+            </div>`;
+        }).join('')}
+      </div>`;
+  }
+
+  async function open(){
+    const selected = { kind: 'overall' };
+
+    const my = await getMyEntry();
+    const logged = app.auth?.isLogged?.();
+    const visible = getVisiblePref();
+    const overallComplete = !!(my && Number(my?.d1?.score ?? -1) >= 0 && Number(my?.d2?.score ?? -1) >= 0 && Number(my?.d3?.score ?? -1) >= 0);
+
+    const header = `
+      <div class="rank-tiles">
+        <button class="rank-tile" data-kind="d1">Desafio 1</button>
+        <button class="rank-tile" data-kind="d2">Desafio 2</button>
+        <button class="rank-tile" data-kind="d3">Desafio 3</button>
+        <button class="rank-tile" data-kind="overall">Ranking geral <span class="rank-help" title="A média simples dos 3 desafios">❓</span></button>
+      </div>
+      <div id="rankHint" class="muted" style="margin-top:10px"></div>
+      <div id="rankBody" style="margin-top:10px">Carregando...</div>
+      <div class="rank-footer" style="margin-top:14px">
+        <div class="rank-visible">
+          <strong>Participando do ranking:</strong> <span id="rankVisibleValue">${logged ? (visible?'Sim':'Não') : '—'}</span>
+          <span class="rank-help" title="Você pode ocultar seu nome no ranking sem perder as pontuações.">❓</span>
+        </div>
+        <div style="margin-top:8px">
+          <button id="rankToggleVisible" class="btn small" ${logged ? '' : 'disabled'}>
+            ${visible ? 'Ocultar meu nome' : 'Mostrar meu nome'}
+          </button>
+          ${logged ? '' : '<div class="muted" style="margin-top:6px">Faça login para aparecer no ranking.</div>'}
+        </div>
+      </div>
+    `;
+
+    app.modal.openModal({
+      title: '🏆 Rankings',
+      bodyHTML: header,
+      buttons: [ { label:'Fechar', variant:'primary', onClick: () => app.modal.closeModal?.() } ]
+    });
+
+    const hintEl = document.getElementById('rankHint');
+    const bodyEl = document.getElementById('rankBody');
+
+    async function render(kind){
+      selected.kind = kind;
+      if (!hintEl || !bodyEl) return;
+      if (kind === 'overall') {
+        if (!overallComplete) {
+          hintEl.innerHTML = `❌ <strong>Você só entra no Ranking geral</strong> ao concluir os 3 desafios.`;
+        } else {
+          hintEl.innerHTML = `✅ <strong>Ranking geral</strong>: média simples dos 3 desafios.`;
+        }
+      } else {
+        hintEl.textContent = '';
+      }
+      bodyEl.innerHTML = '<div class="muted">Carregando...</div>';
+      try {
+        const rows = await loadTop(kind);
+        bodyEl.innerHTML = renderTable(rows, kind);
+      } catch (e){
+        console.error('[ranking] loadTop falhou', e);
+        bodyEl.innerHTML = '<div class="muted">Falha ao carregar ranking.</div>';
+      }
+    }
+
+    // initial
+    await render('overall');
+
+    // tile clicks
+    document.querySelectorAll('.rank-tile').forEach(btn => {
+      btn.addEventListener('click', (ev)=>{
+        const k = ev.currentTarget.getAttribute('data-kind');
+        if (k) render(k);
+      });
+    });
+
+    // toggle visible
+    const toggleBtn = document.getElementById('rankToggleVisible');
+    const valueEl = document.getElementById('rankVisibleValue');
+    if (toggleBtn){
+      toggleBtn.addEventListener('click', async ()=>{
+        if (!logged) return;
+        const next = !(getVisiblePref());
+        setVisiblePref(next);
+        if (valueEl) valueEl.textContent = next ? 'Sim' : 'Não';
+        toggleBtn.textContent = next ? 'Ocultar meu nome' : 'Mostrar meu nome';
+        // Atualiza o doc do ranking para refletir visibilidade
+        try {
+          const me = await getMyEntry();
+          if (me){
+            const u = fb.auth.currentUser;
+            const emailHash = me.emailHash;
+            const ref = fb.doc(fb.db, 'rankingByEmail', emailHash);
+            const nowTs = fb.serverTimestamp();
+            const payload = {
+              emailHash: me.emailHash,
+              email: me.email,
+              uid: me.uid,
+              name: me.name,
+              sector: me.sector,
+              visible: next,
+              d1: me.d1 || emptyD(),
+              d2: me.d2 || emptyD(),
+              d3: me.d3 || emptyD(),
+              overallAvg: Number(me.overallAvg||0),
+              createdAt: me.createdAt || nowTs,
+              updatedAt: nowTs,
+            };
+            await fb.setDoc(ref, payload);
+          }
+        } catch(e){
+          console.warn('[ranking] toggle visible falhou', e);
+        }
+        // re-render
+        render(selected.kind);
+      });
     }
   }
 
-  // compat com versões antigas
-  const openRanking = open;
-
-  // botão no topo (se existir)
-  dom?.rankingBtn?.addEventListener?.("click", () => open());
-
-  return {
+  // Interface usada pela engine
+  app.ranking = {
     open,
-    openRanking,
-    submitChallengeScore,
-    loadTop,
-    getMyEntry
+    submitChallengeScore: upsertForChallenge,
   };
 
+  return app.ranking;
 }

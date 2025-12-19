@@ -1,29 +1,21 @@
 // js/data/challenges/challenge3-2.js
 // Desafio 3 — Atividade 2
 
-export default {
-  name: "Desafio 3 — Atividade 2",
-  intro: "Agora, atenção aos acentos e a uma vírgula indevida.",
-  instruction: "Corrija os dois trechos destacados.",
-  raw: "Natal é tempo de empatia; que ninguem fique sozinho, jamais.",
-  rules: []
-};
-
-export const RULES = [
+const RULES = [
   {
-    id: "w1",
-    label: "Ortografia",
-    wrong: "\\bninguem\\b",
-    flags: "gi",
-    correct: "ninguém",
-    reason: "O correto é “ninguém”."
-  },
-  {
-    id: "p1",
-    label: "Pontuação",
-    wrong: ",\\s+jamais",
-    flags: "g",
-    correct: " jamais",
-    reason: "Vírgula indevida antes de “jamais” aqui."
+    "id": "d3a2_1",
+    "label": "Concordância",
+    "wrong": "\\bilumine\\b",
+    "flags": "gi",
+    "correct": "iluminem",
+    "hint": "Verbo no plural."
   }
 ];
+
+export default {
+  name: "Desafio 3 — Atividade 2",
+  intro: "Último desafio: texto mais longo e mais erros.",
+  instruction: "Texto com erro de concordância.",
+  raw: "Que as luzes do Natal ilumine nossos caminhos e renove as esperanças.",
+  rules: RULES
+};

@@ -1,29 +1,29 @@
 // js/data/challenges/challenge2-3.js
 // Desafio 2 — Atividade 3
 
-export default {
-  name: "Desafio 2 — Atividade 3",
-  intro: "Ajuste final do Desafio 2: duas correções rápidas.",
-  instruction: "Corrija os dois trechos destacados.",
-  raw: "Que o Natal traga paz, saude e união.",
-  rules: []
-};
-
-export const RULES = [
+const RULES = [
   {
-    id: "w1",
-    label: "Ortografia",
-    wrong: "\\bsaude\\b",
-    flags: "gi",
-    correct: "saúde",
-    reason: "O correto é “saúde”."
+    "id": "d2a3_1",
+    "label": "Acentuação",
+    "wrong": "\\bsaude\\b",
+    "flags": "gi",
+    "correct": "saúde",
+    "hint": "Acento agudo."
   },
   {
-    id: "p1",
-    label: "Pontuação",
-    wrong: ",\\s+saúde",
-    flags: "g",
-    correct: " saúde",
-    reason: "Evite vírgula separando termos simples na enumeração curta aqui."
+    "id": "d2a3_2",
+    "label": "Acentuação",
+    "wrong": "\\buniao\\b",
+    "flags": "gi",
+    "correct": "união",
+    "hint": "Acento/til."
   }
 ];
+
+export default {
+  name: "Desafio 2 — Atividade 3",
+  intro: "Agora o texto fica maior e com mais detalhes.",
+  instruction: "Duas correções de acento.",
+  raw: "Que o Natal traga paz, saude e uniao.",
+  rules: RULES
+};

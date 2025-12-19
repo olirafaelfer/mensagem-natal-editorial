@@ -1,29 +1,29 @@
 // js/data/challenges/challenge3-3.js
 // Desafio 3 — Atividade 3
 
-export default {
-  name: "Desafio 3 — Atividade 3",
-  intro: "Última atividade: dois acentos para ajustar em uma frase da editora.",
-  instruction: "Corrija os dois trechos destacados.",
-  raw: "Que a editora espalhe historias que aquecem o coracao neste Natal.",
-  rules: []
-};
-
-export const RULES = [
+const RULES = [
   {
-    id: "w1",
-    label: "Ortografia",
-    wrong: "\\bhistorias\\b",
-    flags: "gi",
-    correct: "histórias",
-    reason: "O correto é “histórias”."
+    "id": "d3a3_1",
+    "label": "Acentuação",
+    "wrong": "\\besta\\b",
+    "flags": "gi",
+    "correct": "está",
+    "hint": "Acento."
   },
   {
-    id: "w2",
-    label: "Ortografia",
-    wrong: "\\bcoracao\\b",
-    flags: "gi",
-    correct: "coração",
-    reason: "O correto é “coração”."
+    "id": "d3a3_2",
+    "label": "Acentuação",
+    "wrong": "\\bproximo\\b",
+    "flags": "gi",
+    "correct": "próximo",
+    "hint": "Acento."
   }
 ];
+
+export default {
+  name: "Desafio 3 — Atividade 3",
+  intro: "Último desafio: texto mais longo e mais erros.",
+  instruction: "Vários erros em sequência. Capriche!",
+  raw: "O verdadeiro sentido do Natal esta em ser gentil, partilhar o pão e reconhecer a dignidade do proximo.",
+  rules: RULES
+};

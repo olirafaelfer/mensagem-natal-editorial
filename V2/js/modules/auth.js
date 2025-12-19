@@ -72,6 +72,8 @@ export function bootAuth(app) {
 function cleanEmail(e){
   return String(e||"").trim().toLowerCase();
 }
+function getVisiblePref(){ return localStorage.getItem('mission_visible_in_ranking') !== '0'; }
+
 function isValidEmail(e){
   const s = cleanEmail(e);
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s);
@@ -132,6 +134,9 @@ function isValidEmail(e){
   // =============================
   onAuthStateChanged(auth, async (user) => {
     currentUser = user || null;
+    try { app.progress?.setActive?.(currentUser?.uid || null); } catch {}
+    try { if(!currentUser){ app.progress?.setActive?.(null); } } catch {}
+    try { app.game?.resetRuntime?.(); app.game?.goHome?.(); app.game?.refreshAccess?.(); } catch {}
     currentProfile = null;
 
     // ✅ evita busy “grudar”
@@ -173,7 +178,8 @@ function isValidEmail(e){
       forceAnonymousNoRanking();
       // reset UI/progresso para visitante (evita liberar desafios indevidos)
       try { app.game?.resetRuntime?.(); app.game?.goHome?.(); app.game?.refreshAccess?.(); } catch(e) {}
-      lockIdentityFields(true);
+      // Visitante pode preencher nome/setor manualmente
+      lockIdentityFields(false);
 
     }
   });
@@ -217,6 +223,44 @@ onClick: () => {
     // Logado: respeita toggle
     localStorage.setItem("mission_optout_ranking", optRankingEl.checked ? "0" : "1");
   });
+
+  // =============================
+  // Painel "Minha conta" (evita openAccountPanel undefined)
+  // =============================
+  async function openAccountPanel(){
+    if (!currentUser){
+      return openAuthGate({ force:false });
+    }
+    const p = currentProfile || (await fetchOrCreateProfile(currentUser).catch(() => null));
+    const name = p?.name || currentUser.displayName || "";
+    const email = currentUser.email || "";
+    const sector = p?.sector || "";
+    const participating = (localStorage.getItem('mission_visible_in_ranking') !== '0') ? "Sim" : "Não";
+
+    openModal({
+      title: "👤 Minha conta",
+      bodyHTML: `
+        <div class="account-panel">
+          <div><strong>Nome:</strong> ${escapeHtml(name||"—")}</div>
+          <div><strong>Email:</strong> ${escapeHtml(email||"—")}</div>
+          <div><strong>Setor:</strong> ${escapeHtml(sector||"—")}</div>
+          <div style="margin-top:10px">
+            <strong>Participando do ranking:</strong> ${participating}
+            <span class="hint" title="Para aparecer no ranking, habilite/desabilite na janela do Ranking.">❓</span>
+          </div>
+          <div class="muted" style="margin-top:10px">Dica: você pode ocultar seu nome no ranking sem perder suas pontuações.</div>
+        </div>
+      `,
+      buttons: [
+        { label: "Fechar", variant: "ghost", onClick: closeModal },
+        { label: "Sair", onClick: async () => {
+            try { await signOut(auth); } catch(e){ console.warn('[auth] signOut falhou', e); }
+            closeModal();
+          }
+        },
+      ]
+    });
+  }
 
   // =============================
   // GATE (login/cadastro/anon)
@@ -728,9 +772,4 @@ function applyLoggedProfileToForm(profile) {
   // =============================
   // Abrir automático no start
   // =============================
-setTimeout(() => {
-  if (!currentUser && !suppressAutoGate) {
-    openAuthGate({ force: true });
-  }
-}, 80);
 }

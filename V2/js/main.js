@@ -1,4 +1,4 @@
-const BUILD_ID = "fix15.2";
+const BUILD_ID = "fix16";
 import { APP_VERSION } from "./config/version.js";
 
 // js/main.js — BOOTSTRAP (módulos + Firebase) — versão refatorada em pastas
@@ -118,6 +118,7 @@ async function safeImportOptional(path, name){
 async function bootAll(){
   try {
     const modalMod   = await safeImport("./ui/ui-modal.js", "ui-modal.js");
+    const progressMod= await safeImport("./modules/progress-store.js","progress-store.js");
     const themeMod   = await safeImport("./modules/theme-fx.js", "theme-fx.js");
     const authMod    = await safeImport("./modules/auth.js", "auth.js");
     const rankingMod = await safeImport("./modules/ranking.js", "ranking.js");
@@ -126,7 +127,8 @@ async function bootAll(){
     const googleMod  = await safeImportOptional("./modules/google-auth.js", "google-auth.js");
 
     const bootModal   = pickBoot(modalMod,   ["bootModal", "boot", "init"]);
-    const bootThemeFx = pickBoot(themeMod,   ["bootThemeFx", "bootTheme", "boot", "init"]);
+    const bootThemeFx = pickBoot(themeMod,   ["bootThemeFx", "bootTheme", "boot", "init"]); 
+    const bootProgress= pickBoot(progressMod,["bootProgress","boot","init"]);
     const bootRanking = pickBoot(rankingMod, ["bootRanking", "boot", "init"]);
     const bootGame    = pickBoot(gameMod,    ["bootGame", "bootGameCore", "initGame", "init"]);
     const bootAdmin   = pickBoot(adminMod,   ["bootAdmin", "boot", "init"]);
@@ -134,18 +136,15 @@ async function bootAll(){
     const bootGoogle  = googleMod ? pickBoot(googleMod,  ["bootGoogleAuth", "boot", "init"]) : null;
 
     bootModal?.(app);
+    bootProgress?.(app);
     bootThemeFx?.(app);
+    // render versão no rodapé
+    try { const el=document.getElementById("appVersion"); if(el) el.textContent=APP_VERSION; } catch {}
     app.ranking = bootRanking?.(app) || {};
     bootGame?.(app);
     bootAdmin?.(app);
     bootAuth?.(app);
     bootGoogle?.(app);
-
-    // abre auth automaticamente se não logado (comporta igual ao que você tinha)
-    setTimeout(() => {
-      if (app.auth?.isLogged?.()) return;
-      app.auth?.openAuthGate?.();
-    }, 1200);
 
   } catch (err){
     console.error("❌ Falha no boot dos módulos:", err);

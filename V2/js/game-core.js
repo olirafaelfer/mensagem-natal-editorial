@@ -7,6 +7,11 @@ import { scoreFloat } from "./ui/score-fx.js";
 
 export function bootGame(app){
   const { dom, ui } = app;
+
+  // Progresso persistente (por usuário / visitante)
+  const loadProgress = () => (app.progress?.load?.() || { mode:"visitor" });
+  const saveProgress = (p) => app.progress?.save?.(p);
+
   const { openModal, closeModal } = app.modal || {};
   if (!openModal || !closeModal){
     console.warn("[game] modal não inicializado (ui-modal.js).");
@@ -162,21 +167,27 @@ function updateChallengeButtons(){
     b3.textContent = access3 ? "Desafio 3" : "Desafio 3 🔒";
   }
 
-  // Missão especial (libera após concluir Desafio 3)
+  // Missão especial (libera após concluir Desafio 3 **e estar logado**)
+  const logged = !!app.auth?.isLogged?.();
   if (dom.missionSpecialHomeBtn){
-    dom.missionSpecialHomeBtn.disabled = !c3Done;
-    dom.missionSpecialHomeBtn.style.opacity = c3Done ? "1" : ".5";
+    const enabled = logged && c3Done;
+    dom.missionSpecialHomeBtn.disabled = !enabled;
+    dom.missionSpecialHomeBtn.style.opacity = enabled ? "1" : ".5";
   }
   if (dom.finalMissionSpecialBtn){
-    dom.finalMissionSpecialBtn.style.display = c3Done ? "inline-flex" : "none";
+    dom.finalMissionSpecialBtn.style.display = (logged && c3Done) ? "inline-flex" : "none";
   }
 }
   function requireNameSector(){
     const name = app.user?.getUserName?.() || "";
     const sector = app.user?.getUserSector?.() || "";
     if (name && sector) return true;
-    // mostrar formulário (sem login)
-    ui.showOnly(dom.screenForm);
+    // visitante: exigir nome + setor
+    openModal({
+      title: "Nome e setor obrigatórios",
+      bodyHTML: `<p>Para jogar como visitante, informe <strong>seu nome</strong> e <strong>seu setor</strong>.</p>`,
+      buttons: [{ label: "Ok", variant: "primary", onClick: () => { closeModal(); ui.showOnly(dom.screenForm); setTimeout(()=>{ try{ document.getElementById('userName')?.focus(); }catch{} },50); } }]
+    });
     return false;
   }
 
@@ -298,7 +309,7 @@ function onChallengeClick(ch){
   
   dom.missionSpecialHomeBtn?.addEventListener("click", () => {
     const p = loadProgress();
-    if (!(p?.c3?.done)){
+    if (!app.auth?.isLogged?.() || !(p?.c3?.done)){
       openModal({ title:"🔒 Missão Especial", bodyHTML:`<p>Conclua o <b>Desafio 3</b> para liberar a Missão Especial.</p>`, buttons:[{label:"Ok", variant:"ghost", onClick: closeModal}] });
       return;
     }
@@ -307,7 +318,7 @@ function onChallengeClick(ch){
 
   dom.finalMissionSpecialBtn?.addEventListener("click", () => {
     const p = loadProgress();
-    if (!(p?.c3?.done)){
+    if (!app.auth?.isLogged?.() || !(p?.c3?.done)){
       openModal({ title:"Missao Especial", bodyHTML: "<p>Conclua o Desafio 3 para liberar a Missao Especial.</p>", buttons:[{label:"Ok", variant:"ghost", onClick: closeModal}] });
       return;
     }
