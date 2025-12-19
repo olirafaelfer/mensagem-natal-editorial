@@ -265,6 +265,10 @@ onClick: () => {
 
         <div class="auth-actions">
           <button class="btn" data-action="signup" type="button">Criar conta</button>
+          <button class="btn ghost" data-action="googleLogin" type="button">
+            <span class="glogo" aria-hidden="true">${googleSvg()}</span>
+            <span>Criar com Google</span>
+          </button>
         </div>
       </div>
 

@@ -206,10 +206,17 @@ function escapeHtml(s){
     }
     body.innerHTML = rows.slice(0,50).map((r,i)=>{
       const pts = Number(getPoints(r)||0);
+      const c = Number(r?.d1?.correct||0) + Number(r?.d2?.correct||0) + Number(r?.d3?.correct||0);
+      const w = Number(r?.d1?.wrong||0) + Number(r?.d2?.wrong||0) + Number(r?.d3?.wrong||0);
+      const acc = (c+w)>0 ? Math.round((c/(c+w))*100) : 0;
+      const photoData = (r.photoDataUrl || "").trim();
       const photo = (r.photoURL || "").trim();
-      const avatar = photo
+      const icon = (r.photoIcon || "").trim();
+      const avatar = photoData
+        ? `<img src="${escapeAttr(photoData)}" alt="" class="rank-avatar" />`
+        : photo
         ? `<img src="${escapeAttr(photo)}" alt="" class="rank-avatar" />`
-        : `<div class="rank-avatar placeholder">🎄</div>`;
+        : (icon ? `<div class="rank-avatar placeholder">${escapeHtml(icon)}</div>` : `<div class="rank-avatar placeholder">🎄</div>`);
       const badge = trophy(i);
       return `<tr>
         <td style="padding:6px 4px; width:38px">${badge}</td>
@@ -223,7 +230,7 @@ function escapeHtml(s){
           </div>
         </td>
         <td style="padding:6px 4px">${escapeHtml(r.sector)}</td>
-        <td style="padding:6px 4px; text-align:right">${pts.toFixed(0)}${isOverall && !r.isComplete ? " ❌" : ""}</td>
+        <td style="padding:6px 4px; text-align:right">${(isOverall && !r.isComplete) ? "❌" : pts.toFixed(0)}<div class="muted" style="font-size:11px; line-height:1.1">${acc}% acertos</div></td>
       </tr>`;
     }).join("");
   }

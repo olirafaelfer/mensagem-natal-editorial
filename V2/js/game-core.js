@@ -19,6 +19,9 @@ export function bootGame(app){
     onState: () => updateHUD()
   });
 
+  // Tutorial flags por etapa (para passos obrigatórios)
+  const tutorialFlags = {};
+
   // expõe API no app
   app.game = {
     startChallenge,
@@ -206,12 +209,24 @@ function onChallengeClick(ch){
     openModal({
       title: "✨ Missão Especial",
       bodyHTML: `
-        <div style="text-align:center; padding:6px 2px">
-          <div style="font-size:46px; line-height:1">🎁</div>
-          <h3 style="margin:10px 0 6px">Um Natal de compaixão</h3>
-          <p style="margin:0 0 8px">Que este Natal seja mais do que festas e fartura.</p>
-          <p style="margin:0 0 8px">Que seja tempo de <b>caridade</b>, <b>amor ao próximo</b> e cuidado recíproco.</p>
-          <p class="muted" style="margin:0; font-size:13px">Obrigado por participar 💛</p>
+        <div class="special-wrap" style="text-align:center">
+          <div class="special-reindeer">🦌🛷</div>
+          <div style="font-size:54px; line-height:1">🎄</div>
+          <div class="special-lights" aria-hidden="true">
+            <span></span><span></span><span></span><span></span><span></span>
+          </div>
+          <h3 style="margin:10px 0 8px">A missão especial de Natal é:</h3>
+          <p style="margin:0 0 10px">
+            Ajude o próximo, pratique a caridade, ame quem está do seu lado.
+            A missão mais importante para este Natal é estender uma mão a quem precisa e perceber que não somos mais nem menos do que qualquer outra pessoa.
+          </p>
+          <p style="margin:0 0 10px">
+            <b>Se você cumprir esta missão</b>, pode ter certeza que seu fim de ano estará mais completo.
+          </p>
+          <div style="display:flex; justify-content:center; margin-top:14px">
+            <img src="asset/logo-natal.png" alt="Logo" style="width:140px; opacity:.95"/>
+          </div>
+          <p class="muted" style="margin:10px 0 0; font-size:13px">Feliz Natal! ✨</p>
         </div>
       `,
       buttons: [{ label:"Voltar", variant:"ghost", onClick: closeModal }]
@@ -222,7 +237,7 @@ function onChallengeClick(ch){
   
   dom.missionSpecialHomeBtn?.addEventListener("click", () => {
     const p = loadProgress();
-    if (!p.c3Done){
+    if (!(p?.c3?.done)){
       openModal({ title:"🔒 Missão Especial", bodyHTML:`<p>Conclua o <b>Desafio 3</b> para liberar a Missão Especial.</p>`, buttons:[{label:"Ok", variant:"ghost", onClick: closeModal}] });
       return;
     }
@@ -241,18 +256,35 @@ function onChallengeClick(ch){
 
     // next button behavior
     if (dom.nextLevelBtn){
-      const done = engine.isDone();
+      let done = engine.isDone();
+      // Tutorial: etapas que exigem ações específicas
+      if (engine.challenge === 0){
+        const st2 = engine.getState?.();
+        const lvl2 = st2?.level;
+        const idx2 = st2?.levelIndex ?? 0;
+        const flags = tutorialFlags[idx2] || {};
+        if (lvl2?.tutorialMode === "force-misclick") done = !!flags.misclickDone;
+        if (lvl2?.tutorialMode === "force-skip") done = false;
+      }
       dom.nextLevelBtn.disabled = !done;
       dom.nextLevelBtn.setAttribute("aria-disabled", (!done).toString());
       dom.nextLevelBtn.classList.toggle("btn-disabled", !done);
       dom.nextLevelBtn.textContent = done
         ? (st.levelIndex === (engine.levels.length - 1) ? "Finalizar tarefa" : "Próxima tarefa")
         : "Resolva para liberar";
+      if (engine.challenge===0 && engine.level?.tutorialMode==="force-skip"){
+        dom.nextLevelBtn.textContent = "Use Avançar sem concluir";
+        dom.nextLevelBtn.disabled = true;
+        dom.nextLevelBtn.setAttribute("aria-disabled","true");
+        dom.nextLevelBtn.classList.add("btn-disabled");
+      }
       if (dom.skipLevelBtn){
-        // Tutorial: não pode pular
+        // Tutorial: por padrão não pode pular (exceto etapa que ensina pular)
         if (engine.challenge === 0){
-          dom.skipLevelBtn.disabled = true;
-          dom.skipLevelBtn.classList.add("hidden");
+          const allowSkip = !!engine.level?.allowSkipInTutorial;
+          dom.skipLevelBtn.classList.toggle("hidden", !allowSkip);
+          dom.skipLevelBtn.disabled = !allowSkip;
+          if (allowSkip){ dom.skipLevelBtn.textContent = "Avançar sem concluir (-5)"; }
         } else {
           dom.skipLevelBtn.classList.remove("hidden");
           dom.skipLevelBtn.disabled = false;
@@ -274,6 +306,7 @@ function onChallengeClick(ch){
     if (dom.hintBtn){
       const pulse = (engine.challenge===0 && lvl.tutorialMode === "force-auto");
       dom.hintBtn.classList.toggle("pulse", pulse);
+      dom.hintBtn.classList.toggle("focus-hand", !!lvl.focusHintBtn);
     }
 
     openModal({
@@ -428,6 +461,13 @@ function onChallengeClick(ch){
   // =========================
   function onPlainClick(el){
     if (engine.isDone?.() && engine.challenge!==0) return;
+    const st = engine.getState?.();
+    const lvl = st?.level;
+    const idx = st?.levelIndex ?? 0;
+    if (engine.challenge===0 && lvl?.tutorialMode==="force-misclick"){
+      const target = (lvl.focusMisclickWord||"").toLowerCase();
+      if (target && el.textContent.toLowerCase() !== target) return;
+    }
     openModal({
       title:"Tem certeza que deseja corrigir este trecho?",
       bodyHTML:`<p><b>${escapeHtml(el.textContent)}</b></p>`,
@@ -436,6 +476,11 @@ function onChallengeClick(ch){
         {label:"Confirmar", onClick: () => {
           closeModal();
           const delta = engine.penalizeMisclick();
+          // Tutorial: marca passo concluído
+          if (engine.challenge===0 && lvl?.tutorialMode==="force-misclick"){
+            tutorialFlags[idx] = { ...(tutorialFlags[idx]||{}), misclickDone: true };
+            updateHUD();
+          }
           scoreFloat(delta, dom.nextLevelBtn);
           openModal({
             title:"Trecho já correto!",
@@ -607,6 +652,13 @@ function onChallengeClick(ch){
       {label:"Avançar", onClick: () => { 
         closeModal();
         const delta = engine.addScore(app.data.SCORE_RULES.skip);
+        // Tutorial: marca passo concluído
+        const st = engine.getState?.();
+        const lvl = st?.level;
+        const idx = st?.levelIndex ?? 0;
+        if (engine.challenge===0 && lvl?.tutorialMode==="force-skip"){
+          tutorialFlags[idx] = { ...(tutorialFlags[idx]||{}), skipDone: true };
+        }
         scoreFloat(delta, dom.skipLevelBtn);
         nextInternal();
       }}
@@ -673,10 +725,9 @@ function onNext(){
       // salva progresso + ranking (logado)
       markChallengeDone(engine.challenge, engine.score);
       if (app.auth?.isLogged?.()){
-        app.ranking?.submitChallengeScore?.(engine.challenge, { score: engine.score, correct: engine.correct, wrong: engine.wrong });
+        app.ranking?.submitChallengeScore?.(engine.challenge, {score:engine.score,correct:engine.correct,wrong:engine.wrong,total:(engine.totalRules ?? (engine.correct+engine.wrong))});
       }
-
-      ui.showOnly(dom.screenFinal);
+ui.showOnly(dom.screenFinal);
       renderFinalMessages();
             return;
     }

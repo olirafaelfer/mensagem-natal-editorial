@@ -2,8 +2,8 @@
 export function getTutorialLevels(){
   return [
     {
-      name: "Tutorial 1/3 — Ortografia",
-      intro: "Vamos começar! Você vai corrigir uma palavra com erro de grafia.",
+      name: "Tutorial 1/5 — Ortografia",
+      intro: "Bem-vindo! Vamos aprender o básico da missão.",
       instruction: "Clique em “refeissões” (destacado) e corrija para “refeições”.",
       raw: "Neste Natal, a mesa terá refeissões deliciosas e muita alegria.",
       focusRuleId: "t1",
@@ -12,25 +12,46 @@ export function getTutorialLevels(){
       ]
     },
     {
-      name: "Tutorial 2/3 — Pontuação",
-      intro: "Agora uma vírgula indevida. Você vai removê-la.",
-      instruction: "Clique na vírgula destacada após “Natal” para removê-la. Depois veja que o botão Próxima libera.",
+      name: "Tutorial 2/5 — Pontuação",
+      intro: "Agora vamos remover uma vírgula indevida.",
+      instruction: "Clique na vírgula destacada após “Natal” para removê-la.",
       raw: "O Natal, é um tempo de amor e esperança.",
       focusRuleId: "t2",
       rules: [
-        { id:"t2", label:"Pontuação", wrong:/,/g, correct:"", reason:"Vírgula indevida: não se separa sujeito e verbo." }
+        { id:"t2", label:"Pontuação", wrong:/,/g, correct:"", reason:"Evite separar sujeito e verbo com vírgula." }
       ]
     },
     {
-      name: "Tutorial 3/3 — Dica e correção automática",
+      name: "Tutorial 3/5 — Dica e correção automática",
       tutorialMode: "force-auto",
-      intro: "Agora você vai ver a dica e a correção automática em ação.",
-      instruction: "Clique direto em “Me dê uma dica” e escolha “Correção automática”. Depois, clique em “Natal” (palavra correta) e confirme para ver a penalidade por tentar corrigir algo certo.",
+      focusHintBtn: true,
+      intro: "Quando travar, use a dica e a correção automática.",
+      instruction: "Clique em “Me dê uma cola!” para aplicar a correção automática.",
       raw: "Neste Natal, pratique a caridadee e o amor ao próximo.",
       focusRuleId: "t3",
       rules: [
-        { id:"t3", label:"Ortografia", wrong:/\bcaridadee\b/g, correct:"caridade", reason:"O correto é “caridade”." }
+        { id:"t3", label:"Ortografia", wrong:/\bcaridadee\b/g, correct:"caridade", reason:"Erro de digitação: removemos o “e” extra." }
       ]
+    },
+    {
+      name: "Tutorial 4/5 — Clique errado (penalidade)",
+      tutorialMode: "force-misclick",
+      intro: "Se você tentar corrigir algo que já está certo, perde pontos.",
+      instruction: "Clique na palavra “alegria” (ela já está certa) e confirme para ver a penalidade.",
+      raw: "Que o seu Natal seja de paz, alegria e união.",
+      focusMisclickWord: "alegria",
+      rules: [
+        { id:"t4", label:"Treino", wrong:/\balegria\b/g, correct:"alegria", reason:"Aqui é só um treino: clique errado gera penalidade." }
+      ]
+    },
+    {
+      name: "Tutorial 5/5 — Avançar sem concluir (-5)",
+      tutorialMode: "force-skip",
+      allowSkipInTutorial: true,
+      intro: "Às vezes você pode avançar sem concluir, mas perde pontos.",
+      instruction: "Clique em “Avançar sem concluir (-5)” para entender a penalidade.",
+      raw: "Você pode pular uma tarefa, mas terá um custo.",
+      rules: []
     }
   ];
 }
