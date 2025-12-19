@@ -61,8 +61,12 @@ export function createApp({ firebase, THEME_PRESETS, SECTORS, SCORE_RULES }){
 
   function populateSectors(){
     if (!dom.userSectorEl) return;
+    const list = (SECTORS || []).filter(s => {
+      const t = String(s||"").trim();
+      return t && !/^Selecione/i.test(t);
+    });
     const opts = ['<option value="">Selecione...</option>']
-      .concat((SECTORS || []).map(s => `<option value="${escapeHtml(s)}">${escapeHtml(s)}</option>`));
+      .concat(list.map(s => `<option value="${escapeHtml(s)}">${escapeHtml(s)}</option>`));
     dom.userSectorEl.innerHTML = opts.join("");
     const saved = (localStorage.getItem("mission_sector") || "").trim();
     if (saved) dom.userSectorEl.value = saved;

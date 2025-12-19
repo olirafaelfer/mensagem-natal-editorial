@@ -232,7 +232,10 @@ onClick: () => {
 
         <div class="auth-actions">
           <button class="btn" data-action="login" type="button">Entrar</button>
-          <button class="btn ghost" data-action="googleLogin" type="button">Entrar com Google</button>
+          <button class="btn ghost" data-action="googleLogin" type="button">
+            <span class="g-badge" aria-hidden="true">G</span>
+            Entrar com Google
+          </button>
           <button class="btn ghost" data-action="forgot" type="button">Esqueci minha senha</button>
         </div>
       </div>
@@ -307,9 +310,31 @@ onClick: () => {
     if (actBtn) {
       const action = actBtn.getAttribute("data-action");
       if (action === "login") doLogin();
+      if (action === "googleLogin") doGoogleLogin();
       if (action === "signup") doSignup();
       if (action === "forgot") openForgotPassword();
       if (action === "anon") enterAnonymous();
+    }
+  }
+
+  async function doGoogleLogin(){
+    if (busy) return;
+    busy = true;
+    clearStatus();
+
+    if (!app.googleAuth?.signInWithGoogle){
+      showStatus("Login com Google ainda não está disponível neste build.", "error");
+      busy = false;
+      return;
+    }
+    try{
+      await app.googleAuth.signInWithGoogle();
+      // onAuthStateChanged fecha o gate
+    }catch(e){
+      console.warn("[auth] googleLogin falhou", e);
+      showStatus(humanAuthError(e) || "Falha ao entrar com Google.", "error");
+    }finally{
+      busy = false;
     }
   }
 
@@ -709,6 +734,13 @@ try {
     if (profile.sector) localStorage.setItem("mission_sector", profile.sector);
 
     lockIdentityFields(true);
+
+    // Ranking: por padrão, deixa habilitado para logados (a menos que o usuário tenha opt-out explícito)
+    if (optRankingEl){
+      const optedOut = localStorage.getItem("mission_optout_ranking") === "1";
+      optRankingEl.checked = !optedOut;
+      localStorage.setItem("mission_optout_ranking", optRankingEl.checked ? "0" : "1");
+    }
   }
 
   function lockIdentityFields(locked) {

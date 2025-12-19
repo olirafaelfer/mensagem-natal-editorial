@@ -79,7 +79,16 @@ export function bootRanking(app){
     snap.forEach(docu => {
       const d = docu.data() || {};
       if (d.visible === false) return;
-      rows.push({ name:d.name||"", sector:d.sector||"", overallAvg:Number(d.overallAvg||0) });
+      rows.push({
+        name: d.name||"",
+        email: d.email||"",
+        sector: d.sector||"",
+        photoURL: d.photoURL||"",
+        d1: d.d1 || { score:0 },
+        d2: d.d2 || { score:0 },
+        d3: d.d3 || { score:0 },
+        overallAvg: Number(d.overallAvg||0)
+      });
     });
     return rows;
   }
@@ -161,12 +170,6 @@ function escapeHtml(s){
     }
   }
 
-return {
-    open,
-    submitChallengeScore,
-    loadTop
-  };
-
   async function getMyEntry(){
     try{
       if (!app.auth?.isLogged?.()) return null;
@@ -182,5 +185,19 @@ return {
       return null;
     }
   }
+
+  // compat com versões antigas
+  const openRanking = open;
+
+  // botão no topo (se existir)
+  dom?.rankingBtn?.addEventListener?.("click", () => open());
+
+  return {
+    open,
+    openRanking,
+    submitChallengeScore,
+    loadTop,
+    getMyEntry
+  };
 
 }

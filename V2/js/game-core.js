@@ -36,11 +36,16 @@ export function bootGame(app){
   dom.nextLevelBtn?.addEventListener("click", () => onNext());
 
   dom.finalHomeBtn?.addEventListener("click", () => goHome());
-  dom.finalRankingBtn?.addEventListener("click", () => app.ranking?.openRanking?.());
+  // compat: ranking.open() é o método canônico; openRanking é alias
+  dom.finalRankingBtn?.addEventListener("click", () => app.ranking?.open?.() || app.ranking?.openRanking?.());
 
   // estado tutorial/progresso
   const LS_TUTORIAL_DONE = "mission_tutorial_done";
   const LS_PROGRESS = "mission_progress_v1";
+
+  // Snapshots para tela final (antes/depois por atividade)
+  const levelSnapshots = []; // [{ idx:number, before:string, after:string }]
+  let currentLevelBefore = "";
 
   function getProgress(){
     try { return JSON.parse(localStorage.getItem(LS_PROGRESS) || "{}"); }
@@ -162,6 +167,7 @@ function onChallengeClick(ch){
 
     ui.showOnly(dom.screenGame);
     engine.startLevel();
+    currentLevelBefore = String(engine.currentText || "");
     showLevelIntro();
     renderMessage();
   }
@@ -183,6 +189,7 @@ function onChallengeClick(ch){
     engine.loadChallenge(0, levels);
     ui.showOnly(dom.screenGame);
     engine.startLevel();
+    currentLevelBefore = String(engine.currentText || "");
     showLevelIntro(true);
     renderMessage(true);
     // ao terminar, volta para challenge 1
@@ -600,20 +607,28 @@ function onChallengeClick(ch){
 
 
   function renderFinalMessages(){
-    const wrap = dom.finalMsgsWrap || document.getElementById("finalMsgsWrap");
-    if (!wrap) return;
-    const log = (engine.getFixLog?.() || []).slice(-50);
-    if (!log.length){
-      wrap.innerHTML = `<p class="muted">Nenhuma correção registrada nesta tarefa.</p>`;
-      return;
+    // Preenche caixas do HTML (finalBox1/2/3) com texto antes/depois
+    const boxes = [dom.finalBox1, dom.finalBox2, dom.finalBox3];
+    for (let i=0;i<3;i++){
+      const box = boxes[i] || document.getElementById(`finalBox${i+1}`);
+      if (!box) continue;
+      const snap = levelSnapshots[i];
+      if (!snap){
+        box.innerHTML = `<p class="muted">(Sem dados desta atividade)</p>`;
+        continue;
+      }
+      box.innerHTML = `
+        <div class="final-msg">
+          <div class="muted" style="font-size:12px; margin-bottom:6px">Antes</div>
+          <div class="final-before">${escapeHtml(snap.before)}</div>
+          <div class="muted" style="font-size:12px; margin:10px 0 6px">Depois</div>
+          <div class="final-after">${escapeHtml(snap.after)}</div>
+        </div>`;
     }
-    wrap.innerHTML = log.map(it => `
-      <div class="fix-item">
-        <div class="fix-before">Antes: <b>${escapeHtml(it.before||"")}</b></div>
-        <div class="fix-after">Depois: <b>${escapeHtml(it.after||"")}</b></div>
-        ${it.reason ? `<div class="muted" style="margin-top:6px">${escapeHtml(it.reason)}</div>` : ``}
-      </div>
-    `).join("");
+
+    // Esconde botão "Próxima tarefa" no final (evita fluxo quebrado)
+    const nextBtn = document.getElementById("finalNextTaskBtn");
+    if (nextBtn) nextBtn.classList.add("hidden");
   }
 
 function onNext(){
@@ -623,6 +638,18 @@ function onNext(){
 
 
   function nextInternal(){
+    // Guarda snapshot da atividade atual (antes/depois) para tela final
+    try{
+      const stNow = engine.getState?.();
+      if (engine.challenge !== 0 && stNow?.level){
+        levelSnapshots[engine.levelIndex] = {
+          idx: engine.levelIndex,
+          before: String(currentLevelBefore || ""),
+          after: String(engine.currentText || "")
+        };
+      }
+    }catch(e){ /* noop */ }
+
     const res = engine.nextLevel();
     if (res.finishedChallenge){
       // tutorial terminou?
@@ -643,6 +670,8 @@ function onNext(){
       renderFinalMessages();
             return;
     }
+    // começou próxima atividade
+    currentLevelBefore = String(engine.currentText || "");
     showLevelIntro(engine.challenge===0);
     renderMessage(engine.challenge===0);
   }

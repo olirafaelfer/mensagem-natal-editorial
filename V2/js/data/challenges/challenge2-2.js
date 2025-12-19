@@ -1,32 +1,29 @@
 // js/data/challenges/challenge2-2.js
-// ✅ Conteúdo somente (sem lógica). Substitua livremente raw/rules/reason.
+// Desafio 2 — Atividade 2
 
 export default {
   name: "Desafio 2 — Atividade 2",
-  intro: "Texto provisório (substitua depois).",
-  instruction: "Clique nos trechos destacados e corrija.",
-  raw: "Neste Natal, a mesa terá refeissões deliciosas, e muita alegria.",
-  rules: [
-    
-  ]
+  intro: "Pontuação e uma palavra com grafia errada.",
+  instruction: "Remova a vírgula indevida e corrija a palavra.",
+  raw: "No Natal, compartilhamos generozidade, e lembranças boas.",
+  rules: []
 };
 
-// Regras como objetos simples. O engine converte para RegExp.
 export const RULES = [
   {
-    "id": "w1",
-    "label": "Ortografia",
-    "wrong": "\\\\brefeissões\\\\b",
-    "flags": "g",
-    "correct": "refeições",
-    "reason": "O correto é “refeições”."
+    id: "w1",
+    label: "Ortografia",
+    wrong: "\\bgenerozidade\\b",
+    flags: "gi",
+    correct: "generosidade",
+    reason: "O correto é “generosidade”."
   },
   {
-    "id": "p1",
-    "label": "Pontuação",
-    "wrong": ",\\\\s+e",
-    "flags": "g",
-    "correct": " e",
-    "reason": "Vírgula indevida antes de “e” em coordenação simples."
+    id: "p1",
+    label: "Pontuação",
+    wrong: ",\\s+e",
+    flags: "g",
+    correct: " e",
+    reason: "Vírgula indevida antes de “e” em coordenação simples."
   }
 ];
