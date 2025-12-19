@@ -85,6 +85,7 @@ function isValidEmail(e){
     getProfile: () => currentProfile,
     getUser: () => currentUser,
     openGate: () => openAuthGate({ force: false }),
+    openAuthGate: () => openAuthGate({ force: false }),
     openAccount: () => (currentUser ? openAccountPanel() : openAuthGate({ force: false })),
     canRank: () =>
       !!currentUser &&
@@ -98,6 +99,35 @@ function isValidEmail(e){
   });
 
   // =============================
+  // =============================
+  // Perfil (Firestore)
+  // =============================
+  async function fetchOrCreateProfile(user){
+    const ref = doc(db, "users", user.uid);
+    const snap = await getDoc(ref);
+    if (snap.exists()) return snap.data();
+
+    // Não cria automaticamente sem setor (ex.: Google)
+    const email = user.email || "";
+    const nameGuess = String(user.displayName || "").trim();
+    return { uid: user.uid, email, name: nameGuess, sector: "", needsCompletion: true };
+  }
+
+  async function saveProfile(uid, email, name, sector){
+    const ref = doc(db, "users", uid);
+    const now = new Date();
+    const payload = {
+      uid,
+      email: String(email||"").trim(),
+      name: String(name||"").trim().slice(0,60),
+      sector: String(sector||"").trim().slice(0,120),
+      createdAt: now,
+      updatedAt: now,
+    };
+    await setDoc(ref, payload);
+    return payload;
+  }
+
   // Auth state
   // =============================
   onAuthStateChanged(auth, async (user) => {
@@ -121,6 +151,8 @@ function isValidEmail(e){
       }
 
       if (currentProfile) applyLoggedProfileToForm(currentProfile);
+      try { app.game?.refreshAccess?.(); } catch(e) {}
+
 
       else lockIdentityFields(true);
 
@@ -140,6 +172,9 @@ function isValidEmail(e){
     } else {
       lockIdentityFields(false);
       forceAnonymousNoRanking();
+      // reset UI/progresso para visitante (evita liberar desafios indevidos)
+      try { app.game?.resetRuntime?.(); app.game?.goHome?.(); app.game?.refreshAccess?.(); } catch(e) {}
+
     }
   });
 
@@ -438,75 +473,55 @@ function renderAuthHTML() {
   // =============================
   // CADASTRO
   // =============================
+  // =============================
+  // CADASTRO
+  // =============================
   async function doSignup() {
     if (busy) return;
     busy = true;
+    clearStatus();
 
     const root = getModalBody();
-    const name = (root?.querySelector('[data-auth="signupName"]')?.value || "").trim();
-    const sector = (root?.querySelector('[data-auth="signupSector"]')?.value || "").trim();
-    const email = (root?.querySelector('[data-auth="signupEmail"]')?.value || "").trim();
-    const pass = (root?.querySelector('[data-auth="signupPass"]')?.value || "").trim();
+    const name = (root?.querySelector('[data-auth="signupName"]')?.value || '').trim();
+    const sector = (root?.querySelector('[data-auth="signupSector"]')?.value || '').trim();
+    const email = (root?.querySelector('[data-auth="signupEmail"]')?.value || '').trim();
+    const pass = (root?.querySelector('[data-auth="signupPass"]')?.value || '').trim();
 
-    
-const emailClean = cleanEmail(email);
+    const emailClean = cleanEmail(email);
 
-if (!name || !sector || !emailClean || !pass) {
-  showStatus("Preencha nome, setor, e-mail e senha.", "error");
-  busy = false;
-  return;
-}
-
-if (!isValidEmail(emailClean)) {
-  showStatus("E-mail inválido. Verifique e tente novamente.", "error");
-  busy = false;
-  return;
-}
-
-if (String(pass).length < 6) {
-  showStatus("A senha deve ter pelo menos 6 caracteres.", "error");
-  busy = false;
-  return;
-}
-
-try {
-  const cred = await createUserWithEmailAndPassword(auth, emailClean, pass);
-  const user = cred.user;
-
-      // Se faltar setor (comum no 1º login com Google), NÃO cria automaticamente.
-// Em vez disso, retornamos um rascunho e pedimos para o usuário completar.
-    if (fallbackSector.length < 2){
-      return {
-        uid: user.uid,
-        email: user.email || "",
-        name: fallbackName || (user.email || "Usuário"),
-        sector: "",
-        needsCompletion: true,
-      };
+    if (!name || !sector || !emailClean || !pass) {
+      showStatus('Preencha nome, setor, e-mail e senha.', 'error');
+      busy = false;
+      return;
     }
 
-    const payload = {
-      uid: user.uid,
-      email: user.email || "",
-      name: String(fallbackName || "Usuário").slice(0,60),
-      sector: String(fallbackSector).slice(0,120),
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
-    };
+    if (!isValidEmail(emailClean)) {
+      showStatus('E-mail inválido. Verifique e tente novamente.', 'error');
+      busy = false;
+      return;
+    }
 
-    await setDoc(ref, payload);
+    if (String(pass).length < 6) {
+      showStatus('A senha deve ter pelo menos 6 caracteres.', 'error');
+      busy = false;
+      return;
+    }
 
-    showStatus("Conta criada! Você já pode entrar.", "success");
-    app.modal?.closeModal?.();
-    return {
-      uid: payload.uid,
-      email: payload.email,
-      name: payload.name,
-      sector: payload.sector,
-    };
-} catch (e) {
-  console.warn("[auth] signup falhou", e);
-  showStatus(humanAuthError(e) || "Falha ao criar conta.", "error");
+    try {
+      const cred = await createUserWithEmailAndPassword(auth, emailClean, pass);
+      const user = cred.user;
+      const payload = await saveProfile(user.uid, user.email || emailClean, name, sector);
+      currentProfile = payload;
+      applyLoggedProfileToForm(payload);
+      showStatus('Conta criada! Você já pode entrar.', 'success');
+      // onAuthStateChanged fecha o gate
+    } catch (e) {
+      console.warn('[auth] signup falhou', e);
+      showStatus(humanAuthError(e) || 'Falha ao criar conta.', 'error');
+    } finally {
+      busy = false;
+    }
+  }
 } finally {
   busy = false;
 }
@@ -549,14 +564,7 @@ try {
                 return;
               }
               try{
-                await setDoc(doc(db, "users", user.uid), {
-                  uid: user.uid,
-                  email: user.email || "",
-                  name: nm.slice(0,60),
-                  sector: sc.slice(0,120),
-                  createdAt: serverTimestamp(),
-                  updatedAt: serverTimestamp(),
-                }, { merge: true });
+                await saveProfile(user.uid, user.email || "", nm, sc);
                 app.modal.closeModal();
                 resolve();
               }catch(e){

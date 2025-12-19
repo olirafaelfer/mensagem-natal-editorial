@@ -1,4 +1,6 @@
-const BUILD_ID = "fix6";
+const BUILD_ID = "fix15";
+import { APP_VERSION } from "./config/version.js";
+
 // js/main.js — BOOTSTRAP (módulos + Firebase) — versão refatorada em pastas
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js";
 import { getAuth } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
@@ -77,6 +79,10 @@ const firebase = {
 const app = (createAppFn ?? window.createApp)({ firebase, THEME_PRESETS, SECTORS, SCORE_RULES });
   app.populateSectors?.();
   bootSnow(app);
+// versão no rodapé
+const vEl = document.getElementById("appVersion");
+if (vEl) vEl.textContent = APP_VERSION;
+
 
 function pickBoot(mod, candidates){
   if (!mod) return null;

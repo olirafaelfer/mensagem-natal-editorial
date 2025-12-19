@@ -1342,3 +1342,31 @@ html, body{ max-width:100%; overflow-x:hidden; }
 .modal *{ box-sizing: border-box; }
 /* prevent long strings from forcing horizontal scroll */
 .modal-body, .modal-body *{ overflow-wrap:anywhere; word-break: break-word; }
+
+/* ===== V2-fix15: Rodapé de versão ===== */
+.app-footer{
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 6px 10px;
+  font-size: 12px;
+  opacity: .7;
+  pointer-events: none;
+  display: flex;
+  justify-content: flex-end;
+  z-index: 20;
+}
+
+/* ===== V2-fix15: Modais responsivos (evitar scroll horizontal) ===== */
+.modal{ width: min(760px, calc(100vw - 24px)); max-width: 100%; }
+.modal-body{ overflow-x: hidden; overflow-wrap: anywhere; word-break: break-word; }
+.modal, .modal *{ max-width: 100%; }
+html, body{ overflow-x: hidden; }
+
+@media (max-width: 480px){
+  .modal{ width: calc(100vw - 16px); }
+  .modal-head, .modal-foot{ padding-left: 12px; padding-right: 12px; }
+  .modal-body{ padding-left: 12px; padding-right: 12px; }
+  table{ display:block; width:100%; overflow-x:auto; }
+}

@@ -26,13 +26,19 @@ export function bootGame(app){
   app.game = {
     startChallenge,
     goHome,
-    engine
+    engine,
+    refreshAccess: () => updateChallengeButtons(),
+    resetRuntime: () => { engine.resetAll(); levelSnapshots.length = 0; currentLevelBefore = ""; }
   };
 
   // binds
   dom.challenge1Btn?.addEventListener("click", () => onChallengeClick(1));
   dom.challenge2Btn?.addEventListener("click", () => onChallengeClick(2));
   dom.challenge3Btn?.addEventListener("click", () => onChallengeClick(3));
+  // Logo: voltar para a página inicial
+  document.getElementById("logoTop")?.addEventListener("click", () => goHome());
+  document.getElementById("logoHome")?.addEventListener("click", () => goHome());
+
 
   dom.hintBtn?.addEventListener("click", () => onHint());
   dom.skipLevelBtn?.addEventListener("click", () => onSkip());
@@ -91,19 +97,26 @@ export function bootGame(app){
   }
 
   // estado tutorial/progresso
-  const LS_TUTORIAL_DONE = "mission_tutorial_done";
-  const LS_PROGRESS = "mission_progress_v1";
+  const LS_TUTORIAL_BASE = "mission_tutorial_done_v2";
+  const LS_PROGRESS_BASE = "mission_progress_v2";
+
+  function userScope(){
+    const u = app.auth?.getUser?.();
+    return u?.uid || "anon";
+  }
+  function tutorialKey(){ return LS_TUTORIAL_BASE + "_" + userScope(); }
+  function progressKey(){ return LS_PROGRESS_BASE + "_" + userScope(); }
 
   // Snapshots para tela final (antes/depois por atividade)
   const levelSnapshots = []; // [{ idx:number, before:string, after:string }]
   let currentLevelBefore = "";
 
   function getProgress(){
-    try { return JSON.parse(localStorage.getItem(LS_PROGRESS) || "{}"); }
+    try { return JSON.parse(localStorage.getItem(progressKey()) || "{}"); }
     catch { return {}; }
   }
   function setProgress(p){
-    localStorage.setItem(LS_PROGRESS, JSON.stringify(p || {}));
+    localStorage.setItem(progressKey(), JSON.stringify(p || {}));
   }
   function markChallengeDone(ch, score){
     const p = getProgress();
@@ -205,9 +218,9 @@ function onChallengeClick(ch){
     engine.loadChallenge(ch, levels);
 
     // tutorial só antes do desafio 1 e só 1x
-    if (ch === 1 && localStorage.getItem(LS_TUTORIAL_DONE) !== "1"){
+    if (ch === 1 && localStorage.getItem(tutorialKey()) !== "1"){
       promptTutorial(() => {
-        localStorage.setItem(LS_TUTORIAL_DONE, "1");
+        localStorage.setItem(tutorialKey(), "1");
         ui.showOnly(dom.screenGame);
         engine.startLevel();
         currentLevelBefore = String(engine.currentText || "");
@@ -292,7 +305,14 @@ function onChallengeClick(ch){
     openSpecialMission();
   });
 
-  dom.finalMissionSpecialBtn?.addEventListener("click", () => openSpecialMission());
+  dom.finalMissionSpecialBtn?.addEventListener("click", () => {
+    const p = loadProgress();
+    if (!(p?.c3?.done)){
+      openModal({ title:"Missao Especial", bodyHTML: "<p>Conclua o Desafio 3 para liberar a Missao Especial.</p>", buttons:[{label:"Ok", variant:"ghost", onClick: closeModal}] });
+      return;
+    }
+    openSpecialMission();
+  });
 // =========================
   // HUD / Intro
   // =========================
@@ -334,7 +354,7 @@ function onChallengeClick(ch){
       dom.nextLevelBtn.textContent = done
         ? (st.levelIndex === (engine.levels.length - 1) ? "Finalizar tarefa" : "Próxima tarefa")
         : "Resolva para liberar";
-      if (engine.challenge===0 && engine.level?.tutorialMode==="force-skip"){
+      if (engine.challenge===0 && st.level?.tutorialMode==="force-skip"){
         dom.nextLevelBtn.textContent = "Use Avançar sem concluir";
         dom.nextLevelBtn.disabled = true;
         dom.nextLevelBtn.setAttribute("aria-disabled","true");
@@ -343,7 +363,7 @@ function onChallengeClick(ch){
       if (dom.skipLevelBtn){
         // Tutorial: por padrão não pode pular (exceto etapa que ensina pular)
         if (engine.challenge === 0){
-          const allowSkip = !!engine.level?.allowSkipInTutorial;
+          const allowSkip = !!st.level?.allowSkipInTutorial;
           dom.skipLevelBtn.classList.toggle("hidden", !allowSkip);
           dom.skipLevelBtn.disabled = !allowSkip;
           if (allowSkip){ dom.skipLevelBtn.textContent = "Avançar sem concluir (-5)"; }

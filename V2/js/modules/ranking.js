@@ -41,21 +41,21 @@ export function bootRanking(app){
     const snap = await firebase.getDoc(ref);
     const prev = snap.exists() ? (snap.data() || {}) : {};
 
-    const now = firebase.serverTimestamp();
+    const now = new Date();
     const key = challenge === 1 ? "d1" : (challenge === 2 ? "d2" : "d3");
 
     // Importante: desafios ainda não jogados NÃO devem ganhar updatedAt “agora”,
     // senão parecem concluídos e quebram elegibilidade do Ranking Geral.
-    const empty = { score:0, correct:0, wrong:0, updatedAt: now };
+    const empty = { score:-1, correct:0, wrong:0, updatedAt: now };
     const d1 = key === "d1" ? { score, correct, wrong, updatedAt: now } : (prev.d1 ? {score:Number(prev.d1.score||0), correct:Number(prev.d1.correct||0), wrong:Number(prev.d1.wrong||0), updatedAt: prev.d1.updatedAt || now} : empty);
     const d2 = key === "d2" ? { score, correct, wrong, updatedAt: now } : (prev.d2 ? {score:Number(prev.d2.score||0), correct:Number(prev.d2.correct||0), wrong:Number(prev.d2.wrong||0), updatedAt: prev.d2.updatedAt || now} : empty);
     const d3 = key === "d3" ? { score, correct, wrong, updatedAt: now } : (prev.d3 ? {score:Number(prev.d3.score||0), correct:Number(prev.d3.correct||0), wrong:Number(prev.d3.wrong||0), updatedAt: prev.d3.updatedAt || now} : empty);
 
-    const scores = [Number(d1.score||0), Number(d2.score||0), Number(d3.score||0)];
-    // Ranking Geral: média dos 3 desafios (faltante = 0)
-    const overallAvg = scores.reduce((a,b)=>a+b,0) / 3;
+    const scoresPlayed = [d1,d2,d3].map(d => Math.max(0, Number(d?.score ?? 0)));
+    // Ranking Geral: média simples dos 3 desafios (faltante = 0)
+    const overallAvg = (scoresPlayed[0] + scoresPlayed[1] + scoresPlayed[2]) / 3;
 
-    const isComplete = !!(d1.updatedAt && d2.updatedAt && d3.updatedAt);
+    const isComplete = [d1,d2,d3].every(d => Number(d?.score ?? -1) >= 0);
 
     const payload = {
       emailHash,
