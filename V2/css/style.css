@@ -466,6 +466,15 @@ select.input option{
   color: rgba(255,255,255,.95);
 }
 
+
+.token.candidate{
+  background: transparent;
+  border: 1px solid transparent;
+  color: inherit;
+}
+.token.candidate:hover{
+  background: rgba(255,255,255,.06);
+}
 .token.error{
   background: rgba(255,23,68,.16);
   border: 1px solid rgba(255,23,68,.22);

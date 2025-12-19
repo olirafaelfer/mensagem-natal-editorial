@@ -49,8 +49,8 @@ export function bootRanking(app){
     const d3 = key === "d3" ? { score, correct, wrong, updatedAt: now } : (prev.d3 || { score:0, correct:0, wrong:0, updatedAt: now });
 
     const scores = [Number(d1.score||0), Number(d2.score||0), Number(d3.score||0)];
-    const completed = scores.filter(s => s > 0);
-    const overallAvg = completed.length ? (completed.reduce((a,b)=>a+b,0) / completed.length) : 0;
+    // média sempre sobre os 3 desafios (faltante = 0)
+    const overallAvg = scores.reduce((a,b)=>a+b,0) / 3;
 
     const payload = {
       emailHash,

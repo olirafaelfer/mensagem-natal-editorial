@@ -159,6 +159,7 @@ function onChallengeClick(ch){
         localStorage.setItem(LS_TUTORIAL_DONE, "1");
         ui.showOnly(dom.screenGame);
         engine.startLevel();
+        currentLevelBefore = String(engine.currentText || "");
         showLevelIntro();
         renderMessage();
       });
@@ -242,13 +243,22 @@ function onChallengeClick(ch){
     if (dom.nextLevelBtn){
       const done = engine.isDone();
       dom.nextLevelBtn.disabled = !done;
+      dom.nextLevelBtn.setAttribute("aria-disabled", (!done).toString());
+      dom.nextLevelBtn.classList.toggle("btn-disabled", !done);
       dom.nextLevelBtn.textContent = done
         ? (st.levelIndex === (engine.levels.length - 1) ? "Finalizar tarefa" : "Próxima tarefa")
         : "Resolva para liberar";
       if (dom.skipLevelBtn){
-        dom.skipLevelBtn.disabled = false;
-        dom.skipLevelBtn.textContent = "Avançar sem concluir (-5)";
-        if (done) dom.skipLevelBtn.disabled = true;
+        // Tutorial: não pode pular
+        if (engine.challenge === 0){
+          dom.skipLevelBtn.disabled = true;
+          dom.skipLevelBtn.classList.add("hidden");
+        } else {
+          dom.skipLevelBtn.classList.remove("hidden");
+          dom.skipLevelBtn.disabled = false;
+          dom.skipLevelBtn.textContent = "Avançar sem concluir (-5)";
+          if (done) dom.skipLevelBtn.disabled = true;
+        }
       }
     }
   }
@@ -320,7 +330,7 @@ function onChallengeClick(ch){
       if (best.index > pos) appendPlain(text.slice(pos, best.index));
 
       const span = document.createElement("span");
-      span.className = "token error";
+      span.className = (engine.challenge===0 ? "token error" : "token candidate");
       span.textContent = best.text;
       span.dataset.kind = "error";
       span.dataset.ruleid = bestRule.id;

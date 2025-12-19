@@ -1,21 +1,11 @@
-// js/data/challenges/challenge1-2.js
-// Desafio 1 — Atividade 2 (Médio)
-
+// Desafio 1 — Atividade 2
 export default {
-  name: "Desafio 1 — Atividade 2",
-  intro: "Agora vamos remover uma vírgula indevida (clique nela).",
-  instruction: "Clique na vírgula destacada para removê-la.",
-  raw: "Nesta noite de Natal, é tempo de agradecer e partilhar.",
-  rules: []
+  name: "Desafio 1 \u2014 Atividade 2",
+  intro: "Agora uma pontua\u00e7\u00e3o fora do lugar + uma palavra errada.",
+  instruction: "Encontre e corrija as ocorr\u00eancias.",
+  raw: "Que a noite de Natal seja leve, e que os livros tragam luz para tods n\u00f3s.",
+  rules: [
+    { id:"d1a2_r1", label:"Pontua\u00e7\u00e3o", wrong:/,/g, correct:"", reason:"Remova a v\u00edrgula indevida." },
+    { id:"d1a2_r2", label:"Ortografia", wrong:/\btods\b/g, correct:"todos", reason:"O correto \u00e9 \u201ctodos\u201d." },
+  ]
 };
-
-export const RULES = [
-  {
-    id: "p1",
-    label: "Pontuação",
-    wrong: ",",
-    flags: "g",
-    correct: "",
-    reason: "Vírgula indevida: não se separa sujeito e verbo."
-  }
-];

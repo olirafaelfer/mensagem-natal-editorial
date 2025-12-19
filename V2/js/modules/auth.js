@@ -233,7 +233,7 @@ onClick: () => {
         <div class="auth-actions">
           <button class="btn" data-action="login" type="button">Entrar</button>
           <button class="btn ghost" data-action="googleLogin" type="button">
-            <span class="g-badge" aria-hidden="true">G</span>
+            <span class="g-badge" aria-hidden="true"><svg viewBox="0 0 48 48" width="18" height="18" style="display:block"><path fill="#EA4335" d="M24 9.5c3.54 0 6.03 1.53 7.42 2.81l5.06-5.06C33.37 4.34 29.08 2.5 24 2.5 14.92 2.5 7.07 7.66 3.26 15.2l5.96 4.63C11.27 13.19 17.18 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.57-.14-3.08-.4-4.5H24v8.51h12.7c-.55 2.97-2.2 5.49-4.69 7.18l7.1 5.5c4.15-3.83 6.39-9.48 6.39-16.69z"/><path fill="#FBBC05" d="M9.22 28.07c-.5-1.48-.79-3.06-.79-4.57s.29-3.09.79-4.57l-5.96-4.63C1.99 17.04 1.5 20.2 1.5 23.5s.49 6.46 1.76 9.2l5.96-4.63z"/><path fill="#34A853" d="M24 44.5c5.08 0 9.35-1.68 12.47-4.57l-7.1-5.5c-1.97 1.32-4.49 2.1-5.37 2.1-6.82 0-12.73-3.69-14.78-9.33l-5.96 4.63C7.07 39.34 14.92 44.5 24 44.5z"/></svg></span>
             Entrar com Google
           </button>
           <button class="btn ghost" data-action="forgot" type="button">Esqueci minha senha</button>
@@ -814,6 +814,7 @@ try {
     if (code.includes("auth/email-already-in-use")) return "Este e-mail já está em uso.";
     if (code.includes("auth/weak-password")) return "Senha fraca. Use uma senha mais forte.";
     if (code.includes("auth/too-many-requests")) return "Muitas tentativas. Tente novamente em alguns minutos.";
+    if (code.includes("auth/operation-not-allowed")) return "Login com Google não está habilitado no Firebase. Ative em Authentication → Sign-in method → Google (Enable) e confira Authorized domains.";
     if (code.includes("auth/requires-recent-login")) return "Por segurança, faça login novamente e tente deletar a conta.";
     if (code.includes("permission-denied")) return "Sem permissão no Firestore. Ajuste as rules (delete/owner).";
     return e?.message ? String(e.message) : "Erro inesperado.";
