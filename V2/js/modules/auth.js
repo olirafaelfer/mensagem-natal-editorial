@@ -154,7 +154,7 @@ function isValidEmail(e){
       try { app.game?.refreshAccess?.(); } catch(e) {}
 
 
-      else lockIdentityFields(true);
+      lockIdentityFields(true);
 
       // ✅ sincroniza optout com checkbox quando logado
       if (optRankingEl) {
