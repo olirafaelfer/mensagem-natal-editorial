@@ -100,6 +100,15 @@ async function safeImport(path, name){
   }
 }
 
+async function safeImportOptional(path, name){
+  try { return await import(`${path}?v=${BUILD_ID}`); }
+  catch (e){
+    console.warn(`⚠️ Módulo opcional não carregado: ${name} (${path})`, e);
+    return null;
+  }
+}
+
+
 async function bootAll(){
   try {
     const modalMod   = await safeImport("./ui/ui-modal.js", "ui-modal.js");
@@ -108,6 +117,7 @@ async function bootAll(){
     const rankingMod = await safeImport("./modules/ranking.js", "ranking.js");
     const gameMod    = await safeImport("./game-core.js", "game-core.js");
     const adminMod   = await safeImport("./modules/admin.js", "admin.js");
+    const googleMod  = await safeImportOptional("./modules/google-auth.js", "google-auth.js");
 
     const bootModal   = pickBoot(modalMod,   ["bootModal", "boot", "init"]);
     const bootThemeFx = pickBoot(themeMod,   ["bootThemeFx", "bootTheme", "boot", "init"]);
@@ -115,7 +125,7 @@ async function bootAll(){
     const bootGame    = pickBoot(gameMod,    ["bootGame", "bootGameCore", "initGame", "init"]);
     const bootAdmin   = pickBoot(adminMod,   ["bootAdmin", "boot", "init"]);
     const bootAuth    = pickBoot(authMod,    ["bootAuth", "boot", "init"]); 
-    //const bootGoogle  = pickBoot(googleMod,  ["bootGoogleAuth", "boot", "init"]);
+    const bootGoogle  = googleMod ? pickBoot(googleMod,  ["bootGoogleAuth", "boot", "init"]) : null;
 
     bootModal?.(app);
     bootThemeFx?.(app);
@@ -123,7 +133,7 @@ async function bootAll(){
     bootGame?.(app);
     bootAdmin?.(app);
     bootAuth?.(app);
-    //bootGoogle?.(app);
+    bootGoogle?.(app);
 
     // abre auth automaticamente se não logado (comporta igual ao que você tinha)
     setTimeout(() => {

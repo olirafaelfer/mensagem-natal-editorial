@@ -63,44 +63,45 @@ export function bootGame(app){
     if (!app.auth?.isLogged?.()) return false;
     return isChallengeDone(ch-1);
   }
-  function updateChallengeButtons(){
-    // Atualiza UI de acesso (Desafio 2/3) com base em login + progresso
-    const b1 = dom.challenge1Btn;
-    const b2 = dom.challenge2Btn;
-    const b3 = dom.challenge3Btn;
+function updateChallengeButtons(){
+  // Atualiza UI de acesso (Desafio 2/3) com base em login + progresso
+  const p = getProgress();
+  const c3Done = !!p?.c3?.done;
 
-    const access2 = canAccessChallenge(2);
-    const access3 = canAccessChallenge(3);
+  const b1 = dom.challenge1Btn;
+  const b2 = dom.challenge2Btn;
+  const b3 = dom.challenge3Btn;
 
-    if (b1){
-      b1.disabled = false;
-      b1.classList.remove("btn-disabled");
-      b1.textContent = "Desafio 1";
-    
-    // Missão especial
-    if (dom.missionSpecialHomeBtn){
-      dom.missionSpecialHomeBtn.disabled = !p.c3Done;
-      dom.missionSpecialHomeBtn.style.opacity = p.c3Done ? "1" : ".5";
-    }
-    if (dom.finalMissionSpecialBtn){
-      dom.finalMissionSpecialBtn.style.display = p.c3Done ? "inline-flex" : "none";
-    }
+  const access2 = canAccessChallenge(2);
+  const access3 = canAccessChallenge(3);
 
-  }
-    if (b2){
-      b2.disabled = !access2;
-      b2.classList.toggle("btn-disabled", !access2);
-      b2.textContent = access2 ? "Desafio 2" : "Desafio 2 🔒";
-    }
-    if (b3){
-      b3.disabled = !access3;
-      b3.classList.toggle("btn-disabled", !access3);
-      b3.textContent = access3 ? "Desafio 3" : "Desafio 3 🔒";
-    }
+  if (b1){
+    b1.disabled = false;
+    b1.classList.remove("btn-disabled");
+    b1.textContent = "Desafio 1";
   }
 
+  if (b2){
+    b2.disabled = !access2;
+    b2.classList.toggle("btn-disabled", !access2);
+    b2.textContent = access2 ? "Desafio 2" : "Desafio 2 🔒";
+  }
 
-  
+  if (b3){
+    b3.disabled = !access3;
+    b3.classList.toggle("btn-disabled", !access3);
+    b3.textContent = access3 ? "Desafio 3" : "Desafio 3 🔒";
+  }
+
+  // Missão especial (libera após concluir Desafio 3)
+  if (dom.missionSpecialHomeBtn){
+    dom.missionSpecialHomeBtn.disabled = !c3Done;
+    dom.missionSpecialHomeBtn.style.opacity = c3Done ? "1" : ".5";
+  }
+  if (dom.finalMissionSpecialBtn){
+    dom.finalMissionSpecialBtn.style.display = c3Done ? "inline-flex" : "none";
+  }
+}
   function requireNameSector(){
     const name = app.user?.getUserName?.() || "";
     const sector = app.user?.getUserSector?.() || "";
@@ -652,4 +653,3 @@ function onNext(){
 }
 
 function normText(s){ return String(s ?? '').trim().normalize('NFC'); }
-
