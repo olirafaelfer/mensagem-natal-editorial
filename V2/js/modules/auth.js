@@ -522,10 +522,6 @@ function renderAuthHTML() {
       busy = false;
     }
   }
-} finally {
-  busy = false;
-}
-  }
 
   
   async function promptCompleteProfile(draft, user){

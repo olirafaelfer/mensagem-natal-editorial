@@ -1,4 +1,4 @@
-const BUILD_ID = "fix15.1";
+const BUILD_ID = "fix15.2";
 import { APP_VERSION } from "./config/version.js";
 
 // js/main.js — BOOTSTRAP (módulos + Firebase) — versão refatorada em pastas
