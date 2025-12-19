@@ -42,6 +42,40 @@ export function bootGame(app){
   // compat: ranking.open() é o método canônico; openRanking é alias
   dom.finalRankingBtn?.addEventListener("click", () => app.ranking?.open?.() || app.ranking?.openRanking?.());
 
+  // tela final: mostrar/ocultar mensagens corrigidas
+  const toggleBtn = dom.toggleFinalMsgsBtn || document.getElementById("toggleFinalMsgs");
+  if (toggleBtn){
+    toggleBtn.addEventListener("click", () => {
+      const wrap = dom.finalMsgsWrap || document.getElementById("finalMsgsWrap");
+      if (!wrap) return;
+      const willShow = wrap.classList.contains("hidden");
+      wrap.classList.toggle("hidden", !willShow);
+      toggleBtn.setAttribute("aria-expanded", willShow ? "true" : "false");
+      if (willShow) renderFinalMessages();
+    });
+  }
+
+  // tela final: botões "Correções e justificativas"
+  for (let i=1;i<=3;i++){
+    const b = document.getElementById(`reviewBtn${i}`);
+    if (!b) continue;
+    b.addEventListener("click", () => {
+      const snap = levelSnapshots[i-1];
+      openModal?.({
+        title: `📌 Atividade ${i} — Correções`,
+        body: snap ? `
+          <div class="final-review">
+            <p class="muted">Antes:</p>
+            <div class="final-review-box">${escapeHtml(snap.before)}</div>
+            <p class="muted" style="margin-top:10px">Depois:</p>
+            <div class="final-review-box">${escapeHtml(snap.after)}</div>
+          </div>
+        ` : `<p class="muted">(Sem dados desta atividade)</p>`,
+        actions:[{ label:"Fechar", variant:"primary", onClick: () => closeModal?.() }]
+      });
+    });
+  }
+
   // estado tutorial/progresso
   const LS_TUTORIAL_DONE = "mission_tutorial_done";
   const LS_PROGRESS = "mission_progress_v1";
@@ -263,10 +297,24 @@ function onChallengeClick(ch){
         const lvl2 = st2?.level;
         const idx2 = st2?.levelIndex ?? 0;
         const flags = tutorialFlags[idx2] || {};
+
+        // Tutorial: controla botões e foco
+        if (dom.hintBtn){
+          const hintAllowed = !!lvl2?.hintEnabled || lvl2?.tutorialMode === "force-auto";
+          dom.hintBtn.disabled = !hintAllowed;
+          dom.hintBtn.classList.toggle("btn-disabled", !hintAllowed);
+          dom.hintBtn.classList.toggle("focus-hand", !!lvl2?.focusHintBtn);
+        }
+        if (dom.skipLevelBtn){
+          const allowSkip = !!lvl2?.allowSkipInTutorial;
+          dom.skipLevelBtn.style.display = allowSkip ? "" : "none";
+          dom.skipLevelBtn.disabled = !allowSkip;
+        }
         if (lvl2?.tutorialMode === "force-misclick") done = !!flags.misclickDone;
         if (lvl2?.tutorialMode === "force-skip") done = false;
       }
       dom.nextLevelBtn.disabled = !done;
+      dom.nextLevelBtn.classList.toggle("focus-hand", done);
       dom.nextLevelBtn.setAttribute("aria-disabled", (!done).toString());
       dom.nextLevelBtn.classList.toggle("btn-disabled", !done);
       dom.nextLevelBtn.textContent = done
@@ -502,6 +550,29 @@ function onChallengeClick(ch){
     if (engine.challenge===0 && lvl){
       if (lvl.tutorialMode === "force-auto") return;
       if (lvl.focusRuleId && rule?.id !== lvl.focusRuleId) return;
+
+      // Tutorial 4/5: clique errado (penalidade) — penaliza imediatamente
+      if (lvl.tutorialMode === "force-misclick"){
+        const word = (el?.textContent || "").trim();
+        if (lvl.focusMisclickWord && word !== lvl.focusMisclickWord) return;
+
+        const idx = st?.levelIndex ?? 0;
+        tutorialFlags[idx] = { ...(tutorialFlags[idx]||{}), misclickDone: true };
+
+        // feedback imediato + penalidade
+        try{ engine.addScore?.(-1); }catch(e){ /* noop */ }
+        scoreFloat(-1, el);
+
+        openModal({
+          title: "⚠️ Clique errado",
+          body: `<p>“${escapeHtml(word)}” já estava correta. Você perdeu <strong>1 ponto</strong>.</p>`,
+          actions: [
+            { label:"Entendi", variant:"primary", onClick: () => { closeModal?.(); updateHUD(); } }
+          ]
+        });
+        updateHUD();
+        return;
+      }
     }
     openModal({
       title:"Tem certeza que deseja corrigir este trecho?",
@@ -615,6 +686,7 @@ function onChallengeClick(ch){
   // Hint / Skip / Next
   // =========================
   function onHint(){
+    if (dom.hintBtn?.disabled) return;
     const st = engine.getState();
     const lvl = st.level;
     if (!lvl){

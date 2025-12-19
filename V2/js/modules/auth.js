@@ -201,7 +201,19 @@ onClick: () => {
     });
   }
 
-  function renderAuthHTML() {
+  
+function googleSvg(){
+  // SVG simples do "G" do Google (estático)
+  return `
+<svg width="18" height="18" viewBox="0 0 48 48" role="img" aria-label="Google">
+  <path fill="#EA4335" d="M24 9.5c3.54 0 6.73 1.22 9.25 3.6l6.9-6.9C35.99 2.52 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l8.04 6.24C12.42 13.02 17.74 9.5 24 9.5z"/>
+  <path fill="#4285F4" d="M46.5 24c0-1.64-.15-3.22-.43-4.75H24v9.02h12.64c-.55 2.96-2.23 5.47-4.75 7.16l7.3 5.66C43.7 36.9 46.5 30.9 46.5 24z"/>
+  <path fill="#FBBC05" d="M10.6 28.54A14.5 14.5 0 0 1 9.5 24c0-1.57.27-3.09.76-4.46l-8.04-6.24A23.98 23.98 0 0 0 0 24c0 3.88.93 7.55 2.56 10.78l8.04-6.24z"/>
+  <path fill="#34A853" d="M24 48c6.48 0 11.93-2.14 15.9-5.8l-7.3-5.66c-2.02 1.36-4.6 2.16-8.6 2.16-6.26 0-11.58-3.52-13.4-8.2l-8.04 6.24C6.51 42.62 14.62 48 24 48z"/>
+</svg>`;
+}
+
+function renderAuthHTML() {
     const sectorsHTML = buildSectorOptionsHTML();
     return `
       <div class="auth-head">

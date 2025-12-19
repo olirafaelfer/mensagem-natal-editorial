@@ -7,6 +7,7 @@ export function getTutorialLevels(){
       instruction: "Clique em “refeissões” (destacado) e corrija para “refeições”.",
       raw: "Neste Natal, a mesa terá refeissões deliciosas e muita alegria.",
       focusRuleId: "t1",
+      hintEnabled: false,
       rules: [
         { id:"t1", label:"Ortografia", wrong:/\brefeissões\b/g, correct:"refeições", reason:"O correto é “refeições”." }
       ]
@@ -14,34 +15,37 @@ export function getTutorialLevels(){
     {
       name: "Tutorial 2/5 — Pontuação",
       intro: "Agora vamos remover uma vírgula indevida.",
-      instruction: "Clique na vírgula destacada após “Natal” para removê-la.",
-      raw: "O Natal, é um tempo de amor e esperança.",
+      instruction: "Clique na vírgula destacada e remova-a.",
+      raw: "Que o seu Natal seja de paz, alegria, e união.",
       focusRuleId: "t2",
+      hintEnabled: false,
       rules: [
-        { id:"t2", label:"Pontuação", wrong:/,/g, correct:"", reason:"Evite separar sujeito e verbo com vírgula." }
+        { id:"t2", label:"Pontuação", wrong:/,/g, correct:"", reason:"Aqui a vírgula não é necessária." }
       ]
     },
     {
       name: "Tutorial 3/5 — Dica e correção automática",
       tutorialMode: "force-auto",
+      intro: "Quando bater dúvida, use a dica — e aprenda a correção automática.",
+      instruction: "Clique em “Me dê uma cola!” (dedinho) e aplique a correção automática.",
+      raw: "No Natal, praticar caridadee e compaixão transforma o dia de alguém.",
       focusHintBtn: true,
-      intro: "Quando travar, use a dica e a correção automática.",
-      instruction: "Clique em “Me dê uma cola!” para aplicar a correção automática.",
-      raw: "Neste Natal, pratique a caridadee e o amor ao próximo.",
-      focusRuleId: "t3",
+      hintEnabled: true,
       rules: [
-        { id:"t3", label:"Ortografia", wrong:/\bcaridadee\b/g, correct:"caridade", reason:"Erro de digitação: removemos o “e” extra." }
+        { id:"t3", label:"Dica", wrong:/\bcaridadee\b/g, correct:"caridade", reason:"O correto é “caridade”." }
       ]
     },
     {
       name: "Tutorial 4/5 — Clique errado (penalidade)",
       tutorialMode: "force-misclick",
       intro: "Se você tentar corrigir algo que já está certo, perde pontos.",
-      instruction: "Clique na palavra “alegria” (ela já está certa) e confirme para ver a penalidade.",
+      instruction: "Clique na palavra “alegria” (ela já está certa) para ver a penalidade.",
       raw: "Que o seu Natal seja de paz, alegria e união.",
       focusMisclickWord: "alegria",
+      hintEnabled: false,
       rules: [
-        { id:"t4", label:"Treino", wrong:/\balegria\b/g, correct:"alegria", reason:"Aqui é só um treino: clique errado gera penalidade." }
+        // Esta regra existe só para tornar a palavra clicável no tutorial
+        { id:"t4", label:"Treino", wrong:/\balegria\b/g, correct:"alegria", reason:"A palavra já estava correta." }
       ]
     },
     {
@@ -51,6 +55,7 @@ export function getTutorialLevels(){
       intro: "Às vezes você pode avançar sem concluir, mas perde pontos.",
       instruction: "Clique em “Avançar sem concluir (-5)” para entender a penalidade.",
       raw: "Você pode pular uma tarefa, mas terá um custo.",
+      hintEnabled: false,
       rules: []
     }
   ];

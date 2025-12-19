@@ -109,62 +109,94 @@ function escapeHtml(s){
   // API pública usada pelo game-core
   
   async function open(){
-    // Modal com “janelinhas” separadas: D1, D2, D3 e Ranking Geral
+    // Modal com "janelinhas" clicáveis (abre detalhes em popup interno)
     app.modal.openModal({
       title: "🏆 Rankings",
-      bodyHTML: `<div class="rank-wrap">
-        <div id="rankMeta" class="muted" style="margin-bottom:10px">Carregando...</div>
-
-        <div class="rank-cards" style="display:grid; gap:10px">
-          ${rankCardHTML("Ranking Desafio 1","rankBodyD1")}
-          ${rankCardHTML("Ranking Desafio 2","rankBodyD2")}
-          ${rankCardHTML("Ranking Desafio 3","rankBodyD3")}
-          ${rankCardHTML("Ranking geral <span class=\"rank-help\" title=\"Calculado pela média dos 3 desafios.\">❔</span>","rankBodyAll")}
+      bodyHTML: `
+        <div class="rank-tiles">
+          <button class="rank-tile" type="button" data-rank="d1" onclick="window.__rankOpen?.('d1')">
+            <div class="rt-title">Desafio 1</div>
+            <div class="rt-sub muted">Top do Desafio 1</div>
+          </button>
+          <button class="rank-tile" type="button" data-rank="d2" onclick="window.__rankOpen?.('d2')">
+            <div class="rt-title">Desafio 2</div>
+            <div class="rt-sub muted">Top do Desafio 2</div>
+          </button>
+          <button class="rank-tile" type="button" data-rank="d3" onclick="window.__rankOpen?.('d3')">
+            <div class="rt-title">Desafio 3</div>
+            <div class="rt-sub muted">Top do Desafio 3</div>
+          </button>
+          <button class="rank-tile" type="button" data-rank="overall" onclick="window.__rankOpen?.('overall')">
+            <div class="rt-title">Ranking geral <span class="rank-help" onclick="window.__rankHelp?.(); event.stopPropagation();">❓</span></div>
+            <div class="rt-sub muted">Média dos 3 desafios</div>
+          </button>
         </div>
-      </div>`,
-      buttons: [{ label:"Fechar", variant:"ghost", onClick: app.modal.closeModal }]
+        <div class="muted" style="margin-top:10px; font-size:.95em">
+          Dica: o <strong>Ranking geral</strong> é calculado pela <strong>média simples</strong> dos 3 desafios. Mostramos também a <strong>% de acertos</strong>.
+        </div>
+      `,
+      actions: [{ label:"Fechar", variant:"primary", onClick: () => app.modal.closeModal?.() }]
     });
 
-    try{
-      const rows = await loadTop();
+    // expõe handlers globais (simples e resiliente em GH Pages)
+    window.__rankHelp = () => {
+      app.modal.openModal({
+        title:"ℹ️ Ranking geral",
+        body:`<p>O <strong>Ranking geral</strong> é calculado pela <strong>média simples</strong> dos pontos dos 3 desafios.</p>
+              <p>Se você ainda não concluiu os 3, verá um <strong>❌</strong> no lugar do valor no geral.</p>`,
+        actions:[{label:"Ok", variant:"primary", onClick: () => app.modal.closeModal?.()}]
+      });
+    };
+
+    window.__rankOpen = async (kind) => {
+      const map = { d1:"Ranking — Desafio 1", d2:"Ranking — Desafio 2", d3:"Ranking — Desafio 3", overall:"Ranking geral" };
+      const title = map[kind] || "Ranking";
+      app.modal.openModal({
+        title,
+        bodyHTML: `<div class="muted" id="rankMeta">Carregando...</div><div id="rankTableWrap"></div>`,
+        actions:[{label:"Voltar", variant:"ghost", onClick: () => { app.modal.closeModal?.(); open(); } },
+                 {label:"Fechar", variant:"primary", onClick: () => app.modal.closeModal?.()}]
+      });
 
       const meta = document.getElementById("rankMeta");
-      const my = await getMyEntry();
-      const eligible = !!(my?.isComplete);
-      if (meta){
-        meta.innerHTML = eligible
-          ? `Você já concluiu os 3 desafios ✅ — participa do <strong>Ranking geral</strong>.`
-          : `Você ainda não concluiu os 3 desafios. <span id="rankWhy" style="cursor:pointer; text-decoration:underline">❌</span>`;
-        const why = document.getElementById("rankWhy");
-        if (why){
-          why.addEventListener("click", () => {
-            app.modal.openModal({
-              title: "Ranking geral",
-              bodyHTML: `<p>O <strong>Ranking geral</strong> é calculado pela <strong>média dos 3 desafios</strong>.</p>
-                        <p class="muted" style="margin-top:8px">Você só entra no Ranking geral após concluir os 3.</p>`,
-              buttons: [{ label:"Entendi", onClick: app.modal.closeModal }]
-            });
-          });
+      const wrap = document.getElementById("rankTableWrap");
+      try{
+        const top = await loadTop(kind === "overall" ? "overall" : kind);
+        const my = await getMyEntry();
+        // monta tabela
+        if (wrap){
+          wrap.innerHTML = `<table class="rank-table">
+            <thead><tr><th>#</th><th>Jogador</th><th>Setor</th><th style="text-align:right">Pontuação</th></tr></thead>
+            <tbody id="rankTBody"></tbody>
+          </table>`;
+          const getPts = (r) => {
+            if (kind === "d1") return r?.d1?.score || 0;
+            if (kind === "d2") return r?.d2?.score || 0;
+            if (kind === "d3") return r?.d3?.score || 0;
+            // overall: média simples (faltante=0)
+            const s1 = Number(r?.d1?.score||0);
+            const s2 = Number(r?.d2?.score||0);
+            const s3 = Number(r?.d3?.score||0);
+            return Math.round((s1+s2+s3)/3);
+          };
+          fillRankTable("rankTBody", top, getPts, kind === "overall");
         }
+
+        if (meta){
+          // status do ranking geral (❌ quando incompleto)
+          if (kind === "overall" && my && my.isComplete === false){
+            meta.innerHTML = `❌ <strong>Você só entra no Ranking geral</strong> ao concluir os 3 desafios.`;
+          } else if (my){
+            meta.textContent = `Você: ${my.name || "—"} • ${my.sector || "—"}`;
+          } else {
+            meta.textContent = "—";
+          }
+        }
+      }catch(err){
+        console.error("[ranking] erro ao abrir", err);
+        if (meta) meta.textContent = "Falha ao carregar ranking.";
       }
-
-      // ordenações
-      const byD1 = [...rows].sort((a,b)=>Number(b.d1?.score||0)-Number(a.d1?.score||0));
-      const byD2 = [...rows].sort((a,b)=>Number(b.d2?.score||0)-Number(a.d2?.score||0));
-      const byD3 = [...rows].sort((a,b)=>Number(b.d3?.score||0)-Number(a.d3?.score||0));
-      const byAll = [...rows].filter(r=>r.isComplete).sort((a,b)=>Number(b.overallAvg||0)-Number(a.overallAvg||0));
-
-      fillRankTable("rankBodyD1", byD1, (r)=>Number(r.d1?.score||0));
-      fillRankTable("rankBodyD2", byD2, (r)=>Number(r.d2?.score||0));
-      fillRankTable("rankBodyD3", byD3, (r)=>Number(r.d3?.score||0));
-      fillRankTable("rankBodyAll", byAll, (r)=>Number(r.overallAvg||0), true);
-    } catch(e){
-      ["rankBodyD1","rankBodyD2","rankBodyD3","rankBodyAll"].forEach(id=>{
-        const el = document.getElementById(id);
-        if (el) el.innerHTML = `<tr><td colspan="4" class="muted" style="padding:10px 4px">Erro ao carregar.</td></tr>`;
-      });
-      console.error(e);
-    }
+    };
   }
 
   function rankCardHTML(title, bodyId){
