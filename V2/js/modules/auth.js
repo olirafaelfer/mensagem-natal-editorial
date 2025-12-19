@@ -152,9 +152,9 @@ function isValidEmail(e){
 
       if (currentProfile) applyLoggedProfileToForm(currentProfile);
       try { app.game?.refreshAccess?.(); } catch(e) {}
-
-
       lockIdentityFields(true);
+
+
 
       // ✅ sincroniza optout com checkbox quando logado
       if (optRankingEl) {
