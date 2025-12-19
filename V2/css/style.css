@@ -602,6 +602,28 @@ select.input option{
   padding: 2px 4px;
 }
 
+/* Compat: destaques no "Depois" */
+.final-good{
+  background: rgba(0,230,118,.18);
+  border: 1px solid rgba(0,230,118,.24);
+  border-radius: 10px;
+  padding: 2px 4px;
+}
+.final-bad{
+  background: rgba(255,23,68,.18);
+  border: 1px solid rgba(255,23,68,.24);
+  border-radius: 10px;
+  padding: 2px 4px;
+}
+
+.final-perfect{
+  background: rgba(255,255,255,.06);
+  border: 1px dashed rgba(255,255,255,.22);
+  border-radius: 14px;
+  padding: 10px 12px;
+  line-height: 1.6;
+}
+
 .credits{ text-align: center; }
 .credits-title{ margin: 0; }
 .credits-names{

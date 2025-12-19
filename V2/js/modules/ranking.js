@@ -304,5 +304,10 @@ export function bootRanking(app){
     submitChallengeScore: upsertForChallenge,
   };
 
+  // botão do topo (🏆)
+  try{
+    app.dom?.rankingBtn?.addEventListener("click", () => open());
+  }catch(e){ /* noop */ }
+
   return app.ranking;
 }
