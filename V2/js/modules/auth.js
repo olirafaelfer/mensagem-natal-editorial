@@ -113,7 +113,15 @@ function isValidEmail(e){
         return null;
       });
 
+      if (currentProfile && currentProfile.needsCompletion){
+        // Completar cadastro: nome vem do Google, setor é obrigatório.
+        // Mostra modal para confirmar/editar nome e escolher setor.
+        await promptCompleteProfile(currentProfile, currentUser);
+        currentProfile = await fetchOrCreateProfile(currentUser).catch(() => null);
+      }
+
       if (currentProfile) applyLoggedProfileToForm(currentProfile);
+
       else lockIdentityFields(true);
 
       // ✅ sincroniza optout com checkbox quando logado
@@ -464,270 +472,23 @@ if (String(pass).length < 6) {
 try {
   const cred = await createUserWithEmailAndPassword(auth, emailClean, pass);
 
-      const payload = {
-        uid: cred.user.uid,
-        email: emailClean,
-        name: clampLen(name, 60),
-        sector: clampLen(sector, 120),
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-      };
-
-      await setDoc(doc(db, "users", cred.user.uid), payload, { merge: true });
-
-      showStatus("Conta criada ✅ Você já está logado.", "ok");
-      // fecha via onAuthStateChanged
-    } catch (e) {
-      showStatus(humanAuthError(e), "error");
-      busy = false;
-    }
-  }
-
-  // =============================
-  // RECUPERAÇÃO (SÓ EMAIL)
-  // =============================
-  function openForgotPassword() {
-    unlockModalCloseUI();
-    gateOpen = false;
-    busy = false;
-
-    openModal({
-      title: "🔁 Recuperar senha",
-      bodyHTML: `
-        <p class="muted" style="margin-top:0">
-          Informe seu e-mail. Você receberá um link para redefinir a senha.
-        </p>
-
-        <label class="field">
-          <span>E-mail</span>
-          <input class="input" id="authResetEmail" type="email" autocomplete="email" placeholder="seu@email.com"/>
-        </label>
-
-        <div id="authResetStatus" class="auth-status show"></div>
-      `,
-      buttons: [
-        { label: "Voltar", variant: "ghost", onClick: () => { closeModal(); setTimeout(() => openAuthGate({ force: true }), 80); } },
-        {
-          label: "Enviar link",
-          onClick: async () => {
-            const email = (document.getElementById("authResetEmail")?.value || "").trim();
-            const st = document.getElementById("authResetStatus");
-            if (!email) {
-              if (st) {
-                st.className = "auth-status show error";
-                st.textContent = "Digite seu e-mail.";
-              }
-              return;
-            }
-
-            try {
-              await sendPasswordResetEmail(auth, email);
-              if (st) {
-                st.className = "auth-status show ok";
-                st.textContent = "Link enviado! Verifique sua caixa de entrada (e spam).";
-              }
-            } catch (e) {
-              if (st) {
-                st.className = "auth-status show error";
-                st.textContent = humanAuthError(e);
-              }
-            }
-          },
-        },
-      ],
-    });
-
-    setTimeout(() => document.getElementById("authResetEmail")?.focus(), 60);
-  }
-
-  // =============================
-  // CONTA LOGADA (com meu ranking)
-  // =============================
-  function openAccountPanel() {
-    const name = currentProfile?.name || currentUser?.displayName || "(sem nome)";
-    const email = currentProfile?.email || currentUser?.email || "(sem e-mail)";
-    const sector = currentProfile?.sector || "(sem setor)";
-
-    openModal({
-      title: "👤 Minha conta",
-      bodyHTML: `
-        <div class="auth-profile">
-          <div class="who">
-            <b>${escapeHtml(name)}</b>
-            <small>${escapeHtml(email)}</small>
-            <small class="muted">Setor: ${escapeHtml(sector)}</small>
-          </div>
-        </div>
-
-        <div class="auth-note" style="margin-top:12px">
-          <b>Meu ranking</b><br/>
-          <div class="auth-mini" id="myRankLine">Carregando…</div>
-        </div>
-
-        <div class="auth-actions" style="margin-top:14px">
-          <button class="btn ghost" id="authLogoutBtn" type="button">Sair</button>
-          <button class="btn" id="authDeleteBtn" type="button">Deletar conta</button>
-        </div>
-
-        <p class="auth-mini" style="margin-top:12px">
-          Ao deletar a conta, o ranking pessoal também será removido.
-        </p>
-      `,
-      buttons: [{ label: "Fechar", onClick: closeModal }],
-    });
-
-    setTimeout(() => {
-      document.getElementById("authLogoutBtn")?.addEventListener("click", doLogout);
-      document.getElementById("authDeleteBtn")?.addEventListener("click", confirmDeleteAccount);
-
-      loadMyRankingIntoAccount().catch((e) => {
-        console.warn("[auth] loadMyRankingIntoAccount falhou:", e);
-        const el = document.getElementById("myRankLine");
-        if (el) el.textContent = "Não foi possível carregar seu ranking agora.";
-      });
-    }, 0);
-  }
-
-  async function loadMyRankingIntoAccount() {
-    const el = document.getElementById("myRankLine");
-    if (!el) return;
-
-    if (!currentUser) {
-      el.innerHTML = `Você não está logado.`;
-      return;
-    }
-    if (localStorage.getItem("mission_optout_ranking") === "1") {
-      el.innerHTML = `Ranking desativado nesta conta.`;
-      return;
-    }
-
-    // Busca o mesmo doc usado no ranking visual (rankingByEmail)
-    // Mostra D1/D2/D3 e Média
-    (async () => {
-      try {
-        const entry = await app.ranking?.getMyEntry?.();
-        if (!entry) {
-          el.innerHTML = `Você ainda não tem pontuação registrada no ranking.`;
-          return;
-        }
-        const d1 = Number(entry.d1?.score || 0);
-        const d2 = Number(entry.d2?.score || 0);
-        const d3 = Number(entry.d3?.score || 0);
-        const avg = Number(entry.overallAvg || 0);
-
-        el.innerHTML = `
-          <div>Pontuação por desafio: <b>D1 ${d1.toFixed(0)}</b> · <b>D2 ${d2.toFixed(0)}</b> · <b>D3 ${d3.toFixed(0)}</b></div>
-          <div>Média geral: <b>${avg.toFixed(0)}</b></div>
-          <div class="muted" style="margin-top:6px; font-size:12px">A posição no ranking é calculada na tela de Ranking.</div>
-        `;
-      } catch (e) {
-        console.warn("[auth] loadMyRankingIntoAccount falhou", e);
-        el.textContent = `Pontuação indisponível agora.`;
-      }
-    })();
-  }
-
-  async function doLogout() {
-    if (busy) return;
-    busy = true;
-
-    try {
-      await signOut(auth);
-
-      forceAnonymousNoRanking();
-      lockIdentityFields(false);
-
-      closeModal();
-      setTimeout(() => openAuthGate({ force: true }), 120);
-    } catch (e) {
-      openModal({
-        title: "Erro",
-        bodyHTML: `<p class="muted"><code>${escapeHtml(e?.message || String(e))}</code></p>`,
-        buttons: [{ label: "Ok", onClick: closeModal }],
-      });
-    } finally {
-      busy = false;
-    }
-  }
-
-  function confirmDeleteAccount() {
-    openModal({
-      title: "⚠️ Deletar conta",
-      bodyHTML: `
-        <p><strong>Tem certeza?</strong></p>
-        <p class="muted">Isso remove seu perfil e também seu ranking pessoal.</p>
-      `,
-      buttons: [
-        { label: "Cancelar", variant: "ghost", onClick: closeModal },
-        { label: "Sim, deletar", onClick: async () => { closeModal(); await doDeleteAccount(); } },
-      ],
-    });
-  }
-
-  async function doDeleteAccount() {
-    if (!currentUser) return;
-
-    openModal({
-      title: "Deletando…",
-      bodyHTML: `<p class="muted" style="margin-top:0">Aguarde…</p>`,
-      buttons: [{ label: "Fechar", onClick: closeModal }],
-    });
-
-    try {
-      const uid = currentUser.uid;
-
-      await deleteDoc(doc(db, "users", uid));
-      await deleteDoc(doc(db, "individualRanking", uid)); // ✅ ranking pessoal
-      await deleteUser(currentUser);
-
-      gateOpen = false;
-      unlockModalCloseUI();
-
-      forceAnonymousNoRanking();
-      lockIdentityFields(false);
-
-      closeModal();
-      setTimeout(() => openAuthGate({ force: true }), 120);
-    } catch (e) {
-      const msg = humanAuthError(e);
-      openModal({
-        title: "Não foi possível deletar",
-        bodyHTML: `
-          <p>${escapeHtml(msg)}</p>
-          <p class="muted" style="margin-top:10px">
-            Se aparecer <code>requires-recent-login</code>, saia e entre novamente e tente deletar.
-          </p>
-        `,
-        buttons: [{ label: "Ok", onClick: closeModal }],
-      });
-    }
-  }
-
-  // =============================
-  // PROFILE
-  // =============================
-  async function fetchOrCreateProfile(user) {
-    const ref = doc(db, "users", user.uid);
-    const snap = await getDoc(ref);
-
-    if (snap.exists()) {
-      const data = snap.data() || {};
+      // Se faltar setor (comum no 1º login com Google), NÃO cria automaticamente.
+// Em vez disso, retornamos um rascunho e pedimos para o usuário completar.
+    if (fallbackSector.length < 2){
       return {
         uid: user.uid,
-        email: user.email || data.email || "",
-        name: data.name || "",
-        sector: data.sector || "",
+        email: user.email || "",
+        name: fallbackName || (user.email || "Usuário"),
+        sector: "",
+        needsCompletion: true,
       };
     }
-
-    const fallbackName = (nameEl?.value || localStorage.getItem("mission_name") || "").trim();
-    const fallbackSector = (sectorEl?.value || localStorage.getItem("mission_sector") || "").trim();
 
     const payload = {
       uid: user.uid,
       email: user.email || "",
-      name: clampLen(fallbackName, 60) || "(Sem nome)",
-      sector: clampLen(fallbackSector, 120) || "(Sem setor)",
+      name: String(fallbackName || "Usuário").slice(0,60),
+      sector: String(fallbackSector).slice(0,120),
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     };
@@ -742,7 +503,69 @@ try {
     };
   }
 
-  function applyLoggedProfileToForm(profile) {
+  
+  async function promptCompleteProfile(draft, user){
+    return new Promise((resolve) => {
+      try{
+        const opts = Array.from(sectorEl?.options || [])
+          .map(o => `<option value="${String(o.value).replace(/"/g,'&quot;')}">${String(o.textContent||"")}</option>`)
+          .join("");
+        app.modal?.openModal?.({
+          title: "Completar cadastro",
+          bodyHTML: `
+            <p class="muted" style="margin-top:0">Confirmar seu nome e selecione seu setor para continuar.</p>
+            <label class="field" style="gap:6px;margin-top:10px">
+              <span class="muted" style="font-size:13px">Nome</span>
+              <input class="input" id="cpName" type="text" value="${String(draft.name||"").replace(/"/g,'&quot;')}" maxlength="60"/>
+            </label>
+            <label class="field" style="gap:6px;margin-top:10px">
+              <span class="muted" style="font-size:13px">Setor (obrigatório)</span>
+              <select class="input" id="cpSector">
+                <option value="">Selecione...</option>
+                ${opts}
+              </select>
+            </label>
+          `,
+          buttons:[
+            {label:"Cancelar", variant:"ghost", onClick: () => { app.modal.closeModal(); resolve(); }},
+            {label:"Salvar", variant:"primary", onClick: async () => {
+              const nm = (document.getElementById("cpName")?.value || "").trim();
+              const sc = (document.getElementById("cpSector")?.value || "").trim();
+              if (nm.length < 2){
+                alert("Informe um nome válido.");
+                return;
+              }
+              if (sc.length < 2){
+                alert("Selecione seu setor para continuar.");
+                return;
+              }
+              try{
+                await setDoc(doc(db, "users", user.uid), {
+                  uid: user.uid,
+                  email: user.email || "",
+                  name: nm.slice(0,60),
+                  sector: sc.slice(0,120),
+                  createdAt: serverTimestamp(),
+                  updatedAt: serverTimestamp(),
+                }, { merge: true });
+                app.modal.closeModal();
+                resolve();
+              }catch(e){
+                console.warn("[auth] completar cadastro falhou:", e);
+                alert("Não foi possível salvar seu perfil. Verifique permissões e tente novamente.");
+              }
+            }},
+          ],
+          dismissible: false
+        });
+      }catch(e){
+        console.warn("[auth] promptCompleteProfile erro:", e);
+        resolve();
+      }
+    });
+  }
+
+function applyLoggedProfileToForm(profile) {
     if (nameEl) nameEl.value = profile.name || "";
     if (sectorEl) sectorEl.value = profile.sector || "";
 

@@ -46,10 +46,10 @@ export function bootRanking(app){
 
     // Importante: desafios ainda não jogados NÃO devem ganhar updatedAt “agora”,
     // senão parecem concluídos e quebram elegibilidade do Ranking Geral.
-    const empty = { score:0, correct:0, wrong:0, updatedAt: null };
-    const d1 = key === "d1" ? { score, correct, wrong, updatedAt: now } : (prev.d1 || empty);
-    const d2 = key === "d2" ? { score, correct, wrong, updatedAt: now } : (prev.d2 || empty);
-    const d3 = key === "d3" ? { score, correct, wrong, updatedAt: now } : (prev.d3 || empty);
+    const empty = { score:0, correct:0, wrong:0, updatedAt: now };
+    const d1 = key === "d1" ? { score, correct, wrong, updatedAt: now } : (prev.d1 ? {score:Number(prev.d1.score||0), correct:Number(prev.d1.correct||0), wrong:Number(prev.d1.wrong||0), updatedAt: prev.d1.updatedAt || now} : empty);
+    const d2 = key === "d2" ? { score, correct, wrong, updatedAt: now } : (prev.d2 ? {score:Number(prev.d2.score||0), correct:Number(prev.d2.correct||0), wrong:Number(prev.d2.wrong||0), updatedAt: prev.d2.updatedAt || now} : empty);
+    const d3 = key === "d3" ? { score, correct, wrong, updatedAt: now } : (prev.d3 ? {score:Number(prev.d3.score||0), correct:Number(prev.d3.correct||0), wrong:Number(prev.d3.wrong||0), updatedAt: prev.d3.updatedAt || now} : empty);
 
     const scores = [Number(d1.score||0), Number(d2.score||0), Number(d3.score||0)];
     // Ranking Geral: média dos 3 desafios (faltante = 0)
@@ -61,20 +61,17 @@ export function bootRanking(app){
       emailHash,
       email,
       uid: u.uid,
-      photoURL: u.photoURL || "",
       name: String(name).slice(0,60),
       sector: String(sector).slice(0,120),
       visible: !isOptedOut(),
 
       d1, d2, d3,
       overallAvg,
-      isComplete,
-
       updatedAt: now
     };
-    if (!snap.exists()) payload.createdAt = now;
+    payload.createdAt = (snap.exists() ? (snap.data()?.createdAt || now) : now);
 
-    await firebase.setDoc(ref, payload, { merge: true });
+    await firebase.setDoc(ref, payload);
   }
 
   async function loadTop(){
@@ -89,12 +86,11 @@ export function bootRanking(app){
         name: d.name||"",
         email: d.email||"",
         sector: d.sector||"",
-        photoURL: d.photoURL||"",
         d1: d.d1 || { score:0 },
         d2: d.d2 || { score:0 },
         d3: d.d3 || { score:0 },
         overallAvg: Number(d.overallAvg||0),
-        isComplete: !!d.isComplete
+        isComplete: (Number(d?.d1?.updatedAt?.seconds||0)>0 && Number(d?.d2?.updatedAt?.seconds||0)>0 && Number(d?.d3?.updatedAt?.seconds||0)>0)
       });
     });
     return rows;

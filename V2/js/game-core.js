@@ -53,6 +53,20 @@ export function bootGame(app){
       toggleBtn.setAttribute("aria-expanded", willShow ? "true" : "false");
       if (willShow) renderFinalMessages();
     });
+    // Tutorial: após abrir a dica, a mão passa a indicar a correção automática
+    if (engine.challenge===0){
+      const idx = st?.levelIndex ?? 0;
+      tutorialFlags[idx] = { ...(tutorialFlags[idx]||{}), hintClicked: true };
+      setTimeout(() => {
+        try{
+          const foot = document.getElementById("modalFoot");
+          const btns = Array.from(foot?.querySelectorAll("button")||[]);
+          const autoBtn = btns.find(b => (b.textContent||"").toLowerCase().includes("correção automática"));
+          autoBtn?.classList.add("focus-hand");
+        }catch(e){}
+      }, 0);
+    }
+
   }
 
   // tela final: botões "Correções e justificativas"
@@ -303,7 +317,7 @@ function onChallengeClick(ch){
           const hintAllowed = !!lvl2?.hintEnabled || lvl2?.tutorialMode === "force-auto";
           dom.hintBtn.disabled = !hintAllowed;
           dom.hintBtn.classList.toggle("btn-disabled", !hintAllowed);
-          dom.hintBtn.classList.toggle("focus-hand", !!lvl2?.focusHintBtn);
+          dom.hintBtn.classList.toggle("focus-hand", !!lvl2?.focusHintBtn && !(flags.hintClicked));
         }
         if (dom.skipLevelBtn){
           const allowSkip = !!lvl2?.allowSkipInTutorial;
@@ -494,7 +508,7 @@ function onChallengeClick(ch){
     openModal({
       title:"💡 Me dê uma dica",
       bodyHTML: `
-        <p><b>Dica:</b> ${escapeHtml(nextRule.reason || "Observe o trecho destacado.")}</p>
+        <p><b>Dica:</b> ${escapeHtml((engine.challenge===0 ? (nextRule.reason||"Observe o trecho destacado.") : (nextRule.hint||"Procure um erro no trecho selecionado.")))}</p>
         <p class="muted" style="margin-top:10px">Você pode corrigir manualmente ou usar a correção automática (com penalidade crescente).</p>
       `,
       buttons:[
@@ -559,16 +573,42 @@ function onChallengeClick(ch){
         const idx = st?.levelIndex ?? 0;
         tutorialFlags[idx] = { ...(tutorialFlags[idx]||{}), misclickDone: true };
 
-        // feedback imediato + penalidade
-        try{ engine.addScore?.(-1); }catch(e){ /* noop */ }
-        scoreFloat(-1, el);
-
+        // confirmação antes de penalizar
         openModal({
-          title: "⚠️ Clique errado",
-          body: `<p>“${escapeHtml(word)}” já estava correta. Você perdeu <strong>1 ponto</strong>.</p>`,
-          actions: [
-            { label:"Entendi", variant:"primary", onClick: () => { closeModal?.(); updateHUD(); } }
-          ]
+          title: "⚠️ Você quer corrigir mesmo?",
+          bodyHTML: `<p>Você clicou em <b>“${escapeHtml(word)}”</b>, mas esse trecho já está correto.</p>
+                    <p>Se continuar, você perde <b>1 ponto</b>.</p>`,
+          buttons:[
+            {label:"Cancelar", variant:"ghost", onClick: closeModal},
+            {label:"Continuar e perder 1 ponto", variant:"primary", onClick: () => {
+              closeModal();
+              // penalidade + feedback
+              try{ engine.addScore?.(-1); }catch(e){ /* noop */ }
+              scoreFloat(-1, el);
+
+              // marca visualmente e bloqueia novo clique (evita penalizar 2x)
+              try{
+                if (el){
+                  el.classList.add("token-wrong");
+                  el.classList.add("token-locked");
+                  el.style.pointerEvents = "none";
+                }
+              }catch(e){}
+
+              const idx = st?.levelIndex ?? 0;
+              tutorialFlags[idx] = { ...(tutorialFlags[idx]||{}), misclickDone: true };
+
+              openModal({
+                title: "⚠️ Clique errado",
+                bodyHTML: `<p>Esse trecho já estava correto. Você perdeu <strong>1 ponto</strong>.</p>`,
+                buttons:[ {label:"Entendi", variant:"primary", onClick: closeModal} ],
+                dismissible: true
+              });
+
+              updateHUD();
+            }}
+          ],
+          dismissible: true
         });
         updateHUD();
         return;
@@ -595,9 +635,9 @@ function onChallengeClick(ch){
         <p style="margin:6px 0 10px"><b>${escapeHtml(shownText)}</b></p>
         <label class="field" style="gap:6px">
           <span class="muted" style="font-size:13px">Digite a correção</span>
-          <input class="input" id="corrInput" type="text" value="${escapeHtml(isRemove ? "" : shownText)}" placeholder="${isRemove ? "(deixe vazio para remover)" : "Digite aqui"}"/>
+          <input class="input" id="corrInput" type="text" value="" placeholder="${isRemove ? "(deixe vazio para remover)" : "Digite aqui"}"/>
         </label>
-        <p class="muted" style="margin:10px 0 0; font-size:13px">${escapeHtml(rule.reason || "")}</p>
+        ${engine.challenge===0 ? `<p class="muted" style="margin:10px 0 0; font-size:13px">${escapeHtml(rule.reason || "")}</p>` : ""}
       `,
       buttons:[
         {label:"Cancelar", variant:"ghost", onClick: closeModal},
@@ -766,6 +806,22 @@ function onChallengeClick(ch){
   }
 
 function onNext(){
+  // Tutorial: algumas etapas não dependem de engine.isDone()
+  if (engine.challenge === 0){
+    const st = engine.getState?.() || {};
+    const lvl = st.level;
+    const idx = st.levelIndex ?? 0;
+    const flags = tutorialFlags[idx] || {};
+    if (lvl?.tutorialMode === "force-misclick"){
+      if (!flags.misclickDone) return;
+      nextInternal();
+      return;
+    }
+    if (lvl?.tutorialMode === "force-skip"){
+      // nesta etapa, o avanço normal não é permitido
+      return;
+    }
+  }
   if (!engine.isDone()) return;
   nextInternal();
 }
