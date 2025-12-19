@@ -152,7 +152,6 @@ function isValidEmail(e){
 
       if (currentProfile) applyLoggedProfileToForm(currentProfile);
       try { app.game?.refreshAccess?.(); } catch(e) {}
-      lockIdentityFields(true);
 
 
 
@@ -174,6 +173,7 @@ function isValidEmail(e){
       forceAnonymousNoRanking();
       // reset UI/progresso para visitante (evita liberar desafios indevidos)
       try { app.game?.resetRuntime?.(); app.game?.goHome?.(); app.game?.refreshAccess?.(); } catch(e) {}
+      lockIdentityFields(true);
 
     }
   });
