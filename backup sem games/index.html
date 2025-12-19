@@ -1,0 +1,301 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="theme-color" content="#0b1020" />
+  <title>Missão Editorial de Natal 🎄</title>
+
+  <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A//www.w3.org/2000/svg%27%20viewBox%3D%270%200%20100%20100%27%3E%3Ctext%20y%3D%270.9em%27%20font-size%3D%2790%27%3E%F0%9F%8E%84%3C/text%3E%3C/svg%3E">
+
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="css/admin.css" />
+  <link rel="stylesheet" href="css/auth.css" />
+  <!-- LGPD removido -->
+</head>
+
+<body>
+  <canvas id="snow" aria-hidden="true"></canvas>
+  <div id="reindeerLayer" class="reindeer-layer" aria-hidden="true"></div>
+
+  <main class="app">
+    <div class="container">
+
+      <!-- HEADER (logo + título + botões) -->
+      <header class="topbar-banner">
+        <div class="topbar-row topbar-row-1">
+          <div class="topbar-center">
+            <img class="topbar-logo" src="img/logo-natal.png" alt="Logo de Natal" />
+          </div>
+        </div>
+
+        <div class="topbar-row topbar-row-2">
+          <h1 class="topbar-title" id="headerTitle">Revisão natalina</h1>
+
+          <div class="top-actions">
+            <button class="icon-btn" id="customizeBtn" title="Personalizar" type="button">⚙️</button>
+            <button class="icon-btn" id="rankingBtn" title="Ranking" type="button">🏆</button>
+            <button class="icon-btn" id="loginBtn" title="Entrar / Criar conta" type="button">👤</button>
+          </div>
+        </div>
+      </header>
+
+      <!-- Loading fake -->
+      <section class="card" id="screenLoading">
+        <div class="card-inner center">
+          <img class="logo-pulse" src="img/logo-natal.png" alt="Logo natalina" />
+          <h2 class="loading-title">Preparando sua missão…</h2>
+          <p class="muted">Carregando o conteúdo especial de Natal ❄️</p>
+        </div>
+      </section>
+
+      <!-- Auth (seu sistema hoje abre por modal, mas manter a section não atrapalha) -->
+      <section class="hidden" id="screenAuth">
+        <div class="auth-card">
+          <div class="auth-inner">
+            <div class="auth-head">
+              <h2 class="auth-title">Entrar ou criar conta</h2>
+              <p class="auth-sub">
+                Para participar do ranking, será necessário ter uma conta.
+                Se preferir, você pode continuar no modo anônimo.
+              </p>
+            </div>
+
+            <div class="auth-tabs">
+              <div class="auth-tab active" id="authTabLogin" role="button" tabindex="0">Login</div>
+              <div class="auth-tab" id="authTabSignup" role="button" tabindex="0">Criar conta</div>
+            </div>
+
+            <div class="auth-status" id="authStatus"></div>
+
+            <div id="authPanelLogin">
+              <div class="auth-grid onecol">
+                <label class="field">
+                  <span>E-mail</span>
+                  <input class="input" id="authLoginEmail" type="email" autocomplete="email" placeholder="seuemail@empresa.com" />
+                </label>
+
+                <label class="field">
+                  <span>Senha</span>
+                  <input class="input" id="authLoginPass" type="password" autocomplete="current-password" placeholder="••••••••" />
+                </label>
+              </div>
+
+              <div class="auth-actions">
+                <button class="btn" id="authLoginBtn" type="button">Entrar</button>
+                <button class="btn ghost" id="authForgotBtn" type="button">Esqueci minha senha</button>
+                <button class="btn ghost" id="authAnonBtn" type="button">Prefiro seguir no modo anônimo</button>
+              </div>
+
+              <hr class="auth-divider" />
+
+              <p class="auth-mini" style="margin:0">
+                Ao entrar, seu <strong>nome</strong> e <strong>setor</strong> poderão ser preenchidos automaticamente.
+              </p>
+            </div>
+
+            <div id="authPanelSignup" class="hidden">
+              <div class="auth-grid">
+                <label class="field">
+                  <span>Nome</span>
+                  <input class="input" id="authSignupName" type="text" autocomplete="name" maxlength="60" placeholder="Ex.: Rafael" />
+                </label>
+
+                <label class="field">
+                  <span>Setor</span>
+                  <select class="input" id="authSignupSector"></select>
+                </label>
+
+                <label class="field">
+                  <span>E-mail</span>
+                  <input class="input" id="authSignupEmail" type="email" autocomplete="email" placeholder="seuemail@empresa.com" />
+                </label>
+
+                <label class="field">
+                  <span>Senha</span>
+                  <input class="input" id="authSignupPass" type="password" autocomplete="new-password" placeholder="mín. 6 caracteres" />
+                </label>
+              </div>
+
+              <div class="auth-actions">
+                <button class="btn" id="authSignupBtn" type="button">Criar conta</button>
+                <button class="btn ghost" id="authBackToLoginBtn" type="button">Já tenho conta</button>
+                <button class="btn ghost" id="authAnonBtn2" type="button">Prefiro seguir no modo anônimo</button>
+              </div>
+
+              <div class="auth-note">
+                Dica: depois a gente pode adicionar verificação por código no e-mail, mas primeiro vamos deixar login/cadastro funcionando.
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </section>
+
+      <!-- Form -->
+      <section class="card hidden" id="screenForm">
+        <div class="card-inner">
+          <h2 class="h2">Antes de começar</h2>
+          <p class="muted">
+            Informe seu nome e selecione seu setor para registrar o desempenho <strong>por setor</strong>.
+          </p>
+
+          <div class="form-grid">
+            <label class="field">
+              <span>Nome</span>
+              <input class="input" id="userName" placeholder="Ex.: Rafael" maxlength="60" />
+            </label>
+
+            <label class="field">
+              <span>Setor</span>
+              <select class="input" id="userSector"></select>
+            </label>
+          </div>
+
+          <div class="toggle-row" style="margin-top:10px">
+            <div class="toggle-text">
+              <b>Participar do ranking</b>
+              <small class="muted">Se desligado, seu resultado não entra nas estatísticas.</small>
+            </div>
+
+            <label class="switch" aria-label="Participar do ranking">
+              <input type="checkbox" id="optRanking">
+              <span class="slider"></span>
+            </label>
+          </div>
+
+          <div class="actions">
+            <button class="btn" id="startBtn" type="button">Iniciar missão</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Game -->
+      <section class="card hidden" id="screenGame">
+        <div class="card-inner">
+          <div class="status-row">
+            <div class="pill">Nível: <strong id="levelLabel">Fácil</strong></div>
+            <div class="pill">Correções a serem feitas: <strong id="remainingCount">0</strong>/<span id="totalFix">0</span></div>
+            <div class="pill pill-danger">Erros: <strong id="wrongCount">0</strong></div>
+            <div class="pill">Pontos: <strong id="scoreCount">0</strong></div>
+          </div>
+
+          <p class="lead" id="instruction"></p>
+          <article class="message" id="messageArea" aria-label="Mensagem para revisar"></article>
+
+          <div class="hintbar">
+            💡 Dica: você pode <button class="linklike" id="openCustomizeInline" type="button">personalizar a página</button> a qualquer momento.
+          </div>
+
+          <div class="actions">
+            <button id="hintBtn" class="btn ghost" type="button">Me dê uma cola!</button>
+            <button id="autoFixBtn" class="btn ghost" type="button">Corrigir automaticamente</button>
+            <button id="nextLevelBtn" class="btn btn-disabled" aria-disabled="true" type="button">Próximo nível</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Final -->
+      <section class="card hidden" id="screenFinal">
+        <div class="card-inner center">
+          <h2 class="final-title">🎄</h2>
+
+          <p class="final-text" id="finalCongrats"></p>
+          <div class="stat-grid" id="finalStatGrid"></div>
+
+          <p class="final-sub" id="finalStats"></p>
+
+          <br>
+          <div class="epigraph" id="epigraphBox"></div>
+          <br>
+
+          <div class="actions center-actions" style="margin-top:10px">
+            <button class="btn" id="toggleFinalMsgs" type="button" aria-expanded="false">Ver mensagens corrigidas</button>
+          </div>
+
+          <!-- ✅ A DICA AGORA FICA SÓ AQUI DENTRO (aparece quando abrir as mensagens) -->
+          <div id="finalMsgsWrap" class="hidden">
+            <div class="hintbar" style="text-align:left; margin-top:12px">
+              💡 Dica: nas mensagens abaixo, clique nos trechos
+              <span class="final-correct"><strong>verdes</strong></span>
+              e
+              <span class="final-wrong"><strong>vermelhos</strong></span>
+              para ver a explicação.
+            </div>
+
+            <div class="final-activity">
+              <div class="final-activity-head">
+                <strong>Atividade 1 — Fácil</strong>
+                <button class="btn mini ghost" id="reviewBtn1" type="button">Correções e justificativas</button>
+              </div>
+              <div class="final-box" id="finalBox1"></div>
+            </div>
+
+            <div class="final-activity">
+              <div class="final-activity-head">
+                <strong>Atividade 2 — Médio</strong>
+                <button class="btn mini ghost" id="reviewBtn2" type="button">Correções e justificativas</button>
+              </div>
+              <div class="final-box" id="finalBox2"></div>
+            </div>
+
+            <div class="final-activity">
+              <div class="final-activity-head">
+                <strong>Atividade 3 — Difícil</strong>
+                <button class="btn mini ghost" id="reviewBtn3" type="button">Correções e justificativas</button>
+              </div>
+              <div class="final-box" id="finalBox3"></div>
+            </div>
+          </div>
+
+          <hr>
+
+          <div class="credits">
+            <p class="credits-title"><strong>Com carinho:</strong></p>
+            <p class="credits-names">
+              Aline dos Santos Carneiro<br>
+              Amanda Firme<br>
+              Anna Catharina Miranda<br>
+              Bianca Gribel<br>
+              Edrian Josué Pasini<br>
+              Eric Parrot<br>
+              Leonardo A.R.T. dos Santos<br>
+              Marilac Loraine Oleniki<br>
+              Mirela de Oliveira<br>
+              Rafael de Oliveira<br>
+              Samuel Rezende<br>
+              Verônica M. Guedes<br>
+              Vitória Firmino<br>
+              Welder Lancieri Marchini
+            </p>
+          </div>
+
+          <hr>
+
+          <div class="actions center-actions">
+            <button class="btn" id="finalRankingBtn" type="button">Ver ranking</button>
+            <button class="btn ghost" id="restartBtn" type="button">Recomeçar</button>
+          </div>
+        </div>
+      </section>
+
+    </div>
+  </main>
+
+  <!-- ✅ Modal (OBRIGATÓRIO pro app funcionar) -->
+  <div class="hidden" id="overlay" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <div class="modal">
+      <div class="modal-head">
+        <h3 id="modalTitle">Mensagem</h3>
+        <button class="icon-btn" id="closeModal" aria-label="Fechar" type="button">✕</button>
+      </div>
+      <div class="modal-body" id="modalBody"></div>
+      <div class="modal-foot" id="modalFoot"></div>
+    </div>
+  </div>
+
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>
+
+
