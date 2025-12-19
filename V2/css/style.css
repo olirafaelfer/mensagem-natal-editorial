@@ -1333,3 +1333,12 @@ img.logo, .topbar .logo img{
 @keyframes twinkle{ 0%,100%{ transform:scale(.8); opacity:.4 } 50%{ transform:scale(1.2); opacity:1 } }
 .special-reindeer{ position:absolute; top:14px; left:-60px; font-size:22px; animation: ride 6s linear infinite; opacity:.9; }
 @keyframes ride{ 0%{ left:-60px } 100%{ left:calc(100% + 60px) } }
+
+
+/* === mobile modal fix === */
+html, body{ max-width:100%; overflow-x:hidden; }
+.modal{ width: min(760px, calc(100vw - 24px)); max-width: calc(100vw - 24px); box-sizing: border-box; }
+.modal-body{ max-width:100%; overflow-x:hidden; }
+.modal *{ box-sizing: border-box; }
+/* prevent long strings from forcing horizontal scroll */
+.modal-body, .modal-body *{ overflow-wrap:anywhere; word-break: break-word; }

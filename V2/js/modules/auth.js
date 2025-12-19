@@ -471,6 +471,7 @@ if (String(pass).length < 6) {
 
 try {
   const cred = await createUserWithEmailAndPassword(auth, emailClean, pass);
+  const user = cred.user;
 
       // Se faltar setor (comum no 1º login com Google), NÃO cria automaticamente.
 // Em vez disso, retornamos um rascunho e pedimos para o usuário completar.
@@ -493,14 +494,22 @@ try {
       updatedAt: serverTimestamp(),
     };
 
-    await setDoc(ref, payload, { merge: true });
+    await setDoc(ref, payload);
 
+    showStatus("Conta criada! Você já pode entrar.", "success");
+    app.modal?.closeModal?.();
     return {
       uid: payload.uid,
       email: payload.email,
       name: payload.name,
       sector: payload.sector,
     };
+} catch (e) {
+  console.warn("[auth] signup falhou", e);
+  showStatus(humanAuthError(e) || "Falha ao criar conta.", "error");
+} finally {
+  busy = false;
+}
   }
 
   
