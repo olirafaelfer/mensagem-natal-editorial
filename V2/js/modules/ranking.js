@@ -44,13 +44,18 @@ export function bootRanking(app){
     const now = firebase.serverTimestamp();
     const key = challenge === 1 ? "d1" : (challenge === 2 ? "d2" : "d3");
 
-    const d1 = key === "d1" ? { score, correct, wrong, updatedAt: now } : (prev.d1 || { score:0, correct:0, wrong:0, updatedAt: now });
-    const d2 = key === "d2" ? { score, correct, wrong, updatedAt: now } : (prev.d2 || { score:0, correct:0, wrong:0, updatedAt: now });
-    const d3 = key === "d3" ? { score, correct, wrong, updatedAt: now } : (prev.d3 || { score:0, correct:0, wrong:0, updatedAt: now });
+    // Importante: desafios ainda não jogados NÃO devem ganhar updatedAt “agora”,
+    // senão parecem concluídos e quebram elegibilidade do Ranking Geral.
+    const empty = { score:0, correct:0, wrong:0, updatedAt: null };
+    const d1 = key === "d1" ? { score, correct, wrong, updatedAt: now } : (prev.d1 || empty);
+    const d2 = key === "d2" ? { score, correct, wrong, updatedAt: now } : (prev.d2 || empty);
+    const d3 = key === "d3" ? { score, correct, wrong, updatedAt: now } : (prev.d3 || empty);
 
     const scores = [Number(d1.score||0), Number(d2.score||0), Number(d3.score||0)];
-    // média sempre sobre os 3 desafios (faltante = 0)
+    // Ranking Geral: média dos 3 desafios (faltante = 0)
     const overallAvg = scores.reduce((a,b)=>a+b,0) / 3;
+
+    const isComplete = !!(d1.updatedAt && d2.updatedAt && d3.updatedAt);
 
     const payload = {
       emailHash,
@@ -63,6 +68,7 @@ export function bootRanking(app){
 
       d1, d2, d3,
       overallAvg,
+      isComplete,
 
       updatedAt: now
     };
@@ -87,7 +93,8 @@ export function bootRanking(app){
         d1: d.d1 || { score:0 },
         d2: d.d2 || { score:0 },
         d3: d.d3 || { score:0 },
-        overallAvg: Number(d.overallAvg||0)
+        overallAvg: Number(d.overallAvg||0),
+        isComplete: !!d.isComplete
       });
     });
     return rows;
@@ -102,27 +109,17 @@ function escapeHtml(s){
   // API pública usada pelo game-core
   
   async function open(){
-    // Modal simples (sem depender de DOM fixo)
+    // Modal com “janelinhas” separadas: D1, D2, D3 e Ranking Geral
     app.modal.openModal({
-      title: "🏆 Ranking",
+      title: "🏆 Rankings",
       bodyHTML: `<div class="rank-wrap">
-        <div class="muted" style="margin-bottom:10px">Top 50 — D1, D2, D3 e Média</div>
-        <div style="overflow:auto; max-height:60vh">
-          <table class="rank-table" style="width:100%; border-collapse:collapse">
-            <thead>
-              <tr>
-                <th style="text-align:left; padding:6px 4px">Jogador</th>
-                <th style="text-align:left; padding:6px 4px">Setor</th>
-                <th style="text-align:right; padding:6px 4px">D1</th>
-                <th style="text-align:right; padding:6px 4px">D2</th>
-                <th style="text-align:right; padding:6px 4px">D3</th>
-                <th style="text-align:right; padding:6px 4px">Média</th>
-              </tr>
-            </thead>
-            <tbody id="rankModalBody">
-              <tr><td colspan="6" class="muted" style="padding:10px 4px">Carregando...</td></tr>
-            </tbody>
-          </table>
+        <div id="rankMeta" class="muted" style="margin-bottom:10px">Carregando...</div>
+
+        <div class="rank-cards" style="display:grid; gap:10px">
+          ${rankCardHTML("Ranking Desafio 1","rankBodyD1")}
+          ${rankCardHTML("Ranking Desafio 2","rankBodyD2")}
+          ${rankCardHTML("Ranking Desafio 3","rankBodyD3")}
+          ${rankCardHTML("Ranking geral <span class=\"rank-help\" title=\"Calculado pela média dos 3 desafios.\">❔</span>","rankBodyAll")}
         </div>
       </div>`,
       buttons: [{ label:"Fechar", variant:"ghost", onClick: app.modal.closeModal }]
@@ -130,44 +127,105 @@ function escapeHtml(s){
 
     try{
       const rows = await loadTop();
-      const body = document.getElementById("rankModalBody");
-      if (!body) return;
-      if (!rows.length){
-        body.innerHTML = `<tr><td colspan="6" class="muted" style="padding:10px 4px">Ainda não há resultados.</td></tr>`;
-        return;
+
+      const meta = document.getElementById("rankMeta");
+      const my = await getMyEntry();
+      const eligible = !!(my?.isComplete);
+      if (meta){
+        meta.innerHTML = eligible
+          ? `Você já concluiu os 3 desafios ✅ — participa do <strong>Ranking geral</strong>.`
+          : `Você ainda não concluiu os 3 desafios. <span id="rankWhy" style="cursor:pointer; text-decoration:underline">❌</span>`;
+        const why = document.getElementById("rankWhy");
+        if (why){
+          why.addEventListener("click", () => {
+            app.modal.openModal({
+              title: "Ranking geral",
+              bodyHTML: `<p>O <strong>Ranking geral</strong> é calculado pela <strong>média dos 3 desafios</strong>.</p>
+                        <p class="muted" style="margin-top:8px">Você só entra no Ranking geral após concluir os 3.</p>`,
+              buttons: [{ label:"Entendi", onClick: app.modal.closeModal }]
+            });
+          });
+        }
       }
-      body.innerHTML = rows.map(r => {
-        const d1 = Number(r.d1?.score || 0);
-        const d2 = Number(r.d2?.score || 0);
-        const d3 = Number(r.d3?.score || 0);
-        const avg = Number(r.overallAvg || 0);
-        const photo = (r.photoURL || "").trim();
-        const avatar = photo
-          ? `<img src="${escapeAttr(photo)}" alt="" class="rank-avatar" />`
-          : `<div class="rank-avatar placeholder">🎄</div>`;
-        return `
-        <tr>
-          <td style="padding:6px 4px">
-            <div style="display:flex; align-items:center; gap:8px">
-              ${avatar}
-              <div>
-                <div style="font-weight:700">${escapeHtml(r.name)}</div>
-                <div class="muted" style="font-size:12px">${escapeHtml(r.email || "")}</div>
-              </div>
-            </div>
-          </td>
-          <td style="padding:6px 4px">${escapeHtml(r.sector)}</td>
-          <td style="padding:6px 4px; text-align:right">${d1.toFixed(0)}</td>
-          <td style="padding:6px 4px; text-align:right">${d2.toFixed(0)}</td>
-          <td style="padding:6px 4px; text-align:right">${d3.toFixed(0)}</td>
-          <td style="padding:6px 4px; text-align:right">${avg.toFixed(0)}</td>
-        </tr>`;
-      }).join("");
+
+      // ordenações
+      const byD1 = [...rows].sort((a,b)=>Number(b.d1?.score||0)-Number(a.d1?.score||0));
+      const byD2 = [...rows].sort((a,b)=>Number(b.d2?.score||0)-Number(a.d2?.score||0));
+      const byD3 = [...rows].sort((a,b)=>Number(b.d3?.score||0)-Number(a.d3?.score||0));
+      const byAll = [...rows].filter(r=>r.isComplete).sort((a,b)=>Number(b.overallAvg||0)-Number(a.overallAvg||0));
+
+      fillRankTable("rankBodyD1", byD1, (r)=>Number(r.d1?.score||0));
+      fillRankTable("rankBodyD2", byD2, (r)=>Number(r.d2?.score||0));
+      fillRankTable("rankBodyD3", byD3, (r)=>Number(r.d3?.score||0));
+      fillRankTable("rankBodyAll", byAll, (r)=>Number(r.overallAvg||0), true);
     } catch(e){
-      const body = document.getElementById("rankModalBody");
-      if (body) body.innerHTML = `<tr><td colspan="6" class="muted" style="padding:10px 4px">Erro ao carregar ranking.</td></tr>`;
+      ["rankBodyD1","rankBodyD2","rankBodyD3","rankBodyAll"].forEach(id=>{
+        const el = document.getElementById(id);
+        if (el) el.innerHTML = `<tr><td colspan="4" class="muted" style="padding:10px 4px">Erro ao carregar.</td></tr>`;
+      });
       console.error(e);
     }
+  }
+
+  function rankCardHTML(title, bodyId){
+    return `<div class="glass" style="padding:10px">
+      <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:6px">
+        <div style="font-weight:800">${title}</div>
+      </div>
+      <div style="overflow:auto; max-height:32vh">
+        <table class="rank-table" style="width:100%; border-collapse:collapse">
+          <thead>
+            <tr>
+              <th style="text-align:left; padding:6px 4px">#</th>
+              <th style="text-align:left; padding:6px 4px">Jogador</th>
+              <th style="text-align:left; padding:6px 4px">Setor</th>
+              <th style="text-align:right; padding:6px 4px">Pontos</th>
+            </tr>
+          </thead>
+          <tbody id="${bodyId}">
+            <tr><td colspan="4" class="muted" style="padding:10px 4px">Carregando...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>`;
+  }
+
+  function trophy(i){
+    if (i===0) return "🥇";
+    if (i===1) return "🥈";
+    if (i===2) return "🥉";
+    return String(i+1);
+  }
+
+  function fillRankTable(bodyId, rows, getPoints, isOverall=false){
+    const body = document.getElementById(bodyId);
+    if (!body) return;
+    if (!rows.length){
+      body.innerHTML = `<tr><td colspan="4" class="muted" style="padding:10px 4px">Ainda não há resultados.</td></tr>`;
+      return;
+    }
+    body.innerHTML = rows.slice(0,50).map((r,i)=>{
+      const pts = Number(getPoints(r)||0);
+      const photo = (r.photoURL || "").trim();
+      const avatar = photo
+        ? `<img src="${escapeAttr(photo)}" alt="" class="rank-avatar" />`
+        : `<div class="rank-avatar placeholder">🎄</div>`;
+      const badge = trophy(i);
+      return `<tr>
+        <td style="padding:6px 4px; width:38px">${badge}</td>
+        <td style="padding:6px 4px">
+          <div style="display:flex; align-items:center; gap:8px">
+            ${avatar}
+            <div>
+              <div style="font-weight:700">${escapeHtml(r.name)}</div>
+              <div class="muted" style="font-size:12px">${escapeHtml(r.email || "")}</div>
+            </div>
+          </div>
+        </td>
+        <td style="padding:6px 4px">${escapeHtml(r.sector)}</td>
+        <td style="padding:6px 4px; text-align:right">${pts.toFixed(0)}${isOverall && !r.isComplete ? " ❌" : ""}</td>
+      </tr>`;
+    }).join("");
   }
 
   async function getMyEntry(){
