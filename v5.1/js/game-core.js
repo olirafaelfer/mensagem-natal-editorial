@@ -40,6 +40,9 @@ export function bootGame(app){
   dom.challenge1Btn?.addEventListener("click", () => onChallengeClick(1));
   dom.challenge2Btn?.addEventListener("click", () => onChallengeClick(2));
   dom.challenge3Btn?.addEventListener("click", () => onChallengeClick(3));
+
+  // Tutorial (separado): libera o Desafio 1 após concluir ou pular
+  dom.tutorialBtn?.addEventListener("click", () => openTutorialGate());
   // Logo: voltar para a página inicial
   document.getElementById("logoTop")?.addEventListener("click", () => goHome());
   document.getElementById("logoHome")?.addEventListener("click", () => goHome());
@@ -52,6 +55,9 @@ export function bootGame(app){
   dom.finalHomeBtn?.addEventListener("click", () => goHome());
   // compat: ranking.open() é o método canônico; openRanking é alias
   dom.finalRankingBtn?.addEventListener("click", () => app.ranking?.open?.() || app.ranking?.openRanking?.());
+
+  dom.missionSpecialHomeBtn?.addEventListener("click", () => app.specialMission?.open?.());
+  dom.finalMissionSpecialBtn?.addEventListener("click", () => app.specialMission?.open?.());
 
   // tela final: mostrar/ocultar mensagens corrigidas
   const toggleBtn = dom.toggleFinalMsgsBtn || document.getElementById("toggleFinalMsgs");
@@ -68,6 +74,7 @@ export function bootGame(app){
     if (engine.challenge===0){
       const idx = st?.levelIndex ?? 0;
       tutorialFlags[idx] = { ...(tutorialFlags[idx]||{}), hintClicked: true };
+    dom.hintBtn?.classList.remove("focus-hand");
       setTimeout(() => {
         try{
           const foot = document.getElementById("modalFoot");
@@ -102,7 +109,9 @@ export function bootGame(app){
   }
 
   // estado tutorial/progresso
-  const LS_TUTORIAL_BASE = "mission_tutorial_done_v2";
+  // Tutorial: chave nova (V5) + migração automática da chave antiga (V2)
+  const LS_TUTORIAL_BASE = "mission_tutorial_done_v5";
+  const LS_TUTORIAL_OLD  = "mission_tutorial_done_v2";
   const LS_PROGRESS_BASE = "mission_progress_v2";
 
   function userScope(){
@@ -110,6 +119,24 @@ export function bootGame(app){
     return u?.uid || "anon";
   }
   function tutorialKey(){ return LS_TUTORIAL_BASE + "_" + userScope(); }
+  function tutorialKeyOld(){ return LS_TUTORIAL_OLD + "_" + userScope(); }
+
+  // Migra (uma vez) a flag de tutorial concluído de versões antigas
+  try{
+    if (localStorage.getItem(tutorialKey()) !== "1" && localStorage.getItem(tutorialKeyOld()) === "1"){
+      localStorage.setItem(tutorialKey(), "1");
+    }
+  }catch{}
+  function hasTutorialDone(){
+    // migra automaticamente
+    const k = tutorialKey();
+    if (localStorage.getItem(k) === "1") return true;
+    if (localStorage.getItem(tutorialKeyOld()) === "1"){
+      localStorage.setItem(k, "1");
+      return true;
+    }
+    return false;
+  }
   function progressKey(){ return LS_PROGRESS_BASE + "_" + userScope(); }
 
   // Snapshots para tela final (antes/depois por atividade)
@@ -127,9 +154,15 @@ export function bootGame(app){
     const p = getProgress();
     const c = Number(correct ?? 0);
     const w = Number(wrong ?? 0);
-    const t = c + w;
-    const pct = t ? Math.round((c / t) * 100) : 0;
-    p["c"+ch] = { done:true, score: Number(score ?? 0), correct: c, wrong: w, pct, at: Date.now() };
+
+    // Aproveitamento = pontos feitos / pontos possíveis (dinâmico por desafio)
+    const levels = getChallengeLevels(ch) || [];
+    const totalRules = levels.reduce((acc, lv) => acc + (lv?.rules?.length || 0), 0);
+    const maxScore = totalRules * Math.max(1, Number(app.data?.SCORE_RULES?.correct || 5));
+    const safeScore = Math.max(0, Number(score ?? 0));
+    const apv = maxScore ? Math.round((safeScore / maxScore) * 100) : 0;
+
+    p["c"+ch] = { done:true, score: safeScore, correct: c, wrong: w, apv, maxScore, at: Date.now() };
     setProgress(p);
     updateChallengeButtons();
   }
@@ -141,7 +174,7 @@ export function bootGame(app){
     if (!app.auth?.isLogged?.()) return false;
     return isChallengeDone(ch-1);
   }
-function updateChallengeButtons(){
+  function updateChallengeButtons(){
   // Atualiza UI de acesso (Desafio 2/3) com base em login + progresso
   const p = getProgress();
   const c3Done = !!p?.c3?.done;
@@ -157,35 +190,48 @@ function updateChallengeButtons(){
   const c2 = p?.c2;
   const c3 = p?.c3;
 
+  const tDone = hasTutorialDone();
+  if (dom.tutorialBtn){
+    dom.tutorialBtn.disabled = false;
+    dom.tutorialBtn.classList.remove('btn-disabled');
+  }
+
   if (b1){
-    b1.disabled = false;
-    b1.classList.remove("btn-disabled");
-    b1.textContent = c1?.done ? `Desafio 1 ✅ (${c1.score} pts)` : "Desafio 1";
+    // Desafio 1 só libera após concluir ou pular o tutorial
+    const lockedByTutorial = !tDone;
+    b1.disabled = lockedByTutorial;
+    b1.classList.toggle("btn-disabled", lockedByTutorial);
+    b1.style.opacity = lockedByTutorial ? '.6' : '1';
+    b1.textContent = c1?.done ? `Desafio 1 ✅` : (lockedByTutorial ? "Desafio 1 🔒" : "Desafio 1");
   }
 
   if (b2){
     b2.disabled = !access2;
     b2.classList.toggle("btn-disabled", !access2);
     if (!access2) b2.textContent = "Desafio 2 🔒";
-    else b2.textContent = c2?.done ? `Desafio 2 ✅ (${c2.score} pts)` : "Desafio 2";
+    else b2.textContent = c2?.done ? `Desafio 2 ✅` : "Desafio 2";
   }
 
   if (b3){
     b3.disabled = !access3;
     b3.classList.toggle("btn-disabled", !access3);
     if (!access3) b3.textContent = "Desafio 3 🔒";
-    else b3.textContent = c3?.done ? `Desafio 3 ✅ (${c3.score} pts)` : "Desafio 3";
+    else b3.textContent = c3?.done ? `Desafio 3 ✅` : "Desafio 3";
   }
 
-  // Missão especial (libera após concluir Desafio 3 **e estar logado**)
+  // Missão especial (sempre visível, mas só abre após concluir Desafio 3 e estar logado)
   const logged = !!app.auth?.isLogged?.();
   if (dom.missionSpecialHomeBtn){
     const enabled = logged && c3Done;
-    dom.missionSpecialHomeBtn.disabled = !enabled;
-    dom.missionSpecialHomeBtn.style.opacity = enabled ? "1" : ".5";
+    dom.missionSpecialHomeBtn.classList.toggle("btn-disabled", !enabled);
+    dom.missionSpecialHomeBtn.style.opacity = enabled ? "1" : ".55";
+    dom.missionSpecialHomeBtn.textContent = enabled ? "Missão especial" : "Missão especial 🔒";
   }
   if (dom.finalMissionSpecialBtn){
-    dom.finalMissionSpecialBtn.style.display = (logged && c3Done) ? "inline-flex" : "none";
+    const enabled = logged && c3Done;
+    dom.finalMissionSpecialBtn.style.display = "inline-flex";
+    dom.finalMissionSpecialBtn.classList.toggle("btn-disabled", !enabled);
+    dom.finalMissionSpecialBtn.style.opacity = enabled ? "1" : ".55";
   }
 }
   function requireNameSector(){
@@ -201,9 +247,47 @@ function updateChallengeButtons(){
     return false;
   }
 
-function onChallengeClick(ch){
+  function openTutorialGate(){
+    openModal({
+      title: '📘 Tutorial',
+      bodyHTML: `<p>O tutorial é um passo a passo interativo para você aprender os comandos do jogo.</p>
+        <p class="muted">Você pode fazer agora ou pular (o Desafio 1 será liberado mesmo assim).</p>`,
+      buttons: [
+        { label: 'Fazer tutorial', onClick: () => {
+            closeModal();
+            runTutorial(()=>{
+              try { localStorage.setItem(tutorialKey(), '1'); } catch {}
+              updateChallengeButtons();
+              // Ao terminar, volta para o início e oferece ir para o Desafio 1
+              ui.showOnly(dom.screenForm);
+              openModal({
+                title: '✅ Tutorial concluído',
+                bodyHTML: `<p>Pronto! Você já sabe usar a correção manual, a dica, a correção automática e o avançar sem concluir.</p>`,
+                buttons: [
+                  { label: 'Início', variant: 'ghost', onClick: closeModal },
+                  { label: 'Ir para o Desafio 1', onClick: () => { closeModal(); startChallenge(1); } },
+                ]
+              });
+            });
+          } },
+        { label: 'Pular tutorial', variant: 'ghost', onClick: () => {
+            try { localStorage.setItem(tutorialKey(), '1'); } catch {}
+            closeModal();
+            updateChallengeButtons();
+          } },
+      ]
+    });
+  }
+
+  function onChallengeClick(ch){
     // visitante precisa informar nome + setor (para frases e ranking por setor depois)
     if (!app.auth?.isLogged?.() && !requireNameSector()) return;
+
+    // Segurança: se o desafio 1 for clicado sem tutorial concluído, abre o gate
+    if (ch === 1 && !hasTutorialDone()){
+      openTutorialGate();
+      return;
+    }
     if (!canAccessChallenge(ch)){
       if (!app.auth?.isLogged?.()){
         openModal({
@@ -234,7 +318,7 @@ function onChallengeClick(ch){
           <p>Você já concluiu este desafio e não pode refazê-lo.</p>
           <div class="result-card" style="margin-top:10px">
             <div><b>Pontos:</b> ${pts}</div>
-            <div><b>Acertos:</b> ${pct}%</div>
+            <div><b>Aproveitamento:</b> ${pct}%</div>
           </div>
           <p class="muted" style="margin-top:10px">Em uma próxima versão, vamos mostrar também suas correções completas aqui.</p>
         `,
@@ -257,22 +341,6 @@ function onChallengeClick(ch){
   function startChallenge(ch){
     const levels = getChallengeLevels(ch);
     engine.loadChallenge(ch, levels);
-
-    // tutorial só antes do desafio 1 e só 1x
-    if (ch === 1 && localStorage.getItem(tutorialKey()) !== "1"){
-      promptTutorial(() => {
-        // Ao concluir o tutorial, carregamos de fato o Desafio 1 (evita herdar estado do tutorial)
-        localStorage.setItem(tutorialKey(), "1");
-        const lvl1 = getChallengeLevels(1);
-        engine.loadChallenge(1, lvl1);
-        ui.showOnly(dom.screenGame);
-        engine.startLevel();
-        currentLevelBefore = String(engine.currentText || "");
-        showLevelIntro();
-        renderMessage();
-      });
-      return;
-    }
 
     ui.showOnly(dom.screenGame);
     engine.startLevel();
@@ -387,6 +455,7 @@ function onChallengeClick(ch){
           const allowSkip = !!lvl2?.allowSkipInTutorial;
           dom.skipLevelBtn.style.display = allowSkip ? "" : "none";
           dom.skipLevelBtn.disabled = !allowSkip;
+        dom.skipLevelBtn.classList.toggle("focus-hand", !!lvl2?.focusSkipBtn && !(flags.skipDone));
         }
         if (lvl2?.tutorialMode === "force-misclick") done = !!flags.misclickDone;
         if (lvl2?.tutorialMode === "force-skip") done = false;
@@ -871,18 +940,51 @@ function onChallengeClick(ch){
       const tb = tokenize(before);
       const ta = tokenize(after);
       const tp = tokenize(perfect);
-      // se muito diferente, não arrisca highlight
-      if (Math.abs(ta.length - tp.length) > 25) return escapeHtml(after);
+
+      // Alinhamento por LCS (token exato) entre "after" e "perfect"
+      // Isso evita que um pequeno deslocamento pinte o resto todo de vermelho.
+      const aIdx = [];
+      const pIdx = [];
+      for (let i=0;i<ta.length;i++) if (!/^\s+$/.test(ta[i])) aIdx.push(i);
+      for (let j=0;j<tp.length;j++) if (!/^\s+$/.test(tp[j])) pIdx.push(j);
+
+      const A = aIdx.map(i=>ta[i]);
+      const P = pIdx.map(j=>tp[j]);
+
+      // DP LCS (n*m) — tamanhos pequenos (frases curtas)
+      const n = A.length, m = P.length;
+      const dp = Array.from({length:n+1}, ()=>Array(m+1).fill(0));
+      for (let i=1;i<=n;i++){
+        for (let j=1;j<=m;j++){
+          dp[i][j] = (A[i-1]===P[j-1]) ? (dp[i-1][j-1]+1) : Math.max(dp[i-1][j], dp[i][j-1]);
+        }
+      }
+      // backtrack: quais índices de A fazem parte do LCS
+      const inLcsA = new Set();
+      let i=n, j=m;
+      while (i>0 && j>0){
+        if (A[i-1]===P[j-1]){
+          inLcsA.add(i-1);
+          i--; j--;
+        } else if (dp[i-1][j] >= dp[i][j-1]) i--;
+        else j--;
+      }
+
       const out = [];
-      for (let i=0;i<ta.length;i++){
-        const tok = ta[i];
-        const p = tp[i] ?? "";
-        const b = tb[i] ?? "";
+      let kA = 0; // ponteiro em A (tokens não-espaço)
+      for (let iTok=0;iTok<ta.length;iTok++){
+        const tok = ta[iTok];
         if (/^\s+$/.test(tok)) { out.push(tok); continue; }
+
         const safe = escapeHtml(tok);
-        if (tok === p && tok !== b) out.push(`<span class="final-good">${safe}</span>`);
-        else if (tok !== p) out.push(`<span class="final-bad">${safe}</span>`);
+        const isCorrect = inLcsA.has(kA);
+        const beforeTok = tb[iTok] ?? "";
+
+        if (isCorrect && tok !== beforeTok) out.push(`<span class="final-good">${safe}</span>`);
+        else if (!isCorrect) out.push(`<span class="final-bad">${safe}</span>`);
         else out.push(safe);
+
+        kA++;
       }
       return out.join("");
     }
@@ -913,6 +1015,20 @@ function onChallengeClick(ch){
     const nextBtn = document.getElementById("finalNextTaskBtn");
     if (nextBtn) nextBtn.classList.add("hidden");
   }
+    // Epígrafe (frases no final)
+    const epiEl = document.getElementById("epigraphBox");
+    if (epiEl){
+      const quotes = [
+        { t: "“A luta contra o erro tipográfico tem algo de homérico. Durante a revisão os erros se escondem, fazem-se positivamente invisíveis. Mas, assim que o texto é publicado, tornam-se visibilíssimos, verdadeiros sacis a nos botar a língua em todas as páginas.”", a: "Monteiro Lobato" },
+        { t: ""Tudo o que estabiliza a vida humana demanda dedicação de tempo prolongada."", a: "Byung-Chul Han" },
+        { t: "“Vamos subir ao telhado. Acabou o tempo das palavras, chegou a hora da ação.”", a: "Francisco de Assis" },
+        { t: ""O mundo é um livro, e quem fica sentado em casa lê somente uma página."", a: "Santo Agostinho" }
+      ];
+      const idx = (engine.challenge === 0) ? 0 : Math.min(3, engine.challenge);
+      const q = quotes[idx] || quotes[0];
+      epiEl.innerHTML = `<div class="quote">${escapeHtml(q.t)}</div><div class="quote-author">— ${escapeHtml(q.a||"")}</div>`;
+    }
+
 
 function onNext(){
   // Tutorial: algumas etapas não dependem de engine.isDone()

@@ -1,4 +1,5 @@
-const BUILD_ID = "fix16.1";
+// Cache-buster para imports (garante que o browser não use arquivos antigos)
+const BUILD_ID = "v5.1";
 import { APP_VERSION } from "./config/version.js";
 
 // js/main.js — BOOTSTRAP (módulos + Firebase) — versão refatorada em pastas
@@ -141,6 +142,7 @@ async function bootAll(){
     // render versão no rodapé
     try { const el=document.getElementById("appVersion"); if(el) el.textContent=APP_VERSION; } catch {}
     app.ranking = bootRanking?.(app) || {};
+    app.specialMission = bootSpecialMission?.(app) || {};
     bootGame?.(app);
     bootAdmin?.(app);
     bootAuth?.(app);

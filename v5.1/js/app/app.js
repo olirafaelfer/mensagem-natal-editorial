@@ -12,6 +12,7 @@ export function createApp({ firebase, THEME_PRESETS, SECTORS, SCORE_RULES }){
     rankingBtn: document.getElementById("rankingBtn"),
     customizeBtn: document.getElementById("customizeBtn"),
     challenge1Btn: document.getElementById("challenge1Btn"),
+    tutorialBtn: document.getElementById("tutorialBtn"),
     challenge2Btn: document.getElementById("challenge2Btn"),
     challenge3Btn: document.getElementById("challenge3Btn"),
     missionSpecialHomeBtn: document.getElementById("missionSpecialHomeBtn"),

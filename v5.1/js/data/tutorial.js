@@ -52,6 +52,7 @@ export function getTutorialLevels(){
       name: "Tutorial 5/5 — Avançar sem concluir (-5)",
       tutorialMode: "force-skip",
       allowSkipInTutorial: true,
+      focusSkipBtn: true,
       intro: "Às vezes você pode avançar sem concluir, mas perde pontos.",
       instruction: "Clique em “Avançar sem concluir (-5)” para entender a penalidade.",
       raw: "Você pode pular uma tarefa, mas terá um custo.",

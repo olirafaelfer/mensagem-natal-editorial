@@ -1,3 +1,6 @@
+import { sha256Hex } from "../utils/sha.js";
+import { getChallengeLevels } from "../data/challenges/index.js";
+
 // js/modules/ranking.js — Ranking V2 (rankingByEmail) — FIX16
 // Objetivos:
 // - Nunca crashar a engine
@@ -30,6 +33,25 @@ export function bootRanking(app){
     return { score: -1, correct: 0, wrong: 0, updatedAt: fb.serverTimestamp() };
   }
 
+  // Avatar cache (por dispositivo): emailHash -> url/dataURL
+  const AVATAR_LS_KEY = 'mission_avatar_by_emailhash_v1';
+  function loadAvatarMap(){
+    try { return JSON.parse(localStorage.getItem(AVATAR_LS_KEY) || '{}'); } catch { return {}; }
+  }
+  function saveAvatarMap(map){
+    try { localStorage.setItem(AVATAR_LS_KEY, JSON.stringify(map || {})); } catch {}
+  }
+  function setAvatarForHash(emailHash, url){
+    if (!emailHash || !url) return;
+    const map = loadAvatarMap();
+    map[emailHash] = String(url);
+    saveAvatarMap(map);
+  }
+  function getAvatarForHash(emailHash){
+    const map = loadAvatarMap();
+    return map[emailHash] || '';
+  }
+
   function computeOverall(d1,d2,d3){
     const s1 = Math.max(0, Number(d1?.score ?? 0));
     const s2 = Math.max(0, Number(d2?.score ?? 0));
@@ -46,6 +68,12 @@ export function bootRanking(app){
     if (!email) return;
 
     const emailHash = await sha256Hex(email);
+
+    // Guarda a foto atual do usuário (se houver) para renderização no ranking (cache local)
+    try{
+      const purl = fb.auth.currentUser?.photoURL;
+      if (purl) setAvatarForHash(emailHash, purl);
+    }catch{}
     const ref = fb.doc(fb.db, 'rankingByEmail', emailHash);
     const snap = await fb.getDoc(ref);
     const prev = snap.exists() ? (snap.data() || {}) : {};
@@ -145,12 +173,18 @@ export function bootRanking(app){
     return snap.data();
   }
 
-  function pct(correct, wrong){
-    const c = Number(correct||0);
-    const w = Number(wrong||0);
-    const t = c+w;
-    if (!t) return 0;
-    return Math.round((c/t)*100);
+  function maxScoreForChallenge(ch){
+    const levels = getChallengeLevels(ch) || [];
+    const totalRules = levels.reduce((acc, lv) => acc + (lv?.rules?.length || 0), 0);
+    const pts = Math.max(1, Number(app.data?.SCORE_RULES?.correct || 5));
+    return totalRules * pts;
+  }
+
+  function aproveitamentoPct(score, maxScore){
+    const s = Math.max(0, Number(score ?? 0));
+    const m = Math.max(0, Number(maxScore ?? 0));
+    if (!m) return 0;
+    return Math.round((s / m) * 100);
   }
 
   function renderTable(rows, kind){
@@ -160,6 +194,14 @@ export function bootRanking(app){
       if (kind === 'd3') return Number(d?.d3?.score ?? 0);
       return Math.round(Number(d?.overallAvg ?? 0));
     };
+
+    function initials(name){
+      const parts = String(name||'').trim().split(/\s+/).filter(Boolean);
+      if (!parts.length) return '🎅';
+      const a = parts[0][0] || '';
+      const b = (parts.length>1 ? parts[parts.length-1][0] : '') || '';
+      return (a+b).toUpperCase();
+    }
 
     return `
       <div class="rank-list">
@@ -171,10 +213,17 @@ export function bootRanking(app){
           const c = Number(d?.d1?.correct||0)+Number(d?.d2?.correct||0)+Number(d?.d3?.correct||0);
           const w = Number(d?.d1?.wrong||0)+Number(d?.d2?.wrong||0)+Number(d?.d3?.wrong||0);
           const medal = (i===0?'🥇':i===1?'🥈':i===2?'🥉':String(i+1));
+          const av = getAvatarForHash(d?.emailHash);
+          const avHtml = av
+            ? `<img class="rank-avatar" src="${esc(av)}" alt="" loading="lazy" referrerpolicy="no-referrer" />`
+            : `<div class="rank-avatar fallback">${esc(initials(d?.name||''))}</div>`;
           return `
             <div class="rank-row">
               <div>${medal}</div>
-              <div class="rank-name">${esc(d?.name||'')}</div>
+              <div class="rank-name">
+                ${avHtml}
+                <span>${esc(d?.name||'')}</span>
+              </div>
               <div class="rank-sector">${esc(d?.sector||'')}</div>
               <div style="text-align:right">${pts}</div>
             </div>`;
@@ -302,6 +351,43 @@ export function bootRanking(app){
   app.ranking = {
     open,
     submitChallengeScore: upsertForChallenge,
+    // usado pelo módulo de conta (auth) para cachear avatar
+    setMyAvatar: async (photoURL) => {
+      try{
+        const u = fb.auth.currentUser;
+        const email = (u?.email || '').trim().toLowerCase();
+        if (!email) return;
+        const h = await sha256Hex(email);
+        if (photoURL) setAvatarForHash(h, photoURL);
+        else {
+          const map = loadAvatarMap();
+          delete map[h];
+          saveAvatarMap(map);
+        }
+      }catch{}
+    },
+    // usado por "Excluir conta" para ocultar (soft) no ranking
+    setMyVisibility: async (visible) => {
+      if (!app.auth?.isLogged?.()) return;
+      try{
+        const u = fb.auth.currentUser;
+        const email = (u?.email || '').trim().toLowerCase();
+        if (!email) return;
+        const emailHash = await sha256Hex(email);
+        const ref = fb.doc(fb.db, 'rankingByEmail', emailHash);
+        const snap = await fb.getDoc(ref);
+        const prev = snap.exists()? (snap.data()||{}) : null;
+        if (!prev) return;
+        const nowTs = fb.serverTimestamp();
+        await fb.setDoc(ref, {
+          ...prev,
+          visible: !!visible,
+          updatedAt: nowTs,
+        });
+      }catch(e){
+        console.warn('[ranking] setMyVisibility falhou', e);
+      }
+    }
   };
 
   // botão do topo (🏆)

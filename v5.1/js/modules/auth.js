@@ -9,6 +9,14 @@
 // ✅ Fix: ao deletar -> apaga também o ranking individual (individualRanking/{uid})
 // ✅ Novo: "Minha conta" mostra pontuação + posição no ranking
 
+
+function setStatus(msg){
+  try{
+    const el = document.getElementById("authStatus") || document.getElementById("accountAvatarStatus");
+    if (el) el.textContent = msg || "";
+  }catch(e){}
+}
+
 import {
   getAuth,
   onAuthStateChanged,
@@ -17,6 +25,7 @@ import {
   sendPasswordResetEmail,
   signOut,
   deleteUser,
+  updateProfile,
 } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
 
 import {
@@ -237,10 +246,28 @@ onClick: () => {
     const sector = p?.sector || "";
     const participating = (localStorage.getItem('mission_visible_in_ranking') !== '0') ? "Sim" : "Não";
 
+    const photoURL = currentUser.photoURL || '';
     openModal({
       title: "👤 Minha conta",
       bodyHTML: `
         <div class="account-panel">
+          <div class="account-avatar">
+            <div class="avatar-preview">
+              ${photoURL ? `<img id="accountAvatarImg" src="${escapeHtml(photoURL)}" alt="" referrerpolicy="no-referrer"/>` : `<div id="accountAvatarImg" class="avatar-fallback">${escapeHtml((name||'U')[0]||'U')}</div>`}
+            </div>
+            <div class="avatar-actions">
+              <input id="accountAvatarFile" type="file" accept="image/*" style="display:none" />
+              <button id="accountAvatarUpload" class="btn small" type="button">Enviar foto</button>
+              <button id="accountAvatarRemove" class="btn small ghost" type="button">Remover</button>
+              <div class="avatar-icons" style="margin-top:8px">
+                <span class="muted" style="display:block; margin-bottom:6px">Ou escolha um ícone:</span>
+                <button class="btn small ghost" type="button" data-avatar-icon="🎅">🎅</button>
+                <button class="btn small ghost" type="button" data-avatar-icon="🎄">🎄</button>
+                <button class="btn small ghost" type="button" data-avatar-icon="❄️">❄️</button>
+                <button class="btn small ghost" type="button" data-avatar-icon="🦌">🦌</button>
+              </div>
+            </div>
+          </div>
           <div><strong>Nome:</strong> ${escapeHtml(name||"—")}</div>
           <div><strong>Email:</strong> ${escapeHtml(email||"—")}</div>
           <div><strong>Setor:</strong> ${escapeHtml(sector||"—")}</div>
@@ -252,12 +279,162 @@ onClick: () => {
         </div>
       `,
       buttons: [
+        { label: "Excluir conta", variant: "ghost", onClick: async () => { await handleDeleteAccount(); } },
         { label: "Fechar", variant: "ghost", onClick: closeModal },
         { label: "Sair", onClick: async () => {
             try { await signOut(auth); } catch(e){ console.warn('[auth] signOut falhou', e); }
             closeModal();
           }
         },
+      ]
+    });
+
+    afterModalPaint(() => {
+      wireAccountAvatarUI();
+    });
+  }
+
+  // -----------------------------
+  // Avatar (foto) — opção A: Base64 (dataURL) com fallback para Storage (futuro)
+  // Aqui usamos o photoURL do Firebase Auth para não depender de novas rules no Firestore.
+  // -----------------------------
+  function wireAccountAvatarUI(){
+    const uploadBtn = document.getElementById('accountAvatarUpload');
+    const removeBtn = document.getElementById('accountAvatarRemove');
+    const fileEl = document.getElementById('accountAvatarFile');
+    const preview = document.getElementById('accountAvatarImg');
+
+    if (uploadBtn && fileEl){
+      uploadBtn.addEventListener('click', () => fileEl.click());
+    }
+
+    if (fileEl){
+      fileEl.addEventListener('change', async () => {
+        const f = fileEl.files?.[0];
+        if (!f) return;
+        try{
+          const dataUrl = await imageFileToDataURL(f, 160, 0.86);
+          await updateMyPhotoURL(dataUrl);
+          if (preview){
+            if (preview.tagName === 'IMG') preview.src = dataUrl;
+            else preview.outerHTML = `<img id="accountAvatarImg" src="${escapeHtml(dataUrl)}" alt="" referrerpolicy="no-referrer"/>`;
+          }
+          setStatus('Foto atualizada ✅');
+        }catch(e){
+          console.warn('[auth] falha ao atualizar foto', e);
+          setStatus('Não foi possível atualizar a foto. Tente outra imagem.');
+        }
+        try { fileEl.value = ''; } catch {}
+      });
+    }
+
+    if (removeBtn){
+      removeBtn.addEventListener('click', async () => {
+        try{
+          await updateMyPhotoURL('');
+          setStatus('Foto removida ✅');
+          // Atualiza UI
+          if (preview){
+            preview.outerHTML = `<div id="accountAvatarImg" class="avatar-fallback">${escapeHtml((currentProfile?.name || currentUser?.displayName || 'U')[0] || 'U')}</div>`;
+          }
+        }catch(e){
+          console.warn('[auth] falha ao remover foto', e);
+          setStatus('Não foi possível remover a foto agora.');
+        }
+      });
+    }
+
+    // Ícones rápidos
+    document.querySelectorAll('[data-avatar-icon]').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const icon = btn.getAttribute('data-avatar-icon') || '';
+        if (!icon) return;
+        // Gera um SVG dataURL simples com o emoji centralizado
+        const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="160" height="160"><rect width="160" height="160" rx="80" ry="80" fill="#1b1f2a"/><text x="50%" y="54%" text-anchor="middle" dominant-baseline="middle" font-size="88">${icon}</text></svg>`;
+        const dataUrl = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+        try{
+          await updateMyPhotoURL(dataUrl);
+          setStatus('Ícone definido ✅');
+          const p = document.getElementById('accountAvatarImg');
+          if (p) p.outerHTML = `<img id="accountAvatarImg" src="${escapeHtml(dataUrl)}" alt="" referrerpolicy="no-referrer"/>`;
+        }catch(e){
+          console.warn('[auth] falha ao definir ícone', e);
+          setStatus('Não foi possível definir o ícone agora.');
+        }
+      });
+    });
+  }
+
+  async function updateMyPhotoURL(photoURL){
+    if (!currentUser) throw new Error('no-user');
+    // Guard-rail: dataURL muito grande tende a falhar / deixar lento
+    if (photoURL && photoURL.startsWith('data:') && photoURL.length > 220000){
+      throw new Error('photo-too-big');
+    }
+    await updateProfile(currentUser, { photoURL: photoURL || null });
+    // Atualiza cache local para o ranking (por emailHash)
+    try{
+      const em = (currentUser.email || '').trim().toLowerCase();
+      if (em && app.ranking?.setMyAvatar){
+        await app.ranking.setMyAvatar(photoURL || '');
+      }
+    }catch{}
+  }
+
+  function imageFileToDataURL(file, maxSizePx = 160, quality = 0.86){
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onerror = reject;
+      reader.onload = () => {
+        try{
+          const img = new Image();
+          img.onload = () => {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            if (!ctx) return reject(new Error('no-canvas'));
+            const w = img.width;
+            const h = img.height;
+            const s = Math.min(w,h);
+            // recorte central quadrado
+            const sx = Math.floor((w - s)/2);
+            const sy = Math.floor((h - s)/2);
+            const out = Math.min(maxSizePx, s);
+            canvas.width = out;
+            canvas.height = out;
+            ctx.drawImage(img, sx, sy, s, s, 0, 0, out, out);
+            const url = canvas.toDataURL('image/jpeg', quality);
+            resolve(url);
+          };
+          img.onerror = reject;
+          img.src = String(reader.result);
+        }catch(e){ reject(e); }
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  async function handleDeleteAccount(){
+    if (!currentUser) return;
+    openModal({
+      title: '⚠️ Excluir conta',
+      bodyHTML: `<p>Isso vai excluir sua conta e ocultar seu nome do ranking.</p><p class="muted">Esta ação pode exigir que você entre novamente (reautenticação) dependendo do Firebase.</p>`,
+      buttons: [
+        { label: 'Cancelar', variant: 'ghost', onClick: closeModal },
+        { label: 'Excluir', onClick: async () => {
+          closeModal();
+          try{
+            // Oculta no ranking (soft delete)
+            try { await app.ranking?.setMyVisibility?.(false); } catch {}
+            // Apaga perfil do Firestore (permitido pelas rules)
+            try { await deleteDoc(doc(db, 'users', currentUser.uid)); } catch {}
+            // Deleta usuário do Auth
+            await deleteUser(currentUser);
+            setStatus('Conta excluída ✅');
+          }catch(e){
+            console.warn('[auth] deleteAccount falhou', e);
+            setStatus('Não foi possível excluir agora. Talvez seja necessário entrar novamente e tentar outra vez.');
+          }
+        } }
       ]
     });
   }

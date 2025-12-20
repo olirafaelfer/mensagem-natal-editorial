@@ -82,7 +82,9 @@ isDone(){
   }
 
   addScore(delta){
-    this.score += delta;
+    // Score nunca pode ficar negativo (mínimo 0)
+    const next = (this.score ?? 0) + (delta ?? 0);
+    this.score = Math.max(0, next);
     this.onState(this.getState());
     return delta;
   }
