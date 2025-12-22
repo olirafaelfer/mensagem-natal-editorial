@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Cartão Personalizável</title>
+  <meta name="theme-color" content="#0b0f1a" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <main class="page">
+    <header class="hero">
+      <div class="hero__inner">
+        <div class="hero__badge">✨ Cartão moderno • leve • compartilhável</div>
+        <h1>Cartão de Natal</h1>
+        <p>Escolha um texto pronto, um tema bonito e adicione enfeites em SVG. Depois, exporte em PNG ou compartilhe um link.</p>
+        <div class="hero__actions">
+          <button id="btnOpen" class="btn btn--primary">Criar cartão</button>
+          <button id="btnOpenFromUrl" class="btn btn--ghost" title="Carrega um cartão a partir de um link (hash)">Carregar do link</button>
+        </div>
+      </div>
+    </header>
+
+    <section class="tips">
+      <div class="tip">📱 Mobile-first e responsivo</div>
+      <div class="tip">🎨 Temas, fundos e padrões</div>
+      <div class="tip">🔗 Link com o cartão pronto</div>
+    </section>
+  </main>
+
+  <!-- Modal -->
+  <div id="modal" class="modal hidden" role="dialog" aria-modal="true" aria-label="Editor do cartão">
+    <div class="modal__scrim" data-close></div>
+
+    <div class="modal__panel" role="document">
+      <div class="modal__topbar">
+        <div class="modal__title">Editor</div>
+        <div class="modal__topbarActions">
+          <button class="iconBtn" id="btnShareLink" title="Compartilhar link">🔗</button>
+          <button class="iconBtn" data-close title="Fechar">✖</button>
+        </div>
+      </div>
+
+      <div class="workspace">
+        <div class="previewWrap">
+          <div class="cardFrame">
+            <div id="card" class="card" aria-label="Prévia do cartão">
+              <img id="cardLogo" class="card__logo hidden" src="assets/logo-natal.png" alt="Logo" />
+              <div id="cardMessage" class="card__message"></div>
+
+              <!-- stickers are absolutely positioned inside card -->
+              <div id="stickerLayer" class="card__stickers" aria-hidden="true"></div>
+            </div>
+          </div>
+
+          <div class="quickActions">
+            <button id="btnExport" class="btn btn--primary">🖼 Exportar PNG</button>
+            <button id="btnShareImg" class="btn btn--secondary">📲 Compartilhar imagem</button>
+          </div>
+
+          <p class="hint">Dica: toque no enfeite para selecionar • arraste para mover • use “+ / -” para escala • 🗑 para remover.</p>
+        </div>
+
+        <aside class="panel">
+          <div class="tabs" role="tablist" aria-label="Configurações">
+            <button class="tab is-active" data-tab="texto" role="tab" aria-selected="true">Texto</button>
+            <button class="tab" data-tab="tema" role="tab" aria-selected="false">Tema</button>
+            <button class="tab" data-tab="enfeites" role="tab" aria-selected="false">Enfeites</button>
+          </div>
+
+          <section class="panel__section" data-tab-panel="texto" role="tabpanel">
+            <div class="panel__label">Mensagem (fixa)</div>
+            <div id="messagePills" class="pills" aria-label="Escolha uma mensagem"></div>
+          </section>
+
+          <section class="panel__grid2" data-tab-panel="texto" role="tabpanel">
+            <div class="panel__section">
+              <div class="panel__label">Fonte</div>
+              <select id="selFont" class="select">
+                <option value="system">Sistema</option>
+                <option value="serif">Serif</option>
+                <option value="mono">Mono</option>
+              </select>
+            </div>
+
+            <div class="panel__section">
+              <div class="panel__label">Tamanho</div>
+              <input id="rngFontSize" type="range" min="12" max="22" value="16" />
+            </div>
+          </section>
+
+          <section class="panel__grid2" data-tab-panel="tema" role="tabpanel" hidden>
+            <div class="panel__section">
+              <div class="panel__label">Cor do texto</div>
+              <input id="colText" type="color" value="#ffffff" />
+            </div>
+
+            <div class="panel__section">
+              <div class="panel__label">Logo</div>
+              <label class="check">
+                <input id="chkLogo" type="checkbox" />
+                <span>Mostrar</span>
+              </label>
+            </div>
+          </section>
+
+          <section class="panel__section" data-tab-panel="tema" role="tabpanel" hidden>
+            <div class="panel__label">Temas</div>
+            <div id="themeGrid" class="themeGrid" aria-label="Escolha um tema"></div>
+          </section>
+
+          <section class="panel__section" data-tab-panel="tema" role="tabpanel" hidden>
+            <div class="panel__label">Fundo (manual)</div>
+            <div class="panel__grid2">
+              <input id="colBg1" type="color" value="#0e2a5a" />
+              <input id="colBg2" type="color" value="#b5179e" />
+            </div>
+          </section>
+
+          <section class="panel__section" data-tab-panel="tema" role="tabpanel" hidden>
+            <div class="panel__label">Padrão</div>
+            <div id="patternPills" class="pills" aria-label="Escolha um padrão"></div>
+          </section>
+
+          <section class="panel__section" data-tab-panel="enfeites" role="tabpanel" hidden>
+            <div class="panel__label">Enfeites (SVG)</div>
+            <div id="stickerTray" class="tray"></div>
+          </section>
+
+          <section class="panel__section panel__row" data-tab-panel="enfeites" role="tabpanel" hidden>
+            <button id="btnMinus" class="miniBtn" title="Diminuir escala">−</button>
+            <button id="btnPlus" class="miniBtn" title="Aumentar escala">+</button>
+            <button id="btnDelete" class="miniBtn miniBtn--danger" title="Remover selecionado">🗑</button>
+            <span id="selStatus" class="status">Nenhum enfeite selecionado</span>
+          </section>
+        </aside>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
