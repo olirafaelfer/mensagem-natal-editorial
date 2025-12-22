@@ -24,15 +24,15 @@ const RULES = [
     wrong: "\\brecomeco\\b",
     flags: "gi",
     correct: "recomeço",
-    hint: "Falta cedilha e acento."
+    hint: "Falta cedilha em uma palavra."
   },
   {
     id: "d1t1_4",
     label: "Acentuação",
-    wrong: "\\besperanca\\b",
+    wrong: "\\besperanssa\\b",
     flags: "gi",
     correct: "esperança",
-    hint: "Falta cedilha."
+    hint: "Tem uma palavra escrita com ss que está errada."
   }
 ];
 
@@ -40,6 +40,6 @@ export default {
   name: "Desafio 1 — Tarefa 1",
   intro: "Erros simples para aquecer (4).",
   instruction: "Encontre os erros no texto e corrija.",
-  raw: "Que o espirito do Natal renove sua almaa e traga um recomeco repleto de paz e esperanca.",
+  raw: "Que o espirito do Natal renove sua almaa e traga um recomeco repleto de paz e esperanssa.",
   rules: RULES
 };
