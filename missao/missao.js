@@ -1,36 +1,25 @@
 const openBtn = document.getElementById("openMission");
 
-const BASE_MISSION_TEXT = `Neste Natal a sua missão especial é compartilhar o amor, carinho e ajudar na criação de uma rede que realmente faz a diferença neste mundo.
-Muitas vezes a diferença que podemos fazer está muito mais perto do que imaginamos.
-Dê um abraço em quem você ama, doe 1kg de alimento ou ore pela paz e saúde de todos.
-Todas essas atitudes são valiosíssimas para mudarmos o mundo.
-O espírito natalino deve ser de partilha e não de egoísmo, por isso personalize esta mensagem e envie para alguém que você ame e queira que faça parte desta corrente`;
-
 const BASE_CARD_TEXT = `Obrigado por você existir na minha vida. Este não é só um cartão, mas o início de uma corrente de amor e mudança.
 
 Ame quem está ao seu lado, faça uma doação neste natal, ore por quem precisa e o mais importante, sinta isso no seu coração.
 
 Se cada um de nós fizermos só um pouquinho, transformaremos o mundo ao nosso redor.`;
 
-let selectedEl = null;
+let selected = null;
 let tutorialStep = 0;
 let lastExportDataUrl = null;
 
 openBtn.onclick = async () => {
   const r = await fetch("missao.html");
   document.body.insertAdjacentHTML("beforeend", await r.text());
-  // Fill overlay base text in customizer
-  safe(() => {
-    document.getElementById("baseTextOverlay").textContent = BASE_CARD_TEXT;
-  });
+  document.getElementById("cardText").textContent = BASE_CARD_TEXT;
 };
 
-function $(sel){ return document.querySelector(sel); }
-function $all(sel){ return Array.from(document.querySelectorAll(sel)); }
+function $(s){ return document.querySelector(s); }
+function $all(s){ return Array.from(document.querySelectorAll(s)); }
 
 function closeMission(){
-  // autosave draft before closing
-  safe(saveDraft);
   const o = document.getElementById("missionOverlay");
   if(o) o.remove();
 }
@@ -41,306 +30,247 @@ function goToCard(){
 }
 
 function openCustomizer(){
-  const c = document.getElementById("customizer");
-  c.classList.remove("hidden");
-  // ensure textarea only exists/used here (requirement)
-  setupCustomizerOnce();
-  restoreDraft();
-  syncOverlayText();
+  $("#customizer").classList.remove("hidden");
+  $("#previewText").textContent = BASE_CARD_TEXT;
+  applyStyle();
+  mountDecorations();
+  bindControlsOnce();
+  startTutorialAuto();
 }
 
 function closeCustomizer(){
-  safe(saveDraft);
-  const c = document.getElementById("customizer");
-  c.classList.add("hidden");
+  $("#customizer").classList.add("hidden");
+  setSelected(null);
 }
 
-function setupCustomizerOnce(){
-  const ta = document.getElementById("customText");
-  if(ta.dataset.ready === "1") return;
-  ta.dataset.ready = "1";
+function shareTextOnly(){
+  shareText(BASE_CARD_TEXT);
+}
 
-  // Counter + live overlay sync
-  const count = document.getElementById("customCount");
-  ta.addEventListener("input", () => {
-    count.textContent = ta.value.length;
-    syncOverlayText();
+/* SVG palette */
+const SVG_ITEMS = [
+  { id:"tree",  svg:`<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><path fill="#2ec4b6" d="M32 6 20 22h8l-10 14h10L16 54h32L36 36h10L34 22h8z"/><rect x="28" y="50" width="8" height="10" rx="2" fill="#8d5a3c"/><circle cx="32" cy="20" r="2" fill="#e63946"/><circle cx="26" cy="30" r="2" fill="#ffd166"/><circle cx="38" cy="30" r="2" fill="#ffd166"/><circle cx="30" cy="40" r="2" fill="#e63946"/><circle cx="34" cy="44" r="2" fill="#ffd166"/></svg>`},
+  { id:"gift",  svg:`<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect x="10" y="26" width="44" height="30" rx="6" fill="#e63946"/><rect x="10" y="26" width="44" height="10" fill="#c1121f"/><rect x="29" y="26" width="6" height="30" fill="#ffd166"/><rect x="10" y="38" width="44" height="6" fill="#ffd166"/><path fill="#2ec4b6" d="M32 26c-8 0-12-12-3-12 3 0 3 4 3 6 0-2 0-6 3-6 9 0 5 12-3 12z"/></svg>`},
+  { id:"bell",  svg:`<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><path fill="#ffd166" d="M32 8c-8 0-14 6-14 14v10c0 2-1 4-3 6l-3 3h40l-3-3c-2-2-3-4-3-6V22c0-8-6-14-14-14z"/><path fill="#e9c46a" d="M12 41h40v4a6 6 0 0 1-6 6H18a6 6 0 0 1-6-6z"/><circle cx="32" cy="54" r="4" fill="#8d5a3c"/><circle cx="32" cy="12" r="3" fill="#8d5a3c"/></svg>`},
+  { id:"star",  svg:`<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><path fill="#ffd166" d="M32 6l7 18h19L43 36l6 20-17-11-17 11 6-20L6 24h19z"/><path fill="rgba(255,255,255,.35)" d="M32 6l7 18h-7z"/></svg>`},
+  { id:"heart", svg:`<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><path fill="#ff4d6d" d="M32 54S10 40 10 24c0-7 6-12 13-12 5 0 8 3 9 6 1-3 4-6 9-6 7 0 13 5 13 12 0 16-22 30-22 30z"/></svg>`},
+  { id:"snow",  svg:`<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><g stroke="#ffffff" stroke-width="3" stroke-linecap="round"><path d="M32 8v48"/><path d="M12 20l40 24"/><path d="M52 20L12 44"/><path d="M20 12l24 40"/><path d="M44 12L20 52"/></g></svg>`},
+  { id:"candy", svg:`<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><path fill="#ffffff" d="M26 22c-6-6-18 6-12 12l6-6 6 6 6-6z"/><path fill="#ffffff" d="M38 42c6 6 18-6 12-12l-6 6-6-6-6 6z"/><path fill="#e63946" d="M24 18l22 22-6 6-22-22z"/><path fill="#ffd166" d="M28 22l22 22-2 2-22-22z"/></svg>`},
+  { id:"wreath",svg:`<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><circle cx="32" cy="32" r="18" fill="none" stroke="#2ec4b6" stroke-width="8" stroke-linecap="round" stroke-dasharray="6 6"/><circle cx="32" cy="14" r="3" fill="#e63946"/><circle cx="18" cy="24" r="3" fill="#ffd166"/><circle cx="46" cy="24" r="3" fill="#ffd166"/><circle cx="22" cy="46" r="3" fill="#e63946"/><circle cx="42" cy="46" r="3" fill="#e63946"/><path d="M26 50c4 3 8 3 12 0" stroke="#ffd166" stroke-width="4" stroke-linecap="round"/></svg>`},
+];
+
+function mountDecorations(){
+  const grid = document.getElementById("decGrid");
+  if(grid.dataset.ready === "1") return;
+  grid.dataset.ready = "1";
+
+  for(const item of SVG_ITEMS){
+    const box = document.createElement("div");
+    box.className = "dec-item";
+    box.innerHTML = item.svg;
+    box.setAttribute("draggable","true");
+    box.addEventListener("dragstart", (e)=> e.dataTransfer.setData("svg", item.svg));
+    box.addEventListener("click", ()=> addPlacedFromSVG(item.svg, 0.5, 0.45)); // mobile tap-to-add
+    grid.appendChild(box);
+  }
+
+  const preview = document.getElementById("previewCard");
+  preview.addEventListener("dragover", (e)=>e.preventDefault());
+  preview.addEventListener("drop", (e)=>{
+    e.preventDefault();
+    const svg = e.dataTransfer.getData("svg");
+    if(!svg) return;
+    const rect = preview.getBoundingClientRect();
+    const x = (e.clientX - rect.left) / rect.width;
+    const y = (e.clientY - rect.top) / rect.height;
+    addPlacedFromSVG(svg, x, y);
   });
-
-  // Also sync initial base text overlay
-  document.getElementById("baseTextOverlay").textContent = BASE_CARD_TEXT;
-
-  // Tap empty area clears selection
-  const area = document.getElementById("canvasArea");
-  area.addEventListener("pointerdown", (e) => {
-    if(e.target.id === "canvasArea"){
-      setSelected(null);
-    }
-  });
-
-  // Prevent scroll on touch drag in stage
-  area.addEventListener("touchmove", (e) => {
-    if(selectedEl) e.preventDefault();
-  }, {passive:false});
 }
 
-function syncOverlayText(){
-  const extra = document.getElementById("customText").value || "";
-  const extraBox = document.getElementById("extraTextOverlay");
-  extraBox.textContent = extra.trim() ? extra.trim() : "";
-}
+function addPlacedFromSVG(svg, relX, relY){
+  const layer = document.getElementById("dropLayer");
+  const holder = document.createElement("div");
+  holder.className = "placed";
+  holder.innerHTML = svg;
+  holder.dataset.scale = "1";
+  holder.dataset.relX = String(relX);
+  holder.dataset.relY = String(relY);
+  positionPlaced(holder);
 
-function allowDrop(e){ e.preventDefault(); }
-function drag(e){ e.dataTransfer.setData("src", e.target.src); }
-
-function drop(e){
-  e.preventDefault();
-  const src = e.dataTransfer.getData("src");
-  if(!src) return;
-
-  const area = document.getElementById("canvasArea");
-  const rect = area.getBoundingClientRect();
-  const x = (e.clientX || (e.touches && e.touches[0]?.clientX) || 0) - rect.left;
-  const y = (e.clientY || (e.touches && e.touches[0]?.clientY) || 0) - rect.top;
-
-  const img = document.createElement("img");
-  img.src = src;
-  img.className = "placed";
-  img.style.left = `${x}px`;
-  img.style.top = `${y}px`;
-  img.dataset.scale = "1";
-  img.dataset.x = String(x);
-  img.dataset.y = String(y);
-  img.draggable = false;
-
-  // pointer-drag to move
-  img.addEventListener("pointerdown", (ev) => {
+  holder.addEventListener("pointerdown", (ev)=>{
     ev.preventDefault();
     ev.stopPropagation();
-    setSelected(img);
+    setSelected(holder);
+
     const startX = ev.clientX;
     const startY = ev.clientY;
-    const baseX = parseFloat(img.dataset.x);
-    const baseY = parseFloat(img.dataset.y);
+    const parentRect = layer.getBoundingClientRect();
+    const baseRelX = parseFloat(holder.dataset.relX);
+    const baseRelY = parseFloat(holder.dataset.relY);
 
-    img.setPointerCapture(ev.pointerId);
-    const onMove = (mv) => {
+    holder.setPointerCapture(ev.pointerId);
+
+    const onMove = (mv)=>{
       const dx = mv.clientX - startX;
       const dy = mv.clientY - startY;
-      setPos(img, baseX + dx, baseY + dy);
+      const newX = (baseRelX * parentRect.width + dx) / parentRect.width;
+      const newY = (baseRelY * parentRect.height + dy) / parentRect.height;
+      holder.dataset.relX = String(clamp(newX, 0.08, 0.92));
+      holder.dataset.relY = String(clamp(newY, 0.14, 0.90));
+      positionPlaced(holder);
     };
-    const onUp = () => {
-      img.removeEventListener("pointermove", onMove);
-      img.removeEventListener("pointerup", onUp);
+    const onUp = ()=>{
+      holder.removeEventListener("pointermove", onMove);
+      holder.removeEventListener("pointerup", onUp);
     };
-    img.addEventListener("pointermove", onMove);
-    img.addEventListener("pointerup", onUp);
+    holder.addEventListener("pointermove", onMove);
+    holder.addEventListener("pointerup", onUp);
   });
 
-  area.appendChild(img);
-  setSelected(img);
-  safe(saveDraft);
+  holder.addEventListener("click",(e)=>{ e.stopPropagation(); setSelected(holder); });
+
+  layer.appendChild(holder);
+  setSelected(holder);
 }
 
-function setPos(el, x, y){
-  const area = document.getElementById("canvasArea");
-  const rect = area.getBoundingClientRect();
-  // constrain a bit inside area
-  const pad = 10;
-  const cx = Math.max(pad, Math.min(x, rect.width - pad));
-  const cy = Math.max(pad, Math.min(y, rect.height - pad));
-
-  el.dataset.x = String(cx);
-  el.dataset.y = String(cy);
-  el.style.left = `${cx}px`;
-  el.style.top = `${cy}px`;
+function positionPlaced(el){
+  const layer = document.getElementById("dropLayer");
+  const rect = layer.getBoundingClientRect();
+  const x = parseFloat(el.dataset.relX) * rect.width;
+  const y = parseFloat(el.dataset.relY) * rect.height;
+  el.style.left = `${x}px`;
+  el.style.top = `${y}px`;
+  const s = parseFloat(el.dataset.scale || "1");
+  el.style.transform = `translate(-50%,-50%) scale(${s})`;
 }
 
 function setSelected(el){
-  if(selectedEl) selectedEl.classList.remove("selected");
-  selectedEl = el;
-  if(selectedEl) selectedEl.classList.add("selected");
+  if(selected) selected.classList.remove("selected");
+  selected = el;
+  if(selected) selected.classList.add("selected");
 }
 
 function sizeSelected(mult){
-  if(!selectedEl) return;
-  let s = parseFloat(selectedEl.dataset.scale || "1");
-  s = Math.max(0.5, Math.min(2.2, s * mult));
-  selectedEl.dataset.scale = String(s);
-  selectedEl.style.transform = `translate(-50%,-50%) scale(${s})`;
-  safe(saveDraft);
+  if(!selected) return;
+  let s = parseFloat(selected.dataset.scale || "1");
+  s = clamp(s * mult, 0.55, 2.2);
+  selected.dataset.scale = String(s);
+  positionPlaced(selected);
 }
 
 function removeSelected(){
-  if(!selectedEl) return;
-  const toRemove = selectedEl;
+  if(!selected) return;
+  const rm = selected;
   setSelected(null);
-  toRemove.remove();
-  safe(saveDraft);
+  rm.remove();
 }
 
-function clearAll(){
-  const area = document.getElementById("canvasArea");
-  $all("#canvasArea .placed").forEach(n => n.remove());
-  document.getElementById("customText").value = "";
-  document.getElementById("customCount").textContent = "0";
-  syncOverlayText();
-  setSelected(null);
-  safe(saveDraft);
+function clamp(v,a,b){ return Math.max(a, Math.min(b,v)); }
+
+/* Style controls */
+function bindControlsOnce(){
+  const root = document.getElementById("customizer");
+  if(root.dataset.bound === "1") return;
+  root.dataset.bound = "1";
+
+  $("#previewCard").addEventListener("pointerdown", ()=> setSelected(null));
+  $("#fontSelect").addEventListener("change", applyStyle);
+  $("#textColor").addEventListener("input", applyStyle);
+  $("#borderColor").addEventListener("input", applyStyle);
+  $("#bgPreset").addEventListener("change", applyStyle);
+  $("#logoMode").addEventListener("change", applyStyle);
+
+  window.addEventListener("resize", ()=> $all("#dropLayer .placed").forEach(positionPlaced), {passive:true});
 }
 
-/* Tutorial (guided, blurred, arrows) */
-function startTutorial(){
+function applyStyle(){
+  const font = $("#fontSelect").value;
+  const textColor = $("#textColor").value;
+  const borderColor = $("#borderColor").value;
+  const preset = $("#bgPreset").value;
+  const logoMode = $("#logoMode").value;
+
+  const inner = $("#previewInner");
+  const card = $("#previewCard");
+  const text = $("#previewText");
+  const logo = $("#previewCard .logo");
+
+  text.style.color = textColor;
+  card.style.borderColor = hexToRgba(borderColor, 0.55);
+  text.style.fontFamily = fontFamily(font);
+  inner.style.background = presetBackground(preset);
+
+  if(logo){
+    logo.style.display = (logoMode === "on") ? "block" : "none";
+  }
+}
+
+function fontFamily(key){
+  if(key === "serif") return "ui-serif, Georgia, 'Times New Roman', serif";
+  if(key === "hand") return "'Comic Sans MS', 'Bradley Hand', 'Segoe Script', cursive";
+  if(key === "mono") return "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace";
+  return "system-ui,-apple-system,Segoe UI,Roboto,sans-serif";
+}
+function presetBackground(key){
+  if(key === "warm") return "linear-gradient(135deg,#2b1b0f,#7a4b1a)";
+  if(key === "mint") return "linear-gradient(135deg,#052a2a,#0e3d2f)";
+  if(key === "snow") return "linear-gradient(135deg,#1a2233,#3a4b6a)";
+  return "linear-gradient(135deg,#14213d,#0e1625)";
+}
+function hexToRgba(hex, a){
+  const h = hex.replace("#","");
+  const r = parseInt(h.slice(0,2),16);
+  const g = parseInt(h.slice(2,4),16);
+  const b = parseInt(h.slice(4,6),16);
+  return `rgba(${r},${g},${b},${a})`;
+}
+
+/* Mandatory tutorial */
+function startTutorialAuto(){
   tutorialStep = 0;
-  $("#tutorial").classList.remove("hidden");
+  const t = document.getElementById("tutorial");
+  t.style.display = "block";
   renderTutorial();
-}
-function skipTutorial(){
-  $("#tutorial").classList.add("hidden");
 }
 function nextTutorial(){
   tutorialStep++;
-  if(tutorialStep > 2){ skipTutorial(); return; }
+  if(tutorialStep >= 3){
+    document.getElementById("tutorial").style.display = "none";
+    return;
+  }
   renderTutorial();
 }
 function renderTutorial(){
-  const body = document.getElementById("coachBody");
-  const a1 = document.querySelector(".arrow.a1");
-  const a2 = document.querySelector(".arrow.a2");
-  a1.style.display = "none";
-  a2.style.display = "none";
+  const body = document.getElementById("tBody");
+  const prog = document.getElementById("tProg");
+  const arrow = document.getElementById("tArrow");
+  prog.textContent = `Passo ${tutorialStep+1} de 3`;
 
   if(tutorialStep === 0){
-    body.textContent = "1) Escreva uma mensagem extra (opcional). Ela aparece abaixo do texto padrão.";
-    a2.style.display = "block";
+    body.textContent = "Escolha fonte e cores. O cartão muda na hora.";
+    arrow.textContent = "⬇️";
+    arrow.style.top = "250px";
   } else if(tutorialStep === 1){
-    body.textContent = "2) Arraste um item natalino para o cartão. Depois, toque nele e mova com o dedo.";
-    a1.style.display = "block";
+    body.textContent = "Arraste (ou toque) em um item SVG para colocar no cartão. Depois, mova com o dedo.";
+    arrow.textContent = "⬇️";
+    arrow.style.top = "600px";
   } else {
-    body.textContent = "3) Toque no item para selecionar e use ➖ / ➕ para ajustar o tamanho. Depois exporte a imagem!";
-    a2.style.display = "block";
+    body.textContent = "Toque no item para selecionar e use ➖ ➕ 🗑️. Depois exporte e compartilhe.";
+    arrow.textContent = "⬆️";
+    arrow.style.top = "210px";
   }
 }
 
-/* Draft persistence */
-function saveDraft(){
-  const ta = document.getElementById("customText");
-  if(!ta) return;
-
-  const items = $all("#canvasArea .placed").map(el => ({
-    src: el.src,
-    x: parseFloat(el.dataset.x),
-    y: parseFloat(el.dataset.y),
-    scale: parseFloat(el.dataset.scale || "1")
-  }));
-
-  const payload = {
-    extra: ta.value,
-    items
-  };
-  localStorage.setItem("missao_especial_draft_v3", JSON.stringify(payload));
-}
-
-function restoreDraft(){
-  const raw = localStorage.getItem("missao_especial_draft_v3");
-  if(!raw) {
-    // seed overlay base
-    document.getElementById("baseTextOverlay").textContent = BASE_CARD_TEXT;
-    return;
-  }
-  const data = JSON.parse(raw);
-  const ta = document.getElementById("customText");
-  ta.value = data.extra || "";
-  document.getElementById("customCount").textContent = String(ta.value.length);
-  syncOverlayText();
-
-  const area = document.getElementById("canvasArea");
-  $all("#canvasArea .placed").forEach(n => n.remove());
-  (data.items || []).forEach(it => {
-    const img = document.createElement("img");
-    img.src = it.src;
-    img.className = "placed";
-    img.dataset.x = String(it.x);
-    img.dataset.y = String(it.y);
-    img.dataset.scale = String(it.scale || 1);
-    img.style.left = `${it.x}px`;
-    img.style.top = `${it.y}px`;
-    img.style.transform = `translate(-50%,-50%) scale(${it.scale || 1})`;
-    img.draggable = false;
-
-    img.addEventListener("pointerdown", (ev) => {
-      ev.preventDefault();
-      ev.stopPropagation();
-      setSelected(img);
-      const startX = ev.clientX;
-      const startY = ev.clientY;
-      const baseX = parseFloat(img.dataset.x);
-      const baseY = parseFloat(img.dataset.y);
-
-      img.setPointerCapture(ev.pointerId);
-      const onMove = (mv) => {
-        const dx = mv.clientX - startX;
-        const dy = mv.clientY - startY;
-        setPos(img, baseX + dx, baseY + dy);
-      };
-      const onUp = () => {
-        img.removeEventListener("pointermove", onMove);
-        img.removeEventListener("pointerup", onUp);
-      };
-      img.addEventListener("pointermove", onMove);
-      img.addEventListener("pointerup", onUp);
-    });
-
-    area.appendChild(img);
-  });
-}
-
-/* Share flow */
-function shareQuick(){
-  const text = BASE_CARD_TEXT;
-  shareText(text);
-}
-
-async function shareExport(){
-  // ensure export exists
-  if(!lastExportDataUrl){
-    await exportPNG();
-  }
-  if(navigator.share){
-    // Try file share
-    try{
-      const blob = dataUrlToBlob(lastExportDataUrl);
-      const file = new File([blob], "cartao-natal.png", {type:"image/png"});
-      await navigator.share({ files: [file], text: "Meu cartão de Natal 🎄" });
-      return;
-    }catch(e){
-      // fallback to text
-      shareText(buildShareText());
-      return;
-    }
-  }
-  // Fallback: open whatsapp with text
-  shareText(buildShareText());
-}
-
-function buildShareText(){
-  const extra = (document.getElementById("customText")?.value || "").trim();
-  return BASE_CARD_TEXT + (extra ? "\n\n" + extra : "");
-}
-
-function shareText(text){
-  if(navigator.share){
-    navigator.share({ text }).catch(()=>{});
-  } else {
-    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
-  }
-}
-
-/* Export to PNG by drawing an offscreen canvas */
+/* Export */
 async function exportPNG(){
-  const area = document.getElementById("canvasArea");
-  const rect = area.getBoundingClientRect();
-  const w = Math.round(rect.width * 2);   // retina-ish
+  const card = document.getElementById("previewCard");
+  const inner = document.getElementById("previewInner");
+  const text = document.getElementById("previewText");
+  const layer = document.getElementById("dropLayer");
+  const logo = document.querySelector("#previewCard .logo");
+
+  const rect = card.getBoundingClientRect();
+  const w = Math.round(rect.width * 2);
   const h = Math.round(rect.height * 2);
 
   const canvas = document.createElement("canvas");
@@ -348,62 +278,50 @@ async function exportPNG(){
   canvas.height = h;
   const ctx = canvas.getContext("2d");
 
-  // background
-  const grad = ctx.createLinearGradient(0,0,w,h);
-  grad.addColorStop(0, "#14213d");
-  grad.addColorStop(1, "#0e1625");
-  ctx.fillStyle = grad;
-  ctx.fillRect(0,0,w,h);
+  drawGradientFallback(ctx, w, h, inner.style.background || "");
 
-  // soft glows
-  drawGlow(ctx, w*0.25, h*0.2, Math.min(w,h)*0.35, "rgba(233,196,106,.18)");
-  drawGlow(ctx, w*0.75, h*0.7, Math.min(w,h)*0.35, "rgba(46,196,182,.16)");
+  ctx.strokeStyle = card.style.borderColor || "rgba(255,255,255,.2)";
+  ctx.lineWidth = 4;
+  roundRect(ctx, 2, 2, w-4, h-4, 28);
+  ctx.stroke();
 
-  // text
-  ctx.fillStyle = "rgba(255,255,255,.92)";
-  ctx.font = `${Math.floor(w*0.032)}px system-ui, -apple-system, Segoe UI, Roboto`;
+  const pad = Math.floor(w * 0.06);
+  const fontPx = Math.floor(w * 0.032);
+  ctx.fillStyle = text.style.color || "rgba(255,255,255,.94)";
+  ctx.font = `${fontPx}px ${text.style.fontFamily || "system-ui"}`;
   ctx.textBaseline = "top";
+  wrapText(ctx, BASE_CARD_TEXT, pad, pad, w - pad*2, Math.floor(fontPx * 1.45));
 
-  const pad = Math.floor(w * 0.055);
-  const textBoxW = w - pad*2;
-  let y = pad;
+  const items = Array.from(layer.querySelectorAll(".placed"));
+  for(const el of items){
+    const relX = parseFloat(el.dataset.relX);
+    const relY = parseFloat(el.dataset.relY);
+    const s = parseFloat(el.dataset.scale || "1");
+    const size = 64 * 2 * s;
+    const x = relX * w;
+    const y = relY * h;
 
-  y = wrapText(ctx, BASE_CARD_TEXT, pad, y, textBoxW, Math.floor(w*0.040));
-  const extra = (document.getElementById("customText")?.value || "").trim();
-  if(extra){
-    y += Math.floor(w*0.02);
-    ctx.fillStyle = "rgba(255,255,255,.96)";
-    y = wrapText(ctx, extra, pad, y, textBoxW, Math.floor(w*0.040));
+    const svgEl = el.querySelector("svg");
+    if(!svgEl) continue;
+    const svgStr = new XMLSerializer().serializeToString(svgEl);
+    const url = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svgStr);
+    const img = await loadImage(url);
+    ctx.drawImage(img, x - size/2, y - size/2, size, size);
   }
 
-  // decorations
-  const placed = $all("#canvasArea .placed");
-  for(const el of placed){
-    const img = await loadImage(el.src);
-    const sx = parseFloat(el.dataset.x) * 2;
-    const sy = parseFloat(el.dataset.y) * 2;
-    const scale = parseFloat(el.dataset.scale || "1");
-    const baseSize = 64 * 2; // matches CSS width-ish
-    const size = baseSize * scale;
-    ctx.drawImage(img, sx - size/2, sy - size/2, size, size);
-  }
-
-  // logo (optional on export - enabled)
-  const logoEl = area.querySelector("img.logo.corner");
-  if(logoEl && logoEl.src){
+  if(logo && getComputedStyle(logo).display !== "none"){
     try{
-      const logo = await loadImage(logoEl.src);
-      const lh = Math.floor(h * 0.11);
-      const lw = Math.floor(lh * (logo.width / logo.height));
+      const img = await loadImage(logo.src);
+      const lh = Math.floor(h * 0.12);
+      const lw = Math.floor(lh * (img.width / img.height));
       ctx.globalAlpha = 0.95;
-      ctx.drawImage(logo, w - pad - lw, h - pad - lh, lw, lh);
+      ctx.drawImage(img, w - pad - lw, h - pad - lh, lw, lh);
       ctx.globalAlpha = 1;
     }catch(e){}
   }
 
   lastExportDataUrl = canvas.toDataURL("image/png");
 
-  // initiate download
   const a = document.createElement("a");
   a.href = lastExportDataUrl;
   a.download = "cartao-natal.png";
@@ -414,83 +332,100 @@ async function exportPNG(){
   return lastExportDataUrl;
 }
 
-function drawGlow(ctx, x, y, r, color){
-  const g = ctx.createRadialGradient(x,y,0,x,y,r);
-  g.addColorStop(0, color);
-  g.addColorStop(1, "rgba(0,0,0,0)");
-  ctx.fillStyle = g;
-  ctx.fillRect(0,0,ctx.canvas.width, ctx.canvas.height);
+async function shareExport(){
+  if(!lastExportDataUrl){
+    await exportPNG();
+  }
+  if(navigator.share){
+    try{
+      const blob = dataUrlToBlob(lastExportDataUrl);
+      const file = new File([blob], "cartao-natal.png", {type:"image/png"});
+      await navigator.share({ files:[file], text:"Cartão de Natal 🎄" });
+      return;
+    }catch(e){
+      shareText(BASE_CARD_TEXT);
+      return;
+    }
+  }
+  shareText(BASE_CARD_TEXT);
 }
 
+function shareText(text){
+  if(navigator.share){
+    navigator.share({ text }).catch(()=>{});
+  } else {
+    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
+  }
+}
+
+/* helpers */
+function loadImage(src){
+  return new Promise((resolve, reject)=>{
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = ()=>resolve(img);
+    img.onerror = reject;
+    img.src = src;
+  });
+}
+function dataUrlToBlob(dataUrl){
+  const [head, body] = dataUrl.split(",");
+  const mime = head.match(/:(.*?);/)[1];
+  const bin = atob(body);
+  const arr = new Uint8Array(bin.length);
+  for(let i=0;i<bin.length;i++) arr[i] = bin.charCodeAt(i);
+  return new Blob([arr], {type:mime});
+}
 function wrapText(ctx, text, x, y, maxW, lineH){
-  const lines = [];
-  const parts = (text || "").split("\n");
-  for(const part of parts){
-    const words = part.split(" ");
+  const parts = String(text || "").split("\n");
+  for(const p of parts){
+    const words = p.split(" ");
     let line = "";
     for(const w of words){
       const test = line ? line + " " + w : w;
       if(ctx.measureText(test).width > maxW && line){
-        lines.push(line);
+        ctx.fillText(line, x, y);
+        y += lineH;
         line = w;
       } else {
         line = test;
       }
     }
-    lines.push(line);
-    // blank line between paragraphs
-    lines.push("");
-  }
-  // remove last extra blank line
-  if(lines.length && lines[lines.length-1] === "") lines.pop();
-
-  for(const ln of lines){
-    if(ln === ""){ y += lineH; continue; }
-    ctx.fillText(ln, x, y);
-    y += lineH;
+    if(line){
+      ctx.fillText(line, x, y);
+      y += lineH;
+    }
+    y += Math.floor(lineH * 0.5);
   }
   return y;
 }
-
-function loadImage(src){
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.crossOrigin = "anonymous";
-    img.onload = () => resolve(img);
-    img.onerror = reject;
-    img.src = src;
-  });
+function roundRect(ctx, x, y, w, h, r){
+  const rr = Math.min(r, w/2, h/2);
+  ctx.beginPath();
+  ctx.moveTo(x+rr, y);
+  ctx.arcTo(x+w, y, x+w, y+h, rr);
+  ctx.arcTo(x+w, y+h, x, y+h, rr);
+  ctx.arcTo(x, y+h, x, y, rr);
+  ctx.arcTo(x, y, x+w, y, rr);
+  ctx.closePath();
+}
+function drawGradientFallback(ctx, w, h, css){
+  const colors = (css.match(/#[0-9a-fA-F]{6}/g) || ["#14213d","#0e1625"]);
+  const g = ctx.createLinearGradient(0,0,w,h);
+  g.addColorStop(0, colors[0]);
+  g.addColorStop(1, colors[1] || colors[0]);
+  ctx.fillStyle = g;
+  ctx.fillRect(0,0,w,h);
 }
 
-function dataUrlToBlob(dataUrl){
-  const [head, body] = dataUrl.split(",");
-  const mime = head.match(/:(.*?);/)[1];
-  const bin = atob(body);
-  const len = bin.length;
-  const arr = new Uint8Array(len);
-  for(let i=0;i<len;i++) arr[i] = bin.charCodeAt(i);
-  return new Blob([arr], {type:mime});
-}
-
-function safe(fn){
-  try{ fn(); } catch(e){ /* noop */ }
-}
-
-// expose functions used by inline handlers
+/* expose handlers */
 window.closeMission = closeMission;
 window.goToCard = goToCard;
 window.openCustomizer = openCustomizer;
 window.closeCustomizer = closeCustomizer;
-window.allowDrop = allowDrop;
-window.drag = drag;
-window.drop = drop;
 window.sizeSelected = sizeSelected;
 window.removeSelected = removeSelected;
-window.clearAll = clearAll;
-window.saveDraft = saveDraft;
-window.startTutorial = startTutorial;
-window.skipTutorial = skipTutorial;
-window.nextTutorial = nextTutorial;
-window.shareQuick = shareQuick;
 window.exportPNG = exportPNG;
 window.shareExport = shareExport;
+window.shareTextOnly = shareTextOnly;
+window.nextTutorial = nextTutorial;
