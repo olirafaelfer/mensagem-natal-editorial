@@ -1,0 +1,4 @@
+// main.js patch (V7.4): ensure ui-modal boots BEFORE any other module uses app.modal.
+// Place this import at the very top of your existing main.js.
+// If you already have this import, keep it; it is idempotent.
+import "./ui/ui-modal.js";
