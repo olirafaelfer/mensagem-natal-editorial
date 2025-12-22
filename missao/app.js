@@ -98,58 +98,119 @@ const STICKERS = [
     id: "star",
     label: "Estrela",
     svg: `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-      <path d="M32 4l7.6 17.6L58 24l-14 12 4.2 18L32 44.8 15.8 54 20 36 6 24l18.4-2.4L32 4z" fill="currentColor"/>
+      <defs>
+        <linearGradient id="gStar" x1="0" x2="1">
+          <stop offset="0" stop-color="#ffd166"/>
+          <stop offset="1" stop-color="#fca311"/>
+        </linearGradient>
+      </defs>
+      <path d="M32 4l7.6 17.6L58 24l-14 12 4.2 18L32 44.8 15.8 54 20 36 6 24l18.4-2.4L32 4z" fill="url(#gStar)"/>
+      <path d="M32 9l5.8 13.4L52 24.2l-10.6 9.1 3.2 13.7L32 40.5 19.4 47l3.2-13.7L12 24.2l14.2-1.8L32 9z" fill="rgba(255,255,255,.22)"/>
     </svg>`
   },
   {
     id: "snow",
     label: "Neve",
     svg: `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-      <path d="M31 6h2v52h-2zM6 31h52v2H6z" fill="currentColor"/>
-      <path d="M12 12l40 40M52 12L12 52" stroke="currentColor" stroke-width="4" stroke-linecap="round"/>
+      <defs>
+        <linearGradient id="gSnow" x1="0" x2="1">
+          <stop offset="0" stop-color="#a8dadc"/>
+          <stop offset="1" stop-color="#48cae4"/>
+        </linearGradient>
+      </defs>
+      <path d="M31 6h2v52h-2zM6 31h52v2H6z" fill="url(#gSnow)"/>
+      <path d="M12 12l40 40M52 12L12 52" stroke="url(#gSnow)" stroke-width="4" stroke-linecap="round"/>
+      <circle cx="32" cy="32" r="3.2" fill="#e9f8ff"/>
     </svg>`
   },
   {
     id: "heart",
     label: "Coração",
     svg: `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-      <path d="M32 56S8 41 8 24c0-7 5-12 12-12 5 0 9 3 12 7 3-4 7-7 12-7 7 0 12 5 12 12 0 17-24 32-24 32z" fill="currentColor"/>
+      <defs>
+        <linearGradient id="gHeart" x1="0" x2="1">
+          <stop offset="0" stop-color="#ff4d6d"/>
+          <stop offset="1" stop-color="#ff0a54"/>
+        </linearGradient>
+      </defs>
+      <path d="M32 56S8 41 8 24c0-7 5-12 12-12 5 0 9 3 12 7 3-4 7-7 12-7 7 0 12 5 12 12 0 17-24 32-24 32z" fill="url(#gHeart)"/>
+      <path d="M20 22c2-2 5-3 8-2" stroke="rgba(255,255,255,.55)" stroke-width="3" stroke-linecap="round"/>
     </svg>`
   },
   {
     id: "bell",
     label: "Sino",
     svg: `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-      <path d="M32 6c-8 0-14 6-14 14v11c0 4-2 8-6 11v4h40v-4c-4-3-6-7-6-11V20c0-8-6-14-14-14z" fill="currentColor"/>
-      <path d="M26 54a6 6 0 0 0 12 0" stroke="currentColor" stroke-width="4" stroke-linecap="round"/>
+      <defs>
+        <linearGradient id="gBell" x1="0" x2="1">
+          <stop offset="0" stop-color="#ffe08a"/>
+          <stop offset="1" stop-color="#ffb703"/>
+        </linearGradient>
+      </defs>
+      <path d="M32 6c-8 0-14 6-14 14v11c0 4-2 8-6 11v4h40v-4c-4-3-6-7-6-11V20c0-8-6-14-14-14z" fill="url(#gBell)"/>
+      <path d="M26 54a6 6 0 0 0 12 0" stroke="#ffd166" stroke-width="4" stroke-linecap="round"/>
+      <circle cx="32" cy="50" r="4" fill="#fb8500"/>
+      <path d="M24 12c3 3 13 3 16 0" stroke="rgba(0,0,0,.18)" stroke-width="4" stroke-linecap="round"/>
     </svg>`
   },
   {
-    id: "tree",
-    label: "Árvore",
+    id: "candy",
+    label: "Bengala",
     svg: `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-      <path d="M32 6l-10 14h6L16 36h8L12 52h40L40 36h8L36 20h6L32 6z" fill="currentColor"/>
-      <path d="M28 52h8v8h-8z" fill="currentColor"/>
+      <path d="M38 8c-8 0-14 6-14 14v18c0 8 6 14 14 14s14-6 14-14" fill="none" stroke="#ffffff" stroke-width="10" stroke-linecap="round"/>
+      <path d="M38 8c-8 0-14 6-14 14v18c0 8 6 14 14 14s14-6 14-14" fill="none" stroke="#ef233c" stroke-width="6" stroke-linecap="round" stroke-dasharray="8 6"/>
+      <path d="M38 8c-8 0-14 6-14 14" fill="none" stroke="#2a9d8f" stroke-width="3" stroke-linecap="round" opacity=".55"/>
     </svg>`
   },
   {
     id: "gift",
     label: "Presente",
     svg: `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-      <path d="M8 28h48v10H8z" fill="currentColor"/>
-      <path d="M10 38h44v20H10z" fill="currentColor" opacity=".9"/>
-      <path d="M30 28h4v30h-4z" fill="#fff" opacity=".35"/>
-      <path d="M24 16c0 4 4 6 8 6-2-4-2-10-8-10-2 0-4 2-4 4 0 1 1 2 2 2z" fill="currentColor"/>
-      <path d="M40 16c0 4-4 6-8 6 2-4 2-10 8-10 2 0 4 2 4 4 0 1-1 2-2 2z" fill="currentColor"/>
+      <defs>
+        <linearGradient id="gGift" x1="0" x2="1">
+          <stop offset="0" stop-color="#7c3aed"/>
+          <stop offset="1" stop-color="#22c55e"/>
+        </linearGradient>
+      </defs>
+      <rect x="10" y="26" width="44" height="28" rx="6" fill="rgba(255,255,255,.12)" />
+      <rect x="10" y="26" width="44" height="28" rx="6" fill="url(#gGift)" opacity=".35"/>
+      <rect x="10" y="22" width="44" height="10" rx="4" fill="#ef233c"/>
+      <rect x="30" y="22" width="4" height="32" fill="#ffd166"/>
+      <rect x="22" y="26" width="20" height="4" fill="#ffd166" opacity=".9"/>
+      <path d="M32 22c-7-9-18-3-8 3M32 22c7-9 18-3 8 3" fill="none" stroke="#ffd166" stroke-width="3" stroke-linecap="round"/>
     </svg>`
   },
+  {
+    id: "holly",
+    label: "Azevinho",
+    svg: `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <path d="M18 38c-5-10 6-19 15-10 9-9 20 0 15 10-3 6-10 10-15 6-5 4-12 0-15-6z" fill="#1b9aaa"/>
+      <path d="M18 38c-5-10 6-19 15-10 9-9 20 0 15 10" fill="none" stroke="rgba(0,0,0,.18)" stroke-width="4" stroke-linecap="round"/>
+      <circle cx="32" cy="40" r="5" fill="#ef233c"/>
+      <circle cx="26" cy="42" r="3" fill="#ff4d6d"/>
+      <circle cx="38" cy="42" r="3" fill="#ff4d6d"/>
+    </svg>`
+  }
 ];
 
+
 function fontFamilyFromKey(k){
-  if(k === "serif") return "ui-serif, Georgia, 'Times New Roman', serif";
-  if(k === "mono") return "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace";
-  return "system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif";
+  switch(k){
+    case "inter": return "'Inter', system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif";
+    case "poppins": return "'Poppins', system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif";
+    case "nunito": return "'Nunito', system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif";
+    case "montserrat": return "'Montserrat', system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif";
+    case "dmsans": return "'DM Sans', system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif";
+    case "playfair": return "'Playfair Display', ui-serif, Georgia, 'Times New Roman', serif";
+    case "merriweather": return "'Merriweather', ui-serif, Georgia, 'Times New Roman', serif";
+    case "pacifico": return "'Pacifico', ui-rounded, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif";
+    case "greatvibes": return "'Great Vibes', ui-serif, Georgia, 'Times New Roman', serif";
+    case "serif": return "ui-serif, Georgia, 'Times New Roman', serif";
+    case "mono": return "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace";
+    default: return "system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif";
+  }
 }
+
 
 /* ---------- Base64URL helpers ---------- */
 function b64urlEncode(str){
@@ -241,7 +302,6 @@ function renderStickers(){
     el.style.left = `${s.xPct}%`;
     el.style.top = `${s.yPct}%`;
     el.style.transform = `translate(-50%,-50%) scale(${s.scale})`;
-    el.style.color = "#ffffff";
     el.innerHTML = def.svg;
 
     el.addEventListener("pointerdown", onStickerPointerDown);
@@ -289,7 +349,6 @@ function buildTray(){
     b.className = "trayBtn";
     b.type = "button";
     b.title = s.label;
-    b.style.color = "#ffffff";
     b.innerHTML = s.svg;
     b.addEventListener("click", () => addSticker(s.id));
     tray.appendChild(b);
@@ -858,3 +917,7 @@ buildPatternPills();
 
 applyState();
 updateSelectionUI();
+
+
+// Abrir direto no editor (sem tela inicial)
+openModal();
