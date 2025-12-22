@@ -1,16 +1,47 @@
 <div class="overlay" id="missionOverlay">
-  <div class="modal">
-    <button class="close-btn" onclick="closeMission()">✖</button>
+  <div class="modal step-1">
     <h2>✨ Missão Especial de Natal ✨</h2>
-    <textarea id="missionText" maxlength="280"
-      placeholder="Escreva sua mensagem de Natal (máx. 280 caracteres)"></textarea>
-    <div class="counter"><span id="charCount">0</span>/280</div>
-    <div class="decorations">
-      <img src="assets/rena.png" onclick="addDecoration(this.src)" />
-      <img src="assets/papai-noel.png" onclick="addDecoration(this.src)" />
-      <img src="assets/panetone.png" onclick="addDecoration(this.src)" />
+    <p class="text-block">
+      Neste Natal a sua missão especial é compartilhar o amor, carinho e ajudar na criação de uma rede que realmente faz a diferença neste mundo.
+      Muitas vezes a diferença que podemos fazer está muito mais perto do que imaginamos.
+      Dê um abraço em quem você ama, doe 1kg de alimento ou ore pela paz e saúde de todos.
+      Todas essas atitudes são valiosíssimas para mudarmos o mundo.
+      O espírito natalino deve ser de partilha e não de egoísmo, por isso personalize esta mensagem e envie para alguém que você ame
+      e queira que faça parte desta corrente.
+    </p>
+    <button class="next-btn" onclick="goToCard()">Avançar ➜</button>
+  </div>
+
+  <div class="modal step-2 hidden">
+    <button class="close-btn" onclick="closeMission()">✖</button>
+    <h3>🎁 Cartão Natalino</h3>
+
+    <div class="card">
+      <p>
+        Obrigado por você existir na minha vida. Este não é só um cartão, mas o início de uma corrente de amor e mudança.<br><br>
+        Ame quem está ao seu lado, faça uma doação neste natal, ore por quem precisa e o mais importante, sinta isso no seu coração.<br><br>
+        Se cada um de nós fizermos só um pouquinho, transformaremos o mundo ao nosso redor.
+      </p>
     </div>
-    <div id="canvasArea"></div>
+
+    <button class="customize-btn" onclick="startCustomization()">✨ Personalizar mensagem natalina</button>
+
+    <div class="tutorial hidden" id="tutorial">
+      <div class="blur"></div>
+      <div class="tip">⬆️ Arraste os itens natalinos para o cartão</div>
+      <div class="tip bottom">✏️ Escreva sua mensagem personalizada</div>
+    </div>
+
+    <textarea id="customText" maxlength="200" placeholder="Escreva algo especial..."></textarea>
+
+    <div class="decorations">
+      <img src="assets/rena.png" draggable="true" ondragstart="drag(event)">
+      <img src="assets/papai-noel.png" draggable="true" ondragstart="drag(event)">
+      <img src="assets/panetone.png" draggable="true" ondragstart="drag(event)">
+    </div>
+
+    <div id="canvasArea" ondrop="drop(event)" ondragover="allowDrop(event)"></div>
+
     <button class="share-btn" onclick="shareMessage()">📲 Compartilhar</button>
   </div>
 </div>
