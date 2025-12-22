@@ -50,10 +50,10 @@ export function bootRanking(app){
   }
 
   function getLocalAvatarByUid(uid){
-(uid){
+  function getLocalAvatarByUid(uid){
     try{ return uid ? (localStorage.getItem(`avatarDataUid:${uid}`) || '') : ''; } catch { return ''; }
   }
-}
+
 
   function computeOverall(d1,d2,d3){
     const s1 = Math.max(0, Number(d1?.score ?? 0));
