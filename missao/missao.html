@@ -1,6 +1,11 @@
-<div class="overlay" id="missionOverlay">
-  <div class="modal step-1">
-    <h2>✨ Missão Especial de Natal ✨</h2>
+<div class="overlay" id="missionOverlay" aria-modal="true" role="dialog">
+  <!-- Step 1 -->
+  <div class="modal step-1" role="document">
+    <div class="modal-header">
+      <div class="title">✨ Missão Especial de Natal ✨</div>
+      <button class="icon-btn" onclick="closeMission()" aria-label="Fechar">✖</button>
+    </div>
+
     <p class="text-block">
       Neste Natal a sua missão especial é compartilhar o amor, carinho e ajudar na criação de uma rede que realmente faz a diferença neste mundo.
       Muitas vezes a diferença que podemos fazer está muito mais perto do que imaginamos.
@@ -9,39 +14,113 @@
       O espírito natalino deve ser de partilha e não de egoísmo, por isso personalize esta mensagem e envie para alguém que você ame
       e queira que faça parte desta corrente.
     </p>
-    <button class="next-btn" onclick="goToCard()">Avançar ➜</button>
+
+    <button class="primary-btn" onclick="goToCard()">Avançar ➜</button>
   </div>
 
-  <div class="modal step-2 hidden">
-    <button class="close-btn" onclick="closeMission()">✖</button>
-    <h3>🎁 Cartão Natalino</h3>
-
-    <div class="card">
-      <p>
-        Obrigado por você existir na minha vida. Este não é só um cartão, mas o início de uma corrente de amor e mudança.<br><br>
-        Ame quem está ao seu lado, faça uma doação neste natal, ore por quem precisa e o mais importante, sinta isso no seu coração.<br><br>
-        Se cada um de nós fizermos só um pouquinho, transformaremos o mundo ao nosso redor.
-      </p>
+  <!-- Step 2 -->
+  <div class="modal step-2 hidden" role="document">
+    <div class="modal-header">
+      <div class="title">🎁 Cartão Natalino</div>
+      <button class="icon-btn" onclick="closeMission()" aria-label="Fechar">✖</button>
     </div>
 
-    <button class="customize-btn" onclick="startCustomization()">✨ Personalizar mensagem natalina</button>
-
-    <div class="tutorial hidden" id="tutorial">
-      <div class="blur"></div>
-      <div class="tip">⬆️ Arraste os itens natalinos para o cartão</div>
-      <div class="tip bottom">✏️ Escreva sua mensagem personalizada</div>
+    <div class="card-preview" id="cardPreview">
+      <div class="card-body">
+        <p id="baseCardText">
+          Obrigado por você existir na minha vida. Este não é só um cartão, mas o início de uma corrente de amor e mudança.<br><br>
+          Ame quem está ao seu lado, faça uma doação neste natal, ore por quem precisa e o mais importante, sinta isso no seu coração.<br><br>
+          Se cada um de nós fizermos só um pouquinho, transformaremos o mundo ao nosso redor.
+        </p>
+      </div>
+      <div class="card-footer">
+        <img class="logo" src="assets/logo-natal.png" alt="Logo" onerror="this.style.display='none'">
+      </div>
     </div>
 
-    <textarea id="customText" maxlength="200" placeholder="Escreva algo especial..."></textarea>
+    <button class="secondary-btn" onclick="openCustomizer()">✨ Personalizar mensagem natalina</button>
 
-    <div class="decorations">
-      <img src="assets/rena.png" draggable="true" ondragstart="drag(event)">
-      <img src="assets/papai-noel.png" draggable="true" ondragstart="drag(event)">
-      <img src="assets/panetone.png" draggable="true" ondragstart="drag(event)">
+    <button class="ghost-btn" onclick="shareQuick()">📲 Compartilhar (rápido)</button>
+  </div>
+
+  <!-- Customizer Modal -->
+  <div class="customizer hidden" id="customizer" role="document">
+    <div class="customizer-shell">
+      <div class="customizer-header">
+        <div class="title">Personalização Premium</div>
+        <button class="icon-btn" onclick="closeCustomizer()" aria-label="Fechar">✖</button>
+      </div>
+
+      <div class="snow" aria-hidden="true"></div>
+
+      <div class="customizer-grid">
+        <div class="panel">
+          <label class="label" for="customText">Mensagem adicional (máx. 200)</label>
+          <textarea id="customText" maxlength="200" placeholder="Escreva algo especial..."></textarea>
+          <div class="counter"><span id="customCount">0</span>/200</div>
+
+          <div class="toolbar">
+            <button class="tool-btn" onclick="startTutorial()">🎯 Tutorial</button>
+            <button class="tool-btn" onclick="clearAll()">🧹 Limpar</button>
+            <button class="tool-btn" onclick="saveDraft()">💾 Salvar</button>
+          </div>
+
+          <div class="label" style="margin-top:10px">Itens natalinos (arraste para o cartão)</div>
+          <div class="decorations">
+            <img src="assets/rena.png" draggable="true" ondragstart="drag(event)" alt="Rena">
+            <img src="assets/papai-noel.png" draggable="true" ondragstart="drag(event)" alt="Papai Noel">
+            <img src="assets/panetone.png" draggable="true" ondragstart="drag(event)" alt="Panetone">
+          </div>
+
+          <div class="hint">
+            Dica: toque em um item no cartão para <b>mover</b> e usar os botões de <b>tamanho</b>.
+          </div>
+        </div>
+
+        <div class="stage">
+          <div class="stage-header">
+            <div class="pill">Prévia do cartão</div>
+            <div class="stage-actions">
+              <button class="mini-btn" onclick="sizeSelected(0.9)" title="Diminuir">➖</button>
+              <button class="mini-btn" onclick="sizeSelected(1.1)" title="Aumentar">➕</button>
+              <button class="mini-btn" onclick="removeSelected()" title="Remover">🗑️</button>
+            </div>
+          </div>
+
+          <div class="canvas-wrap">
+            <div class="canvasArea" id="canvasArea" ondrop="drop(event)" ondragover="allowDrop(event)">
+              <div class="card-overlay-text">
+                <div class="base" id="baseTextOverlay"></div>
+                <div class="extra" id="extraTextOverlay"></div>
+              </div>
+              <img class="logo corner" src="assets/logo-natal.png" alt="Logo" onerror="this.style.display='none'">
+            </div>
+          </div>
+
+          <div class="export-row">
+            <button class="primary-btn" onclick="exportPNG()">🖼️ Exportar imagem</button>
+            <button class="secondary-btn" onclick="shareExport()">📲 Compartilhar</button>
+          </div>
+          <div class="tiny">A exportação gera uma imagem do cartão (com logo + itens) pronta para enviar.</div>
+        </div>
+      </div>
+
+      <!-- Tutorial overlay -->
+      <div class="tutorial hidden" id="tutorial">
+        <div class="blur"></div>
+
+        <div class="coach" id="coach">
+          <div class="coach-title">Como personalizar</div>
+          <div class="coach-body" id="coachBody"></div>
+          <div class="coach-actions">
+            <button class="ghost-btn" onclick="skipTutorial()">Pular</button>
+            <button class="primary-btn" onclick="nextTutorial()">Próximo</button>
+          </div>
+        </div>
+
+        <div class="arrow a1">⬅️</div>
+        <div class="arrow a2">⬇️</div>
+      </div>
     </div>
-
-    <div id="canvasArea" ondrop="drop(event)" ondragover="allowDrop(event)"></div>
-
-    <button class="share-btn" onclick="shareMessage()">📲 Compartilhar</button>
   </div>
 </div>
