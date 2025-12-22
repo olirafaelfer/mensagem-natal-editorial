@@ -376,8 +376,24 @@ onClick: () => {
         if (!storage || !sref || !app.firebase?.uploadString || !app.firebase?.getDownloadURL){
           throw new Error('Storage não inicializado (firebase-storage).');
         }
-        await app.firebase.uploadString(sref, finalURL, 'data_url');
-        finalURL = await app.firebase.getDownloadURL(sref);
+        try {
+  await app.firebase.uploadString(sref, finalURL, 'data_url');
+} catch (e) {
+  // Alguns projetos usam bucket appspot.com; em caso de CORS/404, tentamos fallback
+  try {
+    const alt = app.firebase?.getStorageForBucket?.(`gs://missao-natal-ranking.appspot.com`);
+    const altRef = app.firebase?.storageRef?.(alt, `avatars/${emailHash}.jpg`);
+    if (alt && altRef) {
+      await app.firebase.uploadString(altRef, finalURL, 'data_url');
+      finalURL = await app.firebase.getDownloadURL(altRef);
+    } else {
+      throw e;
+    }
+  } catch {
+    throw e;
+  }
+}
+        finalURL = finalURL.startsWith("http") ? finalURL : await app.firebase.getDownloadURL(sref);
       }
 
       await updateProfile(currentUser, { photoURL: finalURL });

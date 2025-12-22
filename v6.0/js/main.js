@@ -78,6 +78,7 @@ const firebase = {
   query, orderBy, limit,
   // storage helpers
   getStorage, storageRef, uploadString, getDownloadURL,
+  getStorageForBucket: (bucket) => getStorage(fbApp, bucket),
   fs: { db, auth, storage, doc, getDoc, runTransaction, serverTimestamp, collection, getDocs, setDoc, query, orderBy, limit }
 };
 

@@ -212,12 +212,14 @@ export function bootGame(app){
   // Missão especial (libera após concluir Desafio 3 **e estar logado**)
   const logged = !!app.auth?.isLogged?.();
   if (dom.missionSpecialHomeBtn){
-    const enabled = logged && c3Done;
+    const enabled = c3Done;
     dom.missionSpecialHomeBtn.disabled = !enabled;
     dom.missionSpecialHomeBtn.style.opacity = enabled ? "1" : ".5";
+    dom.missionSpecialHomeBtn.textContent = enabled ? (logged ? "Missão Especial 🎁" : "Missão Especial 🔒") : "Missão Especial 🔒";
   }
   if (dom.finalMissionSpecialBtn){
-    dom.finalMissionSpecialBtn.style.display = (logged && c3Done) ? "inline-flex" : "none";
+    dom.finalMissionSpecialBtn.style.display = (c3Done) ? "inline-flex" : "none";
+    dom.finalMissionSpecialBtn.textContent = logged ? "Abrir Missão Especial" : "Missão Especial (faça login)";
   }
 }
   function requireNameSector(){
