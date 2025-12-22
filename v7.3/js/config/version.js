@@ -1,1 +1,2 @@
-export const APP_VERSION = "V7.3.1";
+// Versão exibida no rodapé
+export const APP_VERSION = "V7.3";
