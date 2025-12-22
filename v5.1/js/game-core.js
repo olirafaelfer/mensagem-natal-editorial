@@ -12,16 +12,6 @@ export function bootGame(app){
   const loadProgress = () => (app.progress?.load?.() || { mode:"visitor" });
   const saveProgress = (p) => app.progress?.save?.(p);
 
-
-  // Reage a mudanças de autenticação (login/logout)
-  window.addEventListener('mission-auth-changed', () => {
-    try{
-      const u = app.auth?.getUser?.();
-      if (u?.uid) app.progress?.migrateAnonToUser?.(u.uid);
-    }catch{}
-    try{ updateChallengeButtons(); }catch{}
-  });
-
   const { openModal, closeModal } = app.modal || {};
   if (!openModal || !closeModal){
     console.warn("[game] modal não inicializado (ui-modal.js).");

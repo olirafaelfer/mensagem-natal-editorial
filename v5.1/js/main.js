@@ -1,9 +1,10 @@
 // Cache-buster para imports (garante que o browser não use arquivos antigos)
-const BUILD_ID = "v5.0";
+const BUILD_ID = "v5.1";
 import { APP_VERSION } from "./config/version.js";
 
 // js/main.js — BOOTSTRAP (módulos + Firebase) — versão refatorada em pastas
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js";
+import { getStorage, ref as storageRef, uploadString, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-storage.js";
 import { getAuth } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
 import {
   getFirestore,
@@ -64,14 +65,16 @@ const firebaseConfig = {
 const fbApp = initializeApp(firebaseConfig);
 const db = getFirestore(fbApp);
 const auth = getAuth(fbApp);
+const storage = getStorage(fbApp);
 
 // helpers exportáveis p/ módulos legados (auth/ranking/admin)
 const firebase = {
-  db, auth,
+  db, auth, storage,
   doc, getDoc, runTransaction, serverTimestamp,
   collection, getDocs, setDoc,
   query, orderBy, limit,
-  fs: { db, auth, doc, getDoc, runTransaction, serverTimestamp, collection, getDocs, setDoc, query, orderBy, limit }
+  fs: { db, auth, storage, doc, getDoc, runTransaction, serverTimestamp, collection, getDocs, setDoc, query, orderBy, limit },
+  storageRef, uploadString, getDownloadURL
 };
 
 // =========================

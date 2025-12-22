@@ -102,7 +102,11 @@ function getUserSector(){
   return app;
 }
 
-function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c])); }
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g, (c) => ({
+    "&":"&amp;", "<":"&lt;", ">":"&gt;", "\"":"&quot;", "'":"&#39;"
+  }[c]));
+}
 
 
 // Fallback global (para páginas que carregam scripts fora do contexto de módulos)

@@ -32,15 +32,6 @@ import {
   orderBy,
 } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
 
-import {
-  getStorage,
-  ref as storageRef,
-  uploadString,
-  getDownloadURL,
-  deleteObject,
-} from "https://www.gstatic.com/firebasejs/10.12.4/firebase-storage.js";
-
-
 export function bootAuth(app) {
   // ✅ blindagem contra boot duplicado
   if (app.__AUTH_BOOTED__ === true) {
@@ -48,6 +39,21 @@ export function bootAuth(app) {
     return;
   }
   app.__AUTH_BOOTED__ = true;
+
+  function setStatus(msg, kind="info"){
+    try{
+      const el = document.getElementById("authStatus");
+      if (!el) return;
+      el.textContent = String(msg || "");
+      el.classList.remove("ok","err","info");
+      el.classList.add(kind);
+      if (msg) {
+        clearTimeout(setStatus.__t);
+        setStatus.__t = setTimeout(()=>{ try{ el.textContent=""; el.classList.remove("ok","err","info"); }catch{} }, 3500);
+      }
+    }catch{}
+  }
+
 
   const db = app.firebase?.db;
   if (!db) {
@@ -151,9 +157,6 @@ function isValidEmail(e){
 
     // ✅ evita busy “grudar”
     busy = false;
-
-    try{ window.dispatchEvent(new Event('mission-auth-changed')); }catch{}
-
 
     if (currentUser) {
       currentProfile = await fetchOrCreateProfile(currentUser).catch((e) => {
@@ -307,14 +310,6 @@ onClick: () => {
     const removeBtn = document.getElementById('accountAvatarRemove');
     const fileEl = document.getElementById('accountAvatarFile');
     const preview = document.getElementById('accountAvatarImg');
-    const statusEl = document.getElementById('accountAvatarStatus') || document.getElementById('accountStatus');
-    const setStatus = (msg) => {
-      try{
-        if (statusEl){ statusEl.textContent = msg || ''; statusEl.style.display = msg ? 'block' : 'none'; return; }
-      }catch{}
-      try{ console.info('[auth][status]', msg); }catch{}
-    };
-
 
     if (uploadBtn && fileEl){
       uploadBtn.addEventListener('click', () => fileEl.click());
@@ -343,7 +338,6 @@ onClick: () => {
     if (removeBtn){
       removeBtn.addEventListener('click', async () => {
         try{
-          await deleteAvatarFromStorage();
           await updateMyPhotoURL('');
           setStatus('Foto removida ✅');
           // Atualiza UI
@@ -378,50 +372,59 @@ onClick: () => {
     });
   }
 
-  async function sha256Hex(text){
-    const enc = new TextEncoder().encode(String(text||''));
-    const buf = await crypto.subtle.digest('SHA-256', enc);
-    return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
-  }
-
-  async function uploadAvatarDataURL(dataUrl){
-    const u = currentUser;
-    if (!u) throw new Error('no-user');
-    const email = (u.email || '').trim().toLowerCase();
-    if (!email) throw new Error('no-email');
-    const emailHash = await sha256Hex(email);
-    const storage = getStorage();
-    const path = `avatars/${emailHash}.jpg`;
-    const r = storageRef(storage, path);
-    await uploadString(r, dataUrl, 'data_url');
-    const url = await getDownloadURL(r);
-    return { url, emailHash, path };
-  }
-
-  async function deleteAvatarFromStorage(){
-    const u = currentUser;
-    if (!u) return;
-    const email = (u.email || '').trim().toLowerCase();
-    if (!email) return;
-    const emailHash = await sha256Hex(email);
-    const storage = getStorage();
-    const r = storageRef(storage, `avatars/${emailHash}.jpg`);
-    try { await deleteObject(r); } catch {}
-  }
-
   async function updateMyPhotoURL(photoURL){
-    if (!currentUser) throw new Error('no-user');
-    // IMPORTANTE: Firebase Auth impõe limite para photoURL; dataURL costuma estourar.
-    // Regra: se for dataURL, enviamos para o Storage e guardamos a URL curta.
-    let finalURL = photoURL || '';
-    if (finalURL && finalURL.startsWith('data:')){
-      const up = await uploadAvatarDataURL(finalURL);
-      finalURL = up.url;
-    }
-    await updateProfile(currentUser, { photoURL: finalURL || null });
-    // Atualiza cache local para o ranking (por emailHash) — e o ranking pode fazer fallback no Storage.
+    const u = auth?.currentUser;
+    if (!u) return;
+
+    // Se vier dataURL/base64, tenta enviar pro Storage e salvar apenas o downloadURL no profile (curto).
+    let finalURL = photoURL;
+
     try{
-      if (app.ranking?.setMyAvatar) await app.ranking.setMyAvatar(finalURL || '');
+      if (typeof photoURL === "string" && photoURL.startsWith("data:")){
+        const storage = app.firebase?.storage;
+        const storageRef = app.firebase?.storageRef;
+        const uploadString = app.firebase?.uploadString;
+        const getDownloadURL = app.firebase?.getDownloadURL;
+
+        if (!storage || !storageRef || !uploadString || !getDownloadURL){
+          setStatus("Upload de foto indisponível (Storage não inicializado). Use um ícone por enquanto.", "err");
+          return;
+        }
+
+        // caminho por uid
+        const path = `avatars/${u.uid}.png`;
+        const ref = storageRef(storage, path);
+
+        await uploadString(ref, photoURL, "data_url");
+        finalURL = await getDownloadURL(ref);
+      }
+
+      // Atualiza no Auth profile (URL curta). Firestore rules atuais não permitem photoURL em /users nem no ranking.
+      await updateProfile(u, { photoURL: finalURL || "" });
+      setStatus("Foto atualizada ✅", "ok");
+
+      // Atualiza UI (avatar no topo/perfil)
+      try{ app.user?.refreshHeader?.(); }catch{}
+      try{ renderAccountPanel?.(); }catch{}
+
+    }catch(e){
+      console.warn("[auth] falha ao atualizar foto", e);
+      const msg = String(e?.message || e || "");
+      if (msg.toLowerCase().includes("photo url too long")){
+        setStatus("Foto grande demais. Vamos precisar usar Storage no Firebase.", "err");
+      }else{
+        setStatus("Não consegui atualizar a foto agora.", "err");
+      }
+    }
+  }
+
+    await updateProfile(currentUser, { photoURL: photoURL || null });
+    // Atualiza cache local para o ranking (por emailHash)
+    try{
+      const em = (currentUser.email || '').trim().toLowerCase();
+      if (em && app.ranking?.setMyAvatar){
+        await app.ranking.setMyAvatar(photoURL || '');
+      }
     }catch{}
   }
 

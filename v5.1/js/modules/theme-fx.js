@@ -213,12 +213,9 @@ export function bootThemeFx(app) {
 
           <div>
             <b>Intensidade</b>
-            <div class="muted" style="margin:2px 0 8px">Escolha um nível.</div>
-            <div class="segmented" role="group" aria-label="Intensidade dos efeitos">
-              <button type="button" class="seg-btn" data-intensity="timido">Tímido</button>
-              <button type="button" class="seg-btn" data-intensity="normal">Normal</button>
-              <button type="button" class="seg-btn" data-intensity="super">Super natalino</button>
-            </div>
+            <div class="muted" style="margin:2px 0 8px">Quanto mais alto, mais vivo.</div>
+            <input id="optIntensity" type="range" min="0.8" max="1.6" step="0.05"
+              value="${saved.intensity ?? 1}" style="width:100%"/>
           </div>
         </div>
       `,
@@ -229,28 +226,14 @@ export function bootThemeFx(app) {
       const optSnow = document.getElementById("optSnow");
       const optReindeer = document.getElementById("optReindeer");
       const optPreset = document.getElementById("optPreset");
-      const segBtns = Array.from(document.querySelectorAll(".seg-btn[data-intensity]"));
-
-      const intensityFromMode = (mode) => {
-        if (mode === "timido") return 0.9;
-        if (mode === "super") return 1.35;
-        return 1.1; // normal
-      };
-
-      // seleciona botão ativo conforme config salvo
-      const initMode = (saved?.intensityMode) || "normal";
-      segBtns.forEach(b => b.classList.toggle("active", b.dataset.intensity === initMode));
-
-      const getMode = () => (segBtns.find(b => b.classList.contains("active"))?.dataset.intensity) || "normal";
+      const optIntensity = document.getElementById("optIntensity");
 
       const applyNow = () => {
-        const mode = getMode();
         const cfg = {
           snow: !!optSnow?.checked,
           reindeer: !!optReindeer?.checked,
           preset: optPreset?.value || "classic",
-          intensityMode: mode,
-          intensity: intensityFromMode(mode)
+          intensity: Number(optIntensity?.value || 1)
         };
         applyTheme(cfg);
         saveTheme(cfg);
@@ -259,11 +242,7 @@ export function bootThemeFx(app) {
       optSnow?.addEventListener("change", applyNow);
       optReindeer?.addEventListener("change", applyNow);
       optPreset?.addEventListener("change", applyNow);
-      segBtns.forEach(btn => btn.addEventListener("click", () => {
-        segBtns.forEach(b => b.classList.remove("active"));
-        btn.classList.add("active");
-        applyNow();
-      }));
+      optIntensity?.addEventListener("input", applyNow);
 
       applyNow();
     }, 0);
