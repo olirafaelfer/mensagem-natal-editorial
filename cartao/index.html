@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Cartão Natalino</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Poppins:wght@400;600;700&family=Nunito:wght@400;700&family=Montserrat:wght@400;600;700&family=DM+Sans:wght@400;600;700&family=Playfair+Display:wght@400;600;700&family=Merriweather:wght@400;700&family=Pacifico&family=Great+Vibes&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="app" id="app">
+    <header class="topbar">
+      <div class="brand">
+        <img class="brand__logo" src="assets/logo-natal.svg" alt="Logo" />
+        <div class="brand__text">
+          <div class="brand__title">Cartão Natalino</div>
+          <div class="brand__subtitle">Personalize tema e enfeites</div>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button class="btn btn--ghost" id="btnShare" type="button" title="Compartilhar">
+          <span class="btn__icon" aria-hidden="true">⤴</span>
+          <span class="btn__label">Compartilhar</span>
+        </button>
+        <button class="btn btn--primary" id="btnExport" type="button" title="Baixar PNG">
+          <span class="btn__icon" aria-hidden="true">⬇</span>
+          <span class="btn__label">PNG</span>
+        </button>
+      </div>
+    </header>
+
+    <main class="main">
+      <section class="preview" aria-label="Prévia do cartão">
+        <div class="preview__frame">
+          <svg id="cardSvg" class="card" viewBox="0 0 1080 1350" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Cartão">
+            <defs id="svgDefs"></defs>
+            <rect id="bgRect" x="0" y="0" width="1080" height="1350" rx="80" ry="80"></rect>
+
+            <g id="patternLayer" opacity="0.22"></g>
+
+            <g id="contentLayer">
+              <text id="msgText" x="540" y="560" text-anchor="middle"></text>
+              <text id="signText" x="540" y="690" text-anchor="middle"></text>
+            </g>
+
+            <g id="stickersLayer"></g>
+
+            <g id="uiLayer" pointer-events="none">
+              <rect x="26" y="26" width="1028" height="1298" rx="70" ry="70" fill="none" stroke="rgba(255,255,255,0.14)" stroke-width="4"/>
+            </g>
+          </svg>
+        </div>
+
+        <div class="hint" id="hint">
+          Toque em um enfeite para selecionar. Arraste para mover. Use +/− para escala.
+        </div>
+
+        <div class="floating" id="floatingTools" aria-label="Ferramentas do enfeite selecionado">
+          <button class="chip" id="btnScaleDown" type="button" aria-label="Diminuir">−</button>
+          <button class="chip" id="btnScaleUp" type="button" aria-label="Aumentar">+</button>
+          <button class="chip chip--danger" id="btnDelete" type="button" aria-label="Remover">🗑</button>
+        </div>
+      </section>
+
+      <section class="panel" aria-label="Controles">
+        <div class="tabs" role="tablist" aria-label="Abas">
+          <button class="tab is-active" data-tab="tab-text" role="tab" aria-selected="true" type="button">Mensagem</button>
+          <button class="tab" data-tab="tab-theme" role="tab" aria-selected="false" type="button">Tema</button>
+          <button class="tab" data-tab="tab-decor" role="tab" aria-selected="false" type="button">Enfeites</button>
+        </div>
+
+        <div class="tabpanels">
+          <div class="tabpanel is-active" id="tab-text" role="tabpanel">
+            <div class="section">
+              <div class="section__title">Escolha a mensagem</div>
+              <div class="pillgrid" id="messagePills"></div>
+            </div>
+
+            <div class="section">
+              <div class="section__title">Fonte</div>
+              <div class="row">
+                <select id="fontSelect" class="select" aria-label="Fonte">
+                  <option value="Inter">Inter</option>
+                  <option value="Poppins">Poppins</option>
+                  <option value="DM Sans">DM Sans</option>
+                  <option value="Nunito">Nunito</option>
+                  <option value="Montserrat">Montserrat</option>
+                  <option value="Playfair Display">Playfair Display</option>
+                  <option value="Merriweather">Merriweather</option>
+                  <option value="Pacifico">Pacifico</option>
+                  <option value="Great Vibes">Great Vibes</option>
+                </select>
+
+                <select id="fontSizeSelect" class="select" aria-label="Tamanho">
+                  <option value="92">Grande</option>
+                  <option value="76" selected>Médio</option>
+                  <option value="62">Compacto</option>
+                </select>
+              </div>
+
+              <div class="row">
+                <label class="toggle">
+                  <input type="checkbox" id="showLogo" />
+                  <span>Mostrar logo</span>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <div class="tabpanel" id="tab-theme" role="tabpanel">
+            <div class="section">
+              <div class="section__title">Temas prontos</div>
+              <div class="themegrid" id="themeGrid"></div>
+            </div>
+
+            <div class="section">
+              <div class="section__title">Ajustes finos</div>
+              <div class="row row--3">
+                <div class="field">
+                  <div class="field__label">Fundo A</div>
+                  <input id="bgA" type="color" value="#0b1220" class="color" />
+                </div>
+                <div class="field">
+                  <div class="field__label">Fundo B</div>
+                  <input id="bgB" type="color" value="#0f2a4a" class="color" />
+                </div>
+                <div class="field">
+                  <div class="field__label">Texto</div>
+                  <input id="textColor" type="color" value="#ffffff" class="color" />
+                </div>
+              </div>
+
+              <div class="row">
+                <select id="patternSelect" class="select" aria-label="Padrão">
+                  <option value="none">Sem padrão</option>
+                  <option value="snow">Neve</option>
+                  <option value="stars">Estrelas</option>
+                  <option value="dots">Pontos</option>
+                  <option value="waves">Ondas</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div class="tabpanel" id="tab-decor" role="tabpanel">
+            <div class="section">
+              <div class="section__title">Adicionar enfeites</div>
+              <div class="decogrid" id="decoGrid"></div>
+              <div class="small">Dica: toque para adicionar. Depois arraste no cartão.</div>
+            </div>
+
+            <div class="section">
+              <div class="section__title">Atalhos</div>
+              <div class="row">
+                <button class="btn btn--ghost" id="btnClearDecor" type="button">Remover todos</button>
+                <button class="btn btn--ghost" id="btnRandomTheme" type="button">Tema aleatório</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
