@@ -209,27 +209,15 @@ export function bootGame(app){
     else b3.textContent = c3?.done ? `Desafio 3 ✅` : "Desafio 3";
   }
 
-  // Missão especial (libera após concluir Desafio 3)
-  // Obs: o usuário anônimo não consegue chegar ao Desafio 3, então aqui pode ser só c3Done.
-  const specialHomeBtn =
-    dom.missionSpecialHomeBtn
-    || document.getElementById("missionSpecialHomeBtn")
-    || document.getElementById("missionSpecialBtn")
-    || document.getElementById("missionSpecialHome");
-
-  const finalSpecialBtn =
-    dom.finalMissionSpecialBtn
-    || document.getElementById("finalMissionSpecialBtn");
-
-  if (specialHomeBtn){
-    const enabled = !!c3Done;
-    specialHomeBtn.disabled = !enabled;
-    specialHomeBtn.classList.toggle("btn-disabled", !enabled);
-    specialHomeBtn.style.opacity = enabled ? "1" : ".5";
+  // Missão especial (libera após concluir Desafio 3 **e estar logado**)
+  const logged = !!app.auth?.isLogged?.();
+  if (dom.missionSpecialHomeBtn){
+    const enabled = logged && c3Done;
+    dom.missionSpecialHomeBtn.disabled = !enabled;
+    dom.missionSpecialHomeBtn.style.opacity = enabled ? "1" : ".5";
   }
-
-  if (finalSpecialBtn){
-    finalSpecialBtn.style.display = c3Done ? "inline-flex" : "none";
+  if (dom.finalMissionSpecialBtn){
+    dom.finalMissionSpecialBtn.style.display = (logged && c3Done) ? "inline-flex" : "none";
   }
 }
   function requireNameSector(){
