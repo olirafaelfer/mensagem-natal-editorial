@@ -21,6 +21,9 @@ let selected = null;
 let tutorialStep = 0;
 let lastPngBlob = null;
 
+// Prevent double-binding even if overlay reopened
+let tutorialBound = false;
+
 openBtn.onclick = async () => {
   const r = await fetch("missao.html");
   document.body.insertAdjacentHTML("beforeend", await r.text());
@@ -44,16 +47,17 @@ function openCustomizer(){
   applyBackground();
   startTutorialAuto();
 }
+
 function closeCustomizer(){
   document.getElementById("customizer").classList.add("hidden");
   endTutorial();
 }
 
 function initCustomizer(){
-  if(window.__mission_v5_ready) return;
-  window.__mission_v5_ready = true;
+  if(window.__mission_v6_ready) return;
+  window.__mission_v6_ready = true;
 
-  // Render emoji tray
+  // Emoji tray
   const tray = document.getElementById("emojiTray");
   EMOJIS.forEach(e => {
     const chip = document.createElement("div");
@@ -61,13 +65,12 @@ function initCustomizer(){
     chip.textContent = e.ch;
     chip.title = e.name;
 
-    // drag for desktop
-    chip.draggable = true;
+    chip.draggable = true; // desktop
     chip.addEventListener("dragstart", (ev) => {
       ev.dataTransfer.setData("text/plain", e.ch);
     });
 
-    // click/tap to add (mobile friendly)
+    // tap/click to add
     chip.addEventListener("click", () => addSticker(e.ch));
 
     tray.appendChild(chip);
@@ -80,7 +83,7 @@ function initCustomizer(){
   document.getElementById("bg1").addEventListener("input", applyBackground);
   document.getElementById("bg2").addEventListener("input", applyBackground);
 
-  // Canvas events: drop (desktop), pointer selection clear
+  // Canvas DnD for desktop
   const canvas = document.getElementById("canvas");
   canvas.addEventListener("dragover", (e)=>e.preventDefault());
   canvas.addEventListener("drop", (e)=>{
@@ -90,10 +93,12 @@ function initCustomizer(){
     addSticker(ch, e.clientX, e.clientY);
   });
 
+  // Clear selection when clicking empty canvas
   canvas.addEventListener("pointerdown", (e) => {
     if(e.target.id === "canvas") setSelected(null);
   });
 
+  // Prevent scroll while dragging a sticker
   canvas.addEventListener("touchmove", (e) => {
     if(selected) e.preventDefault();
   }, {passive:false});
@@ -121,7 +126,6 @@ function applyBackground(){
 function addSticker(ch, clientX=null, clientY=null){
   const canvas = document.getElementById("canvas");
   const rect = canvas.getBoundingClientRect();
-
   const x = clientX == null ? rect.width/2 : (clientX - rect.left);
   const y = clientY == null ? rect.height/2 : (clientY - rect.top);
 
@@ -133,7 +137,6 @@ function addSticker(ch, clientX=null, clientY=null){
   el.dataset.scale = "1";
   placeEl(el, x, y, 1);
 
-  // pointer drag to move
   el.addEventListener("pointerdown", (ev) => {
     ev.preventDefault();
     ev.stopPropagation();
@@ -210,18 +213,16 @@ function shareTextOnly(){
   }
 }
 
-/* Export to PNG (draw gradient + text + emoji + logo) */
+/* Export PNG */
 async function exportPNG(){
   const stage = document.getElementById("canvas");
   const rect = stage.getBoundingClientRect();
   const W = 1400;
   const H = Math.round(W * (rect.height / rect.width));
   const canvas = document.createElement("canvas");
-  canvas.width = W;
-  canvas.height = H;
+  canvas.width = W; canvas.height = H;
   const ctx = canvas.getContext("2d");
 
-  // background gradient
   const bg = stage.style.background || "linear-gradient(135deg,#0b1b3a,#070b14)";
   const {c1,c2} = parseCssGradient(bg);
   const grad = ctx.createLinearGradient(0,0,W,H);
@@ -229,15 +230,14 @@ async function exportPNG(){
   ctx.fillStyle = grad;
   ctx.fillRect(0,0,W,H);
 
-  // intense glows
   drawGlow(ctx, W*0.26, H*0.22, Math.min(W,H)*0.30, "rgba(46,196,182,.22)");
   drawGlow(ctx, W*0.78, H*0.72, Math.min(W,H)*0.30, "rgba(233,196,106,.18)");
 
-  // text
   const font = document.getElementById("fontSelect").value;
   const color = document.getElementById("textColor").value;
   const size = parseInt(document.getElementById("fontSize").value,10);
   const fontPx = Math.round(size * (W / rect.width));
+
   ctx.fillStyle = color;
   ctx.font = `${fontPx}px ${font}`;
   ctx.textBaseline = "top";
@@ -281,7 +281,6 @@ async function exportPNG(){
   const blob = await new Promise(res => canvas.toBlob(res,"image/png",1));
   lastPngBlob = blob;
 
-  // download
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
   a.download = "cartao-natal.png";
@@ -311,7 +310,6 @@ function parseCssGradient(bg){
   if(!m) return {c1:"#0b1b3a", c2:"#070b14"};
   return {c1:m[1].trim(), c2:m[2].trim()};
 }
-
 function drawGlow(ctx, x, y, r, color){
   const g = ctx.createRadialGradient(x,y,0,x,y,r);
   g.addColorStop(0,color);
@@ -319,7 +317,6 @@ function drawGlow(ctx, x, y, r, color){
   ctx.fillStyle = g;
   ctx.fillRect(0,0,ctx.canvas.width, ctx.canvas.height);
 }
-
 function wrapText(ctx, text, x, y, maxW, lineH){
   const parts = (text||"").split("\n");
   for(const part of parts){
@@ -339,7 +336,6 @@ function wrapText(ctx, text, x, y, maxW, lineH){
   }
   return y;
 }
-
 function loadImage(src){
   return new Promise((resolve, reject) => {
     const img = new Image();
@@ -359,54 +355,71 @@ async function toDataURL(url){
   });
 }
 
-/* Mandatory tutorial */
+/* Tutorial: refactor state machine (fix 3/3 freeze) */
 function startTutorialAuto(){
   tutorialStep = 0;
   const t = document.getElementById("tutorial");
   t.classList.remove("hidden");
+
+  // Bind button exactly once, and never rely on inline onclick
+  if(!tutorialBound){
+    tutorialBound = true;
+    const btn = document.getElementById("coachNext");
+    btn.addEventListener("click", () => {
+      // Always works even if overlay re-rendered; we just update content.
+      advanceTutorial();
+    }, {passive:true});
+  }
+
   renderTutorial();
 }
+
 function endTutorial(){
   const t = document.getElementById("tutorial");
   if(t) t.classList.add("hidden");
 }
-function nextTutorial(){
-  // robust: last screen closes immediately on click
+
+function advanceTutorial(){
+  // 0 -> 1 -> 2 -> close (robust)
   if(tutorialStep >= 2){
     endTutorial();
     return;
   }
-  tutorialStep++;
+  tutorialStep += 1;
   renderTutorial();
 }
+
 function renderTutorial(){
   const title = document.getElementById("coachTitle");
   const body = document.getElementById("coachBody");
-  const next = document.getElementById("coachNext");
-  const sStage = document.querySelector(".spot-stage");
-  const sCtrl = document.querySelector(".spot-controls");
-  const sTray = document.querySelector(".spot-tray");
-  [sStage,sCtrl,sTray].forEach(s=>s.style.display="none");
+  const btn = document.getElementById("coachNext");
+  const sStage = document.getElementById("spotStage");
+  const sCtrl = document.getElementById("spotControls");
+  const sTray = document.getElementById("spotTray");
+  [sStage,sCtrl,sTray].forEach(s => s.style.display = "none");
 
   if(tutorialStep === 0){
-    title.textContent = "1/3 — Veja a mensagem no cartão";
-    body.textContent = "A mensagem já está aqui. Agora escolha fonte, cor e fundo para deixar com a sua cara.";
-    sCtrl.style.display="block";
-    next.textContent = "Próximo";
+    title.textContent = "1/3 — Estilo do texto";
+    body.textContent = "A mensagem já está no cartão. Ajuste fonte, cor e fundo para deixar mais bonito.";
+    sCtrl.style.display = "block";
+    btn.textContent = "Próximo";
   } else if(tutorialStep === 1){
     title.textContent = "2/3 — Adicione enfeites";
-    body.textContent = "Clique/tap em um emoji para adicionar. No PC, você também pode arrastar do tray para o cartão.";
-    sTray.style.display="block";
-    next.textContent = "Próximo";
+    body.textContent = "Clique/tap em um emoji para adicionar. No PC, você também pode arrastar para o cartão.";
+    sTray.style.display = "block";
+    btn.textContent = "Próximo";
   } else {
-    title.textContent = "3/3 — Mova e compartilhe";
-    body.textContent = "Arraste o enfeite no cartão para posicionar. Use ➕➖ para ajustar e depois exporte/compartilhe a imagem.";
-    sStage.style.display="block";
-    next.textContent = "Começar";
+    title.textContent = "3/3 — Posicione e compartilhe";
+    body.textContent = "Arraste o emoji no cartão para mover. Use ➕➖ e 🗑 para ajustar. Depois exporte ou compartilhe.";
+    sStage.style.display = "block";
+    btn.textContent = "Começar";
   }
 }
 
-// expose for inline handlers
+// Backward compat: if any old inline exists
+window.nextTutorial = advanceTutorial;
+
+// expose handlers
 window.closeMission = closeMission;
 window.goToCard = goToCard;
 window.openCustomizer = openCustomizer;
@@ -416,4 +429,3 @@ window.scaleSelected = scaleSelected;
 window.removeSelected = removeSelected;
 window.exportPNG = exportPNG;
 window.shareImage = shareImage;
-window.nextTutorial = nextTutorial;

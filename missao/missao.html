@@ -36,7 +36,7 @@
     </div>
   </div>
 
-  <!-- Customizer: bottom-sheet on mobile, split-panel on desktop -->
+  <!-- Customizer -->
   <div class="customizer hidden" id="customizer" role="document" aria-label="Personalizar cartão">
     <div class="custom-shell">
       <div class="custom-header">
@@ -45,7 +45,7 @@
       </div>
 
       <div class="custom-body">
-        <div class="stage">
+        <div class="stage" id="stageBlock">
           <div class="stage-top">
             <div class="pill">Prévia do cartão</div>
             <div class="stage-actions" aria-label="Ajustes do item selecionado">
@@ -67,10 +67,9 @@
           </div>
         </div>
 
-        <div class="controls">
+        <div class="controls" id="controlsBlock">
           <div class="section">
             <div class="section-title">Texto e estilo</div>
-
             <div class="ctrl-grid">
               <div class="ctrl">
                 <label class="label">Fonte</label>
@@ -81,17 +80,14 @@
                   <option value="'Courier New'">Carta</option>
                 </select>
               </div>
-
               <div class="ctrl">
                 <label class="label">Cor do texto</label>
                 <input id="textColor" type="color" value="#ffffff">
               </div>
-
               <div class="ctrl">
                 <label class="label">Tamanho</label>
                 <input id="fontSize" type="range" min="12" max="22" value="15">
               </div>
-
               <div class="ctrl">
                 <label class="label">Fundo</label>
                 <div class="bg-row">
@@ -102,10 +98,10 @@
             </div>
           </div>
 
-          <div class="section">
+          <div class="section" id="trayBlock">
             <div class="section-title">Enfeites (emoji)</div>
             <div class="emoji-tray" id="emojiTray"></div>
-            <div class="subhint">Arraste do tray (PC) ou toque para adicionar (mobile). Toque no item no cartão para selecionar.</div>
+            <div class="subhint">Clique/tap para adicionar. No PC, você também pode arrastar para o cartão.</div>
           </div>
 
           <div class="export-row">
@@ -115,20 +111,22 @@
         </div>
       </div>
 
-      <!-- Mandatory auto tutorial -->
-      <div class="tutorial hidden" id="tutorial">
-        <div class="blur"></div>
-        <div class="coach">
-          <div class="coach-title" id="coachTitle">Vamos personalizar</div>
+      <!-- Tutorial (no blur) -->
+      <div class="tutorial hidden" id="tutorial" aria-live="polite">
+        <div class="dim"></div>
+        <div class="spot spot-stage" id="spotStage"></div>
+        <div class="spot spot-controls" id="spotControls"></div>
+        <div class="spot spot-tray" id="spotTray"></div>
+
+        <div class="coach" role="dialog" aria-modal="true" aria-label="Tutorial">
+          <div class="coach-title" id="coachTitle"></div>
           <div class="coach-body" id="coachBody"></div>
           <div class="coach-actions">
-            <button class="primary-btn" id="coachNext" onclick="nextTutorial()">Próximo</button>
+            <button class="primary-btn" id="coachNext" type="button">Próximo</button>
           </div>
         </div>
-        <div class="spot spot-stage"></div>
-        <div class="spot spot-controls"></div>
-        <div class="spot spot-tray"></div>
       </div>
+
     </div>
   </div>
 </div>

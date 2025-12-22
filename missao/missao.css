@@ -1,24 +1,17 @@
 *{box-sizing:border-box;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
 :root{
-  --bg:#070b14;
-  --panel:#0b1323;
-  --panel2:#0a1020;
-  --text:#fff;
+  --bg:#070b14; --panel:#0b1323; --text:#fff;
   --muted:rgba(255,255,255,.78);
   --shadow:0 18px 54px rgba(0,0,0,.62);
   --r:20px;
   --glow:0 0 22px rgba(46,196,182,.35), 0 0 46px rgba(233,196,106,.18);
 }
 body.center{margin:0;display:flex;justify-content:center;align-items:center;height:100vh;background:radial-gradient(circle at 20% 10%, #12203c 0%, #070b14 45%, #060810 100%);color:var(--text);overflow:hidden}
-body.center:before{
-  content:"";position:fixed;inset:-60px;pointer-events:none;
-  background:
-    radial-gradient(circle at 25% 18%, rgba(46,196,182,.20), transparent 45%),
-    radial-gradient(circle at 76% 62%, rgba(233,196,106,.18), transparent 50%),
-    radial-gradient(circle at 48% 88%, rgba(230,57,70,.14), transparent 52%);
-  filter:blur(6px);
-  animation: floatbg 8s ease-in-out infinite alternate;
-}
+body.center:before{content:"";position:fixed;inset:-60px;pointer-events:none;background:
+  radial-gradient(circle at 25% 18%, rgba(46,196,182,.20), transparent 45%),
+  radial-gradient(circle at 76% 62%, rgba(233,196,106,.18), transparent 50%),
+  radial-gradient(circle at 48% 88%, rgba(230,57,70,.14), transparent 52%);
+  filter:blur(6px);animation: floatbg 8s ease-in-out infinite alternate;}
 @keyframes floatbg{from{transform:translateY(-6px)}to{transform:translateY(10px)}}
 
 .open-btn{padding:16px 24px;font-size:18px;border-radius:14px;border:none;background:linear-gradient(135deg,#e63946,#f1faee);box-shadow:0 10px 30px rgba(0,0,0,.35)}
@@ -44,19 +37,11 @@ body.center:before{
 .card-footer{position:relative;margin-top:10px;display:flex;justify-content:flex-end}
 .logo{height:26px;opacity:.95}
 
-/* Customizer container: bottom sheet on mobile, modal on desktop */
+/* Customizer */
 .customizer{position:fixed;inset:0;display:flex;align-items:flex-end;justify-content:center;z-index:2000;padding:12px}
-.custom-shell{
-  width:100%;max-width:1080px;background:linear-gradient(180deg,#081022,#050812);
-  border:1px solid rgba(255,255,255,.12);
-  border-radius:24px 24px 0 0;
-  box-shadow:var(--shadow);
-  overflow:hidden;
-}
-@media(min-width:900px){
-  .customizer{align-items:center}
-  .custom-shell{border-radius:24px;max-height:92vh}
-}
+.custom-shell{width:100%;max-width:1080px;background:linear-gradient(180deg,#081022,#050812);
+  border:1px solid rgba(255,255,255,.12);border-radius:24px 24px 0 0;box-shadow:var(--shadow);overflow:hidden;position:relative}
+@media(min-width:900px){.customizer{align-items:center}.custom-shell{border-radius:24px;max-height:92vh}}
 .custom-header{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border-bottom:1px solid rgba(255,255,255,.10);background:rgba(255,255,255,.03)}
 .custom-body{display:grid;grid-template-columns:1fr;gap:12px;padding:12px;max-height:86vh;overflow:auto}
 @media(min-width:900px){.custom-body{grid-template-columns:1.25fr .85fr;align-items:start}}
@@ -67,57 +52,35 @@ body.center:before{
 .stage-actions{display:flex;gap:8px}
 .mini-btn{background:rgba(255,255,255,.10);border:1px solid rgba(255,255,255,.14);color:#fff;border-radius:12px;padding:9px 11px}
 .mini-btn.danger{border-color:rgba(230,57,70,.50)}
-.canvas{
-  width:100%;
-  aspect-ratio: 16/10;
-  border-radius:22px;
-  border:1px solid rgba(255,255,255,.14);
-  background:linear-gradient(135deg,#0b1b3a,#070b14);
-  position:relative;
-  overflow:hidden;
-  box-shadow: inset 0 0 0 1px rgba(0,0,0,.35), var(--glow);
-  touch-action:none;
-}
-.canvas:before{
-  content:"";position:absolute;inset:-90px;background:
-    radial-gradient(circle at 25% 20%, rgba(233,196,106,.22), transparent 55%),
-    radial-gradient(circle at 75% 70%, rgba(46,196,182,.22), transparent 55%),
-    radial-gradient(circle at 50% 90%, rgba(255,255,255,.08), transparent 55%);
-  filter:blur(6px);
-  animation: shimmer 6s ease-in-out infinite alternate;
-}
+
+.canvas{width:100%;aspect-ratio:16/10;border-radius:22px;border:1px solid rgba(255,255,255,.14);
+  background:linear-gradient(135deg,#0b1b3a,#070b14);position:relative;overflow:hidden;box-shadow: inset 0 0 0 1px rgba(0,0,0,.35), var(--glow);touch-action:none}
+.canvas:before{content:"";position:absolute;inset:-90px;background:
+  radial-gradient(circle at 25% 20%, rgba(233,196,106,.22), transparent 55%),
+  radial-gradient(circle at 75% 70%, rgba(46,196,182,.22), transparent 55%),
+  radial-gradient(circle at 50% 90%, rgba(255,255,255,.10), transparent 55%);
+  filter:blur(6px);animation: shimmer 6s ease-in-out infinite alternate;}
 @keyframes shimmer{from{transform:translateY(-10px)}to{transform:translateY(12px)}}
 
-.sparkle{position:absolute;inset:0;pointer-events:none;opacity:.55;mix-blend-mode:screen}
-.sparkle:before{
-  content:"";position:absolute;inset:-40px;
-  background-image:
-    radial-gradient(circle, rgba(255,255,255,.75) 1px, transparent 2px),
-    radial-gradient(circle, rgba(255,255,255,.55) 1px, transparent 2px),
-    radial-gradient(circle, rgba(255,255,255,.35) 1px, transparent 2px);
+.sparkle{position:absolute;inset:0;pointer-events:none;opacity:.65;mix-blend-mode:screen}
+.sparkle:before{content:"";position:absolute;inset:-40px;background-image:
+  radial-gradient(circle, rgba(255,255,255,.85) 1px, transparent 2px),
+  radial-gradient(circle, rgba(255,255,255,.60) 1px, transparent 2px),
+  radial-gradient(circle, rgba(255,255,255,.40) 1px, transparent 2px);
   background-size: 120px 120px, 180px 180px, 260px 260px;
-  animation: snow 10s linear infinite;
-}
-@keyframes snow{from{transform:translateY(-60px)}to{transform:translateY(140px)}}
+  animation: snow 9s linear infinite;}
+@keyframes snow{from{transform:translateY(-70px)}to{transform:translateY(150px)}}
 
-.text-layer{
-  position:absolute;inset:16px 16px 56px;z-index:1;white-space:pre-wrap;line-height:1.52;
-  text-shadow:0 2px 10px rgba(0,0,0,.45);
-}
+.text-layer{position:absolute;inset:16px 16px 56px;z-index:1;white-space:pre-wrap;line-height:1.52;text-shadow:0 2px 10px rgba(0,0,0,.45)}
 .logo.corner{position:absolute;right:12px;bottom:12px;height:26px;opacity:.96;pointer-events:none;z-index:2;filter:drop-shadow(0 6px 16px rgba(0,0,0,.45))}
 
-.sticker{
-  position:absolute;left:50%;top:50%;
-  transform:translate(-50%,-50%) scale(1);
-  font-size:56px;line-height:1;
-  z-index:3;user-select:none;cursor:grab;
-  filter:drop-shadow(0 8px 14px rgba(0,0,0,.55));
-  touch-action:none;
-}
+.sticker{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%) scale(1);font-size:56px;line-height:1;
+  z-index:3;user-select:none;cursor:grab;filter:drop-shadow(0 8px 14px rgba(0,0,0,.55));touch-action:none}
 .sticker.selected{outline:2px solid rgba(46,196,182,.95);outline-offset:6px;border-radius:14px}
 .sticker:active{cursor:grabbing}
 
-.hintbar{display:flex;align-items:center;gap:10px;margin-top:10px;padding:10px 12px;border-radius:14px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.10);color:rgba(255,255,255,.86);font-size:13px}
+.hintbar{display:flex;align-items:center;gap:10px;margin-top:10px;padding:10px 12px;border-radius:14px;background:rgba(255,255,255,.06);
+  border:1px solid rgba(255,255,255,.10);color:rgba(255,255,255,.86);font-size:13px}
 .dot{width:10px;height:10px;border-radius:999px;background:rgba(46,196,182,.95);box-shadow:0 0 16px rgba(46,196,182,.65)}
 
 /* Controls */
@@ -132,34 +95,24 @@ select,input[type="color"]{border-radius:14px;border:1px solid rgba(255,255,255,
 input[type="range"]{width:100%}
 .bg-row{display:flex;gap:10px}
 .emoji-tray{display:flex;gap:10px;flex-wrap:wrap}
-.emoji-chip{
-  width:54px;height:54px;border-radius:18px;
-  background:rgba(255,255,255,.06);
-  border:1px solid rgba(255,255,255,.12);
-  display:flex;align-items:center;justify-content:center;
-  font-size:28px;
-  box-shadow:0 10px 22px rgba(0,0,0,.22);
-  cursor:grab; user-select:none;
-  transition:transform .12s ease, box-shadow .12s ease;
-}
+.emoji-chip{width:54px;height:54px;border-radius:18px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);
+  display:flex;align-items:center;justify-content:center;font-size:28px;box-shadow:0 10px 22px rgba(0,0,0,.22);
+  cursor:grab; user-select:none; transition:transform .12s ease, box-shadow .12s ease}
 .emoji-chip:hover{transform:translateY(-2px);box-shadow:0 14px 30px rgba(0,0,0,.28)}
 .emoji-chip:active{cursor:grabbing}
 .subhint{margin-top:8px;font-size:12px;color:rgba(255,255,255,.72);line-height:1.4}
-
 .export-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
 
-/* Tutorial */
-.tutorial{position:absolute;inset:0;z-index:500;display:flex;align-items:flex-start;justify-content:center;padding:14px}
-.blur{position:absolute;inset:0;background:rgba(0,0,0,.50);/* blur removed for visibility */pointer-events:none}
-
-.coach{position:relative;width:min(560px,100%);background:rgba(255,255,255,.10);
-  border:1px solid rgba(255,255,255,.16);border-radius:18px;padding:14px;z-index:2;box-shadow:var(--shadow)}
+/* Tutorial (NO BLUR; clear visibility) */
+.tutorial{position:absolute;inset:0;z-index:999;display:flex;align-items:flex-start;justify-content:center;padding:14px}
+.dim{position:absolute;inset:0;background:rgba(0,0,0,.35);} /* no blur */
+.spot{position:absolute;border-radius:20px;outline:3px solid rgba(46,196,182,.98);outline-offset:10px;z-index:1;display:none;pointer-events:none;background:rgba(46,196,182,.06)}
+.coach{position:relative;width:min(560px,100%);background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.18);
+  border-radius:18px;padding:14px;z-index:2;box-shadow:var(--shadow)}
 .coach-title{font-weight:950;margin-bottom:6px}
-.coach-body{color:rgba(255,255,255,.88);line-height:1.45}
+.coach-body{color:rgba(255,255,255,.90);line-height:1.45}
 .coach-actions{margin-top:10px}
 .coach-actions .primary-btn{width:100%;padding:12px}
-.spot{position:absolute;border-radius:20px;outline:2px solid rgba(46,196,182,.95);outline-offset:8px;z-index:1;display:nonepointer-events:none}
-
 .spot-stage{left:22px;right:22px;top:100px;height:52%}
 .spot-controls{left:22px;right:22px;bottom:18px;height:230px}
 .spot-tray{left:22px;right:22px;bottom:160px;height:120px}
