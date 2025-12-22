@@ -1,11 +1,11 @@
 <div class="overlay" id="missionOverlay" role="dialog" aria-modal="true">
-  <div class="sheet step-1" role="document">
-    <div class="sheet-header">
-      <div class="h-title">✨ Missão Especial ✨</div>
-      <button class="icon-btn" onclick="closeMission()" aria-label="Fechar">✕</button>
+  <div class="modal step-1" role="document">
+    <div class="modal-header">
+      <div class="title">✨ Missão Especial de Natal ✨</div>
+      <button class="icon-btn" onclick="closeMission()" aria-label="Fechar">✖</button>
     </div>
 
-    <p class="mission-text">
+    <p class="text-block">
       Neste Natal a sua missão especial é compartilhar o amor, carinho e ajudar na criação de uma rede que realmente faz a diferença neste mundo.
       Muitas vezes a diferença que podemos fazer está muito mais perto do que imaginamos.
       Dê um abraço em quem você ama, doe 1kg de alimento ou ore pela paz e saúde de todos.
@@ -14,110 +14,120 @@
       e queira que faça parte desta corrente.
     </p>
 
-    <button class="primary" onclick="goToCard()">Avançar ➜</button>
+    <button class="primary-btn" onclick="goToCard()">Avançar ➜</button>
   </div>
 
-  <div class="sheet step-2 hidden" role="document">
-    <div class="sheet-header">
-      <div class="h-title">🎁 Cartão Natalino</div>
-      <button class="icon-btn" onclick="closeMission()" aria-label="Fechar">✕</button>
+  <div class="modal step-2 hidden" role="document">
+    <div class="modal-header">
+      <div class="title">🎁 Cartão Natalino</div>
+      <button class="icon-btn" onclick="closeMission()" aria-label="Fechar">✖</button>
     </div>
 
-    <div class="card" id="card">
-      <div class="card-inner" id="cardInner">
-        <div class="card-text" id="cardText"></div>
+    <div class="card-preview" id="cardPreview">
+      <div class="card-body" id="cardBodyText"></div>
+      <div class="card-footer">
         <img class="logo" src="assets/logo-natal.png" alt="Logo" onerror="this.style.display='none'">
       </div>
     </div>
 
-    <button class="secondary" onclick="openCustomizer()">✨ Personalizar cartão</button>
-    <button class="ghost" onclick="shareTextOnly()">📲 Compartilhar (texto)</button>
+    <div class="row">
+      <button class="secondary-btn" onclick="openCustomizer()">✨ Personalizar cartão</button>
+      <button class="ghost-btn" onclick="shareTextOnly()">📲 Compartilhar texto</button>
+    </div>
   </div>
 
-  <div class="customizer hidden" id="customizer" role="document">
-    <div class="customizer-shell">
-      <div class="customizer-topbar">
-        <div class="h-title">Personalizar</div>
-        <button class="icon-btn" onclick="closeCustomizer()" aria-label="Fechar">✕</button>
+  <!-- Customizer: bottom-sheet on mobile, split-panel on desktop -->
+  <div class="customizer hidden" id="customizer" role="document" aria-label="Personalizar cartão">
+    <div class="custom-shell">
+      <div class="custom-header">
+        <div class="title">Personalizar</div>
+        <button class="icon-btn" onclick="closeCustomizer()" aria-label="Fechar">✖</button>
       </div>
 
-      <div class="customizer-body">
-        <div class="preview-wrap">
-          <div class="card preview" id="previewCard">
-            <div class="card-inner" id="previewInner">
-              <div class="card-text" id="previewText"></div>
-              <img class="logo" src="assets/logo-natal.png" alt="Logo" onerror="this.style.display='none'">
+      <div class="custom-body">
+        <div class="stage">
+          <div class="stage-top">
+            <div class="pill">Prévia do cartão</div>
+            <div class="stage-actions" aria-label="Ajustes do item selecionado">
+              <button class="mini-btn" onclick="scaleSelected(0.9)" title="Diminuir">➖</button>
+              <button class="mini-btn" onclick="scaleSelected(1.1)" title="Aumentar">➕</button>
+              <button class="mini-btn danger" onclick="removeSelected()" title="Remover">🗑</button>
             </div>
-            <div class="drop-layer" id="dropLayer"></div>
           </div>
-          <div class="mini-actions">
-            <button class="mini" onclick="sizeSelected(0.9)">➖</button>
-            <button class="mini" onclick="sizeSelected(1.1)">➕</button>
-            <button class="mini" onclick="removeSelected()">🗑️</button>
+
+          <div class="canvas" id="canvas" aria-label="Cartão">
+            <div class="sparkle" aria-hidden="true"></div>
+            <div class="text-layer" id="textLayer"></div>
+            <img class="logo corner" src="assets/logo-natal.png" alt="Logo" onerror="this.style.display='none'">
+          </div>
+
+          <div class="hintbar">
+            <span class="dot"></span>
+            <span><b>Dica:</b> clique/tap em um emoji para adicionar. Depois <b>arraste</b> no cartão para mover.</span>
           </div>
         </div>
 
         <div class="controls">
-          <div class="control-row">
-            <label>Fonte</label>
-            <select id="fontSelect">
-              <option value="system">Padrão</option>
-              <option value="serif">Serifada</option>
-              <option value="hand">Escrita à mão</option>
-              <option value="mono">Monoespaçada</option>
-            </select>
+          <div class="section">
+            <div class="section-title">Texto e estilo</div>
+
+            <div class="ctrl-grid">
+              <div class="ctrl">
+                <label class="label">Fonte</label>
+                <select id="fontSelect">
+                  <option value="system-ui">Padrão</option>
+                  <option value="Georgia">Clássica</option>
+                  <option value="'Trebuchet MS'">Moderna</option>
+                  <option value="'Courier New'">Carta</option>
+                </select>
+              </div>
+
+              <div class="ctrl">
+                <label class="label">Cor do texto</label>
+                <input id="textColor" type="color" value="#ffffff">
+              </div>
+
+              <div class="ctrl">
+                <label class="label">Tamanho</label>
+                <input id="fontSize" type="range" min="12" max="22" value="15">
+              </div>
+
+              <div class="ctrl">
+                <label class="label">Fundo</label>
+                <div class="bg-row">
+                  <input id="bg1" type="color" value="#0b1b3a" aria-label="Cor 1">
+                  <input id="bg2" type="color" value="#0b0f1a" aria-label="Cor 2">
+                </div>
+              </div>
+            </div>
           </div>
 
-          <div class="control-row">
-            <label>Cor do texto</label>
-            <input id="textColor" type="color" value="#ffffff" />
+          <div class="section">
+            <div class="section-title">Enfeites (emoji)</div>
+            <div class="emoji-tray" id="emojiTray"></div>
+            <div class="subhint">Arraste do tray (PC) ou toque para adicionar (mobile). Toque no item no cartão para selecionar.</div>
           </div>
 
-          <div class="control-row">
-            <label>Fundo</label>
-            <select id="bgPreset">
-              <option value="night">Noite azul</option>
-              <option value="warm">Dourado suave</option>
-              <option value="mint">Verde menta</option>
-              <option value="snow">Neve clara</option>
-            </select>
+          <div class="export-row">
+            <button class="primary-btn" onclick="exportPNG()">🖼 Exportar</button>
+            <button class="secondary-btn" onclick="shareImage()">📲 Compartilhar</button>
           </div>
-
-          <div class="control-row">
-            <label>Borda</label>
-            <input id="borderColor" type="color" value="#ffffff" />
-          </div>
-
-          <div class="control-row">
-            <label>Ativar logo</label>
-            <select id="logoMode">
-              <option value="on">Sim</option>
-              <option value="off">Não</option>
-            </select>
-          </div>
-        </div>
-
-        <div class="decorations">
-          <div class="dec-title">Arraste os itens (SVG)</div>
-          <div class="dec-grid" id="decGrid"></div>
-          <div class="dec-hint">Toque no item no cartão para selecionar e mover.</div>
-        </div>
-
-        <div class="export-row">
-          <button class="primary" onclick="exportPNG()">🖼️ Exportar</button>
-          <button class="secondary" onclick="shareExport()">📲 Compartilhar</button>
         </div>
       </div>
 
-      <div class="tutorial" id="tutorial">
-        <div class="t-blur"></div>
-        <div class="t-card" id="tCard">
-          <div class="t-title">Como personalizar</div>
-          <div class="t-body" id="tBody"></div>
-          <div class="t-progress" id="tProg"></div>
-          <button class="primary" id="tNext" onclick="nextTutorial()">Próximo</button>
+      <!-- Mandatory auto tutorial -->
+      <div class="tutorial hidden" id="tutorial">
+        <div class="blur"></div>
+        <div class="coach">
+          <div class="coach-title" id="coachTitle">Vamos personalizar</div>
+          <div class="coach-body" id="coachBody"></div>
+          <div class="coach-actions">
+            <button class="primary-btn" id="coachNext" onclick="nextTutorial()">Próximo</button>
+          </div>
         </div>
-        <div class="t-arrow" id="tArrow">⬇️</div>
+        <div class="spot spot-stage"></div>
+        <div class="spot spot-controls"></div>
+        <div class="spot spot-tray"></div>
       </div>
     </div>
   </div>
