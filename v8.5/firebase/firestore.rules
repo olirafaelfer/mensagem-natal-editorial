@@ -1,0 +1,85 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    // users/{uid}: perfil do usuário
+    match /users/{uid} {
+      allow read: if signedIn() && request.auth.uid == uid;
+      allow create, update, delete: if signedIn() && request.auth.uid == uid;
+    }
+
+    // rankingByEmail/{emailHash}: ranking público
+    // Observação: o cliente grava usando um hash do e-mail como id do doc.
+    // As regras abaixo exigem login e que o campo uid seja o do usuário logado.
+    match /rankingByEmail/{emailHash} {
+      allow read: if true;
+
+      allow create, update: if signedIn()
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.emailHash == emailHash;
+
+      // Desabilite deletes por padrão; use "visible:false" (soft-hide).
+      allow delete: if false;
+    }
+
+    /* =========================
+       Chat Natalino
+       /chatRooms/{roomId}/messages/{messageId}
+       ========================= */
+    function isShortText(t) {
+      return t is string && t.size() <= 280;
+    }
+    function isReactionCounts(m) {
+      return m is map
+        && m.keys().hasOnly(['like','laugh','heart'])
+        && (m.like is int || m.like is number)
+        && (m.laugh is int || m.laugh is number)
+        && (m.heart is int || m.heart is number);
+    }
+
+    match /chatRooms/{roomId} {
+      allow read: if true;
+
+      match /messages/{messageId} {
+        allow read: if true;
+
+        allow create: if signedIn()
+          && request.resource.data.keys().hasOnly([
+            'uid','name','sector','text','sticker','reactionCounts','createdAt'
+          ])
+          && request.resource.data.uid == request.auth.uid
+          && request.resource.data.name is string
+          && request.resource.data.name.size() >= 2
+          && request.resource.data.name.size() <= 60
+          && (!('sector' in request.resource.data) || request.resource.data.sector is string)
+          && (!('text' in request.resource.data) || isShortText(request.resource.data.text))
+          && (!('sticker' in request.resource.data) || request.resource.data.sticker is string)
+          && isReactionCounts(request.resource.data.reactionCounts);
+
+        // Permitimos update APENAS para atualizar reactionCounts (feito pelo cliente ao reagir)
+        allow update: if signedIn()
+          && request.resource.data.diff(resource.data).changedKeys().hasOnly(['reactionCounts'])
+          && isReactionCounts(request.resource.data.reactionCounts);
+
+        allow delete: if false;
+
+        match /reactions/{uid} {
+          allow read: if true;
+          allow create, update, delete: if signedIn() && request.auth.uid == uid
+            && request.resource.data.keys().hasOnly(['type','createdAt'])
+            && request.resource.data.type is string
+            && request.resource.data.type in ['like','laugh','heart'];
+        }
+      }
+    }
+
+    // Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
