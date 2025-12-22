@@ -371,8 +371,12 @@ function endTutorial(){
   if(t) t.classList.add("hidden");
 }
 function nextTutorial(){
+  // robust: last screen closes immediately on click
+  if(tutorialStep >= 2){
+    endTutorial();
+    return;
+  }
   tutorialStep++;
-  if(tutorialStep >= 3){ endTutorial(); return; }
   renderTutorial();
 }
 function renderTutorial(){

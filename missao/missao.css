@@ -150,14 +150,16 @@ input[type="range"]{width:100%}
 
 /* Tutorial */
 .tutorial{position:absolute;inset:0;z-index:500;display:flex;align-items:flex-start;justify-content:center;padding:14px}
-.blur{position:absolute;inset:0;background:rgba(0,0,0,.64);backdrop-filter:blur(8px)}
+.blur{position:absolute;inset:0;background:rgba(0,0,0,.50);/* blur removed for visibility */pointer-events:none}
+
 .coach{position:relative;width:min(560px,100%);background:rgba(255,255,255,.10);
   border:1px solid rgba(255,255,255,.16);border-radius:18px;padding:14px;z-index:2;box-shadow:var(--shadow)}
 .coach-title{font-weight:950;margin-bottom:6px}
 .coach-body{color:rgba(255,255,255,.88);line-height:1.45}
 .coach-actions{margin-top:10px}
 .coach-actions .primary-btn{width:100%;padding:12px}
-.spot{position:absolute;border-radius:20px;outline:2px solid rgba(46,196,182,.95);outline-offset:8px;z-index:1;display:none}
+.spot{position:absolute;border-radius:20px;outline:2px solid rgba(46,196,182,.95);outline-offset:8px;z-index:1;display:nonepointer-events:none}
+
 .spot-stage{left:22px;right:22px;top:100px;height:52%}
 .spot-controls{left:22px;right:22px;bottom:18px;height:230px}
 .spot-tray{left:22px;right:22px;bottom:160px;height:120px}
