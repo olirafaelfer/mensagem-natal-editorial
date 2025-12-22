@@ -1,155 +1,58 @@
-// js/ui-modal.js — Modal/Overlay (mobile-safe, sem “pular pro topo”)
-// Estratégia: NÃO fixar o body com top negativo (isso causa modal “no topo” no 1º paint).
-// Em vez disso: trava scroll via overflow hidden + preserva largura (scrollbar) + restaura foco.
+// ui-modal.js (V7.3 patch) - provides openModal/closeModal both as exports and window globals.
+let _modalEl = null;
 
-// Back-compat exports: alguns módulos antigos importam openModal/closeModal diretamente.
-// Estes wrappers passam a chamar a API inicializada em bootModal(app).
-let __modalApi = null;
-export function openModal(opts){ return __modalApi?.openModal?.(opts); }
-export function closeModal(){ return __modalApi?.closeModal?.(); }
+function ensureModal(){
+  if (_modalEl) return _modalEl;
+  const el = document.createElement('div');
+  el.id = 'appModal';
+  el.style.cssText = [
+    'position:fixed','inset:0','z-index:9999','display:none',
+    'background:rgba(0,0,0,.55)','backdrop-filter: blur(2px)',
+    'padding:16px','box-sizing:border-box'
+  ].join(';');
 
-export function bootModal(app){
-  const overlay   = document.getElementById("overlay");
-  const modal     = overlay?.querySelector(".modal") || null;
-  const modalTitle = document.getElementById("modalTitle");
-  const modalBody  = document.getElementById("modalBody");
-  const modalFoot  = document.getElementById("modalFoot");
-  const closeBtn   = document.getElementById("closeModal");
-
-  if (!overlay) return;
-
-  let lastActiveEl = null;
-  let closeTimer = null;
-  let currentDismissible = false;
-  let scrollYBefore = 0;
-
-  // =========================
-  // Scroll lock (estável em desktop + mobile)
-  // =========================
-  function getScrollbarWidth(){
-    // largura da barra de rolagem para evitar “pulo” do layout ao travar
-    return Math.max(0, window.innerWidth - document.documentElement.clientWidth);
-  }
-
-  function lockBodyScroll(){
-    lastActiveEl = document.activeElement;
-    scrollYBefore = window.scrollY || 0;
-
-    const sbw = getScrollbarWidth();
-    document.body.style.overflow = "hidden";
-    if (sbw) document.body.style.paddingRight = sbw + "px";
-  }
-
-  function unlockBodyScroll(){
-    document.body.style.overflow = "";
-    document.body.style.paddingRight = "";
-  }
-
-  // =========================
-  // Helpers
-  // =========================
-  function clearFoot(){
-    if (!modalFoot) return;
-    modalFoot.innerHTML = "";
-  }
-
-  function focusFirstAction(){
-    // tenta focar o primeiro botão, senão o botão fechar
-    const firstBtn = modalFoot?.querySelector("button");
-    if (firstBtn) {
-      firstBtn.focus({ preventScroll: true });
-      return;
-    }
-    closeBtn?.focus({ preventScroll: true });
-  }
-
-  // =========================
-  // API do modal
-  // =========================
-  function openModal({ title, bodyHTML, buttons = [], dismissible = false }){
-    if (closeTimer) { clearTimeout(closeTimer); closeTimer = null; }
-    // garante overlay visível caso um close anterior esteja animando
-    overlay.classList.remove("hidden");
-    lockBodyScroll();
-    currentDismissible = !!dismissible;
-
-    if (modalTitle) modalTitle.textContent = title || "";
-    if (modalBody)  modalBody.innerHTML = bodyHTML || "";
-    clearFoot();
-
-    for (const btn of buttons){
-      const b = document.createElement("button");
-      b.className = "btn" + (btn.variant ? ` ${btn.variant}` : "");
-      b.textContent = btn.label;
-      b.disabled = !!btn.disabled;
-
-      // evita “submit” acidental caso alguém coloque modal dentro de form
-      b.type = "button";
-
-      b.addEventListener("click", (ev) => {
-        ev.preventDefault();
-        btn.onClick?.();
-      });
-
-      modalFoot?.appendChild(b);
-    }
-
-    // mostra overlay
-    overlay.classList.remove("hidden");
-
-    // ✅ garante centralização no frame atual (sem “pular pro topo”)
-    // requestAnimationFrame para pegar layout já aplicado
-    requestAnimationFrame(() => {
-      overlay.classList.add("show");
-
-      // garante que o modal esteja visível sem scroll interno estranho
-      // (mas NÃO rola a página!)
-      modal?.scrollIntoView?.({ block: "center", inline: "nearest" });
-
-      // foco (sem scroll)
-      setTimeout(() => focusFirstAction(), 0);
-    });
-  }
-
-  function closeModal(){
-    overlay.classList.remove("show");
-
-    // fecha com animação
-    closeTimer = setTimeout(() => {
-      overlay.classList.add("hidden");
-      closeTimer = null;
-      unlockBodyScroll();
-
-      // restaura posição do scroll exatamente onde estava
-      window.scrollTo(0, scrollYBefore);
-
-      // restaura foco do elemento anterior (sem scroll)
-      if (lastActiveEl && typeof lastActiveEl.focus === "function"){
-        try { lastActiveEl.focus({ preventScroll: true }); } catch {}
-      }
-      lastActiveEl = null;
-    }, 180);
-  }
-
-  // =========================
-  // Eventos
-  // =========================
-  closeBtn?.addEventListener("click", (e) => {
-    e.preventDefault();
-    closeModal();
-  });
-
-  overlay.addEventListener("click", (e) => {
-    if (e.target === overlay && currentDismissible) closeModal();
-  });
-
-  document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape" && !overlay.classList.contains("hidden") && currentDismissible) closeModal();
-  });
-
-  // =========================
-  // Expor no app
-  // =========================
-  app.modal = { openModal, closeModal };
-  __modalApi = app.modal;
+  el.innerHTML = `
+    <div id="appModalBox" style="
+      max-width:720px;margin:6vh auto;background:#0b1220;color:#fff;
+      border:1px solid rgba(255,255,255,.12);border-radius:14px;
+      padding:14px 14px 10px;box-shadow:0 30px 80px rgba(0,0,0,.45);
+      ">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+        <div id="appModalTitle" style="font-weight:700;font-size:16px;line-height:1.2"></div>
+        <button id="appModalClose" type="button" aria-label="Fechar" style="
+          border:0;background:rgba(255,255,255,.08);color:#fff;border-radius:10px;
+          padding:6px 10px;cursor:pointer;font-size:14px;">✕</button>
+      </div>
+      <div id="appModalBody" style="margin-top:10px;font-size:14px;line-height:1.4"></div>
+    </div>
+  `;
+  document.body.appendChild(el);
+  el.addEventListener('click', (e) => { if (e.target === el) closeModal(); });
+  el.querySelector('#appModalClose').addEventListener('click', closeModal);
+  _modalEl = el;
+  return el;
 }
+
+export function openModal(title = 'Detalhes', html = ''){
+  const el = ensureModal();
+  el.querySelector('#appModalTitle').textContent = title;
+  el.querySelector('#appModalBody').innerHTML = html;
+  el.style.display = 'block';
+}
+
+export function closeModal(){
+  if (!_modalEl) return;
+  _modalEl.style.display = 'none';
+}
+
+window.openModal = openModal;
+window.closeModal = closeModal;
+
+// Delegated handler: any element with data-open-justifications="1" opens modal using data-justifications-html.
+document.addEventListener('click', (e) => {
+  const t = e.target?.closest?.('[data-open-justifications="1"]');
+  if (!t) return;
+  const title = t.getAttribute('data-justifications-title') || 'Correções e justificativas';
+  const html = t.getAttribute('data-justifications-html') || '<p>Sem detalhes disponíveis.</p>';
+  openModal(title, html);
+});
