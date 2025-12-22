@@ -209,17 +209,17 @@ export function bootGame(app){
     else b3.textContent = c3?.done ? `Desafio 3 ✅` : "Desafio 3";
   }
 
-  // Missão especial (libera após concluir Desafio 3 **e estar logado**)
+    // Missão especial (libera após concluir Desafio 3)
   const logged = !!app.auth?.isLogged?.();
   if (dom.missionSpecialHomeBtn){
-    const enabled = c3Done;
+    const enabled = !!c3Done;
     dom.missionSpecialHomeBtn.disabled = !enabled;
     dom.missionSpecialHomeBtn.style.opacity = enabled ? "1" : ".5";
-    dom.missionSpecialHomeBtn.textContent = enabled ? (logged ? "Missão Especial 🎁" : "Missão Especial 🔒") : "Missão Especial 🔒";
+    dom.missionSpecialHomeBtn.title = enabled ? "" : "Conclua o Desafio 3 para liberar";
   }
   if (dom.finalMissionSpecialBtn){
-    dom.finalMissionSpecialBtn.style.display = (c3Done) ? "inline-flex" : "none";
-    dom.finalMissionSpecialBtn.textContent = logged ? "Abrir Missão Especial" : "Missão Especial (faça login)";
+    // no final, só mostra se já liberou (independente de login)
+    dom.finalMissionSpecialBtn.style.display = c3Done ? "inline-flex" : "none";
   }
 }
   function requireNameSector(){
@@ -398,7 +398,7 @@ export function bootGame(app){
   
   dom.missionSpecialHomeBtn?.addEventListener("click", () => {
     const p = getProgress();
-    if (!app.auth?.isLogged?.() || !(p?.c3?.done)){
+    if (!(p?.c3?.done)){
       openModal({ title:"🔒 Missão Especial", bodyHTML:`<p>Conclua o <b>Desafio 3</b> para liberar a Missão Especial.</p>`, buttons:[{label:"Ok", variant:"ghost", onClick: closeModal}] });
       return;
     }
@@ -407,7 +407,7 @@ export function bootGame(app){
 
   dom.finalMissionSpecialBtn?.addEventListener("click", () => {
     const p = getProgress();
-    if (!app.auth?.isLogged?.() || !(p?.c3?.done)){
+    if (!(p?.c3?.done)){
       openModal({ title:"Missao Especial", bodyHTML: "<p>Conclua o Desafio 3 para liberar a Missao Especial.</p>", buttons:[{label:"Ok", variant:"ghost", onClick: closeModal}] });
       return;
     }

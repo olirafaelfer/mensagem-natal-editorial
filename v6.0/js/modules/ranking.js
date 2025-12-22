@@ -1,390 +1,227 @@
-// js/modules/ranking.js — Ranking V2 (rankingByEmail) — FIX16
-// Objetivos:
-// - Nunca crashar a engine
-// - Compatível com suas Firestore Rules (rankingByEmail)
-// - Visitante NÃO grava
-// - Logado SEMPRE grava (visible apenas controla exibição)
-// - Ranking Geral = média simples dos 3 desafios (faltante = 0)
+// js/modules/ranking.js — Ranking V2 (rankingByEmail)
+// - leitura pública (visible==true)
+// - gravação só para logados (rules)
+// - avatar: string opcional guardada no doc:
+//    * dataURL pequeno (upload comprimido) OU
+//    * emoji (ex: 🎅) OU
+//    * "icon:<id>" (opcional)
+//
+// Requer que Firestore rules permitam o campo opcional 'avatar' (string).
+
+import {
+  getFirestore,
+  doc,
+  getDoc,
+  setDoc,
+  serverTimestamp,
+  collection,
+  query,
+  where,
+  orderBy,
+  limit,
+  getDocs,
+} from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
 
 export function bootRanking(app){
-  const fb = app.firebase;
-  if (!fb?.db) {
-    console.warn('[ranking] firebase indisponível');
-    return { open: () => app.modal?.openModal?.({ title:'Ranking', bodyHTML:'<p>Firebase indisponível.</p>', buttons:[{label:'Ok', onClick: app.modal.closeModal}] }) };
-  }
-
-  const getVisiblePref = () => localStorage.getItem('mission_visible_in_ranking') !== '0';
-  const setVisiblePref = (v) => localStorage.setItem('mission_visible_in_ranking', v ? '1' : '0');
-
-  async function sha256Hex(text){
-    const enc = new TextEncoder().encode(text);
-    const buf = await crypto.subtle.digest('SHA-256', enc);
-    return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
-  }
+  const db = getFirestore(app.firebaseApp);
+  const colRef = collection(db, "rankingByEmail");
 
   function esc(s){
-    return String(s??'').replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
+    return String(s ?? "")
+      .replaceAll("&","&amp;")
+      .replaceAll("<","&lt;")
+      .replaceAll(">","&gt;")
+      .replaceAll('"',"&quot;")
+      .replaceAll("'","&#39;");
   }
 
-  function emptyD(){
-    return { score: -1, correct: 0, wrong: 0, updatedAt: fb.serverTimestamp() };
-  }
+  function isDataUrl(x){ return typeof x === "string" && x.startsWith("data:image/"); }
+  function isIconToken(x){ return typeof x === "string" && x.startsWith("icon:"); }
+  function isEmoji(x){ return typeof x === "string" && x.length > 0 && x.length <= 4 && !x.includes(" "); }
 
-  // Avatar cache (por dispositivo): emailHash -> url/dataURL
-  const AVATAR_LS_KEY = 'mission_avatar_by_emailhash_v1';
-  function loadAvatarMap(){
-    try { return JSON.parse(localStorage.getItem(AVATAR_LS_KEY) || '{}'); } catch { return {}; }
-  }
-  function saveAvatarMap(map){
-    try { localStorage.setItem(AVATAR_LS_KEY, JSON.stringify(map || {})); } catch {}
-  }
-  function setAvatarForHash(emailHash, url){
-    if (!emailHash || !url) return;
-    const map = loadAvatarMap();
-    map[emailHash] = String(url);
-    saveAvatarMap(map);
-  }
-  function getAvatarForHash(emailHash){
-    const map = loadAvatarMap();
-    return map[emailHash] || '';
-  }
-
-  function computeOverall(d1,d2,d3){
-    const s1 = Math.max(0, Number(d1?.score ?? 0));
-    const s2 = Math.max(0, Number(d2?.score ?? 0));
-    const s3 = Math.max(0, Number(d3?.score ?? 0));
-    return (s1+s2+s3)/3;
-  }
-
-  async function upsertForChallenge(ch, metrics){
-    // Visitante nunca grava
-    if (!app.auth?.isLogged?.()) return;
-
-    const u = fb.auth.currentUser;
-    const email = (u?.email || '').trim().toLowerCase();
-    if (!email) return;
-
-    const emailHash = await sha256Hex(email);
-
-    // Guarda a foto atual do usuário (se houver) para renderização no ranking (cache local)
-    try{
-      const purl = fb.auth.currentUser?.photoURL;
-      if (purl) setAvatarForHash(emailHash, purl);
-    }catch{}
-    const ref = fb.doc(fb.db, 'rankingByEmail', emailHash);
-    const snap = await fb.getDoc(ref);
-    const prev = snap.exists() ? (snap.data() || {}) : {};
-
-    const profile = app.auth.getProfile?.();
-    const name = (profile?.name || app.user?.getUserName?.() || u.displayName || 'Usuário');
-    const sector = (profile?.sector || app.user?.getUserSector?.() || '').trim();
-
-    // Rules exigem setor válido
-    if (!sector || sector.length < 2) {
-      console.warn('[ranking] setor inválido, não gravando ranking');
-      return;
+  function renderAvatar(entry){
+    const name = entry?.name || "";
+    const avatar = entry?.avatar || "";
+    if (isDataUrl(avatar)){
+      return `<img class="avatar" src="${avatar}" alt="${esc(name)}"/>`;
     }
-
-    const nowTs = fb.serverTimestamp();
-
-    const normD = (d) => ({
-      score: Number(d?.score ?? -1),
-      correct: Number(d?.correct ?? 0),
-      wrong: Number(d?.wrong ?? 0),
-      updatedAt: d?.updatedAt || nowTs,
-    });
-
-    const d1 = normD(prev.d1 || emptyD());
-    const d2 = normD(prev.d2 || emptyD());
-    const d3 = normD(prev.d3 || emptyD());
-
-    const next = {
-      score: Number(metrics?.score ?? 0),
-      correct: Number(metrics?.correct ?? 0),
-      wrong: Number(metrics?.wrong ?? 0),
-      updatedAt: nowTs,
-    };
-
-    if (ch === 1) Object.assign(d1, next);
-    if (ch === 2) Object.assign(d2, next);
-    if (ch === 3) Object.assign(d3, next);
-
-    const overallAvg = computeOverall(d1,d2,d3);
-
-    const payload = {
-      emailHash,
-      email,
-      uid: u.uid,
-      name: String(name).trim().slice(0,60),
-      sector: String(sector).trim().slice(0,120),
-      visible: getVisiblePref(),
-      d1,
-      d2,
-      d3,
-      overallAvg: Number(overallAvg),
-      createdAt: (snap.exists() ? (prev.createdAt || nowTs) : nowTs),
-      updatedAt: nowTs,
-    };
-
-    try {
-      await fb.setDoc(ref, payload);
-    } catch (e){
-      console.error('[ranking] falha ao gravar ranking', e);
-      // não crashar
+    if (isEmoji(avatar)){
+      return `<div class="avatar avatar-emoji" aria-label="avatar">${esc(avatar)}</div>`;
     }
-  }
-
-  async function loadTop(kind){
-    // kind: 'd1'|'d2'|'d3'|'overall'
-    const col = fb.collection(fb.db, 'rankingByEmail');
-    // Se não existir índice para d1.score etc, vamos sempre ordenar por overallAvg e ordenar no client.
-    const q = fb.query(col, fb.orderBy('overallAvg','desc'), fb.limit(80));
-    const snap = await fb.getDocs(q);
-    const rows = [];
-    snap.forEach(docu => {
-      const d = docu.data() || {};
-      if (d.visible === false) return;
-      rows.push(d);
-    });
-
-    const getPts = (d) => {
-      if (kind === 'd1') return Number(d?.d1?.score ?? 0);
-      if (kind === 'd2') return Number(d?.d2?.score ?? 0);
-      if (kind === 'd3') return Number(d?.d3?.score ?? 0);
-      return Number(d?.overallAvg ?? 0);
-    };
-
-    rows.sort((a,b)=>getPts(b)-getPts(a));
-    return rows.slice(0,50);
+    if (isIconToken(avatar)){
+      const id = avatar.slice(5);
+      const map = { tree:"🎄", santa:"🎅", gift:"🎁", star:"⭐", bell:"🔔", snow:"❄️", book:"📚" };
+      const emo = map[id] || "🙂";
+      return `<div class="avatar avatar-emoji" aria-label="${esc(id)}">${emo}</div>`;
+    }
+    const initial = (name.trim()[0] || "?").toUpperCase();
+    return `<div class="avatar avatar-initial">${esc(initial)}</div>`;
   }
 
   async function getMyEntry(){
-    if (!app.auth?.isLogged?.()) return null;
-    const u = fb.auth.currentUser;
-    const email = (u?.email || '').trim().toLowerCase();
-    if (!email) return null;
-    const emailHash = await sha256Hex(email);
-    const ref = fb.doc(fb.db, 'rankingByEmail', emailHash);
-    const snap = await fb.getDoc(ref);
-    if (!snap.exists()) return null;
-    return snap.data();
+    const u = app.auth?.getUser?.();
+    if (!u?.email) return null;
+    const email = (u.email || "").trim().toLowerCase();
+    const emailHash = await app.user?.getEmailHash?.(email);
+    if (!emailHash) return null;
+    const ref = doc(db, "rankingByEmail", emailHash);
+    const snap = await getDoc(ref);
+    return snap.exists() ? snap.data() : null;
   }
 
-  function pct(correct, wrong){
-    const c = Number(correct||0);
-    const w = Number(wrong||0);
-    const t = c+w;
-    if (!t) return 0;
-    return Math.round((c/t)*100);
+  function computeOverallAvg(d1,d2,d3){
+    if (Number(d1?.score ?? -1) < 0 || Number(d2?.score ?? -1) < 0 || Number(d3?.score ?? -1) < 0) return -1;
+    const s1 = Number(d1?.score ?? 0);
+    const s2 = Number(d2?.score ?? 0);
+    const s3 = Number(d3?.score ?? 0);
+    return Math.round((s1+s2+s3)/3);
+  }
+
+  async function upsertMyDoc(patch){
+    const u = app.auth?.getUser?.();
+    if (!u?.email) throw new Error("Sem usuário logado com e-mail");
+    const email = (u.email || "").trim().toLowerCase();
+    const emailHash = await app.user?.getEmailHash?.(email);
+    if (!emailHash) throw new Error("Falha ao gerar emailHash");
+
+    const ref = doc(db, "rankingByEmail", emailHash);
+    const now = serverTimestamp();
+
+    let base = null;
+    try{
+      const snap = await getDoc(ref);
+      base = snap.exists() ? snap.data() : null;
+    }catch{}
+
+    const docData = {
+      emailHash,
+      email,
+      uid: u.uid || "",
+      name: app.user?.getUserName?.() || base?.name || "Jogador",
+      sector: app.user?.getUserSector?.() || base?.sector || "Setor",
+      visible: (typeof base?.visible === "boolean") ? base.visible : true,
+      avatar: base?.avatar || "",
+      d1: base?.d1 || { score:-1, correct:0, wrong:0, updatedAt: now },
+      d2: base?.d2 || { score:-1, correct:0, wrong:0, updatedAt: now },
+      d3: base?.d3 || { score:-1, correct:0, wrong:0, updatedAt: now },
+      overallAvg: base?.overallAvg ?? -1,
+      createdAt: base?.createdAt || now,
+      updatedAt: now,
+      ...patch,
+    };
+
+    docData.overallAvg = computeOverallAvg(docData.d1, docData.d2, docData.d3);
+    await setDoc(ref, docData, { merge: false });
+    return docData;
+  }
+
+  async function submitChallengeScore(ch, payload){
+    if (!app.auth?.isLogged?.()) return;
+    const key = "d"+ch;
+    const now = serverTimestamp();
+    const score = Math.max(0, Number(payload?.score ?? payload?.s ?? 0));
+    const correct = Math.max(0, Number(payload?.correct ?? payload?.c ?? 0));
+    const wrong = Math.max(0, Number(payload?.wrong ?? payload?.w ?? 0));
+    const patch = {};
+    patch[key] = { score, correct, wrong, updatedAt: now };
+    await upsertMyDoc(patch);
+  }
+
+  async function setMyAvatar(avatar){
+    if (!app.auth?.isLogged?.()) {
+      try{ localStorage.setItem("guestAvatar", avatar || ""); }catch{}
+      return;
+    }
+    if (typeof avatar === "string" && avatar.startsWith("data:image/") && avatar.length > 200000){
+      throw new Error("Avatar muito grande. Use uma imagem menor.");
+    }
+    await upsertMyDoc({ avatar: avatar || "" });
+  }
+
+  async function fetchTop(kind, max=50){
+    let qref;
+    if (kind === "overall"){
+      qref = query(colRef, where("visible","==",true), where("overallAvg",">=",0), orderBy("overallAvg","desc"), limit(max));
+    }else{
+      qref = query(colRef, where("visible","==",true), orderBy(`${kind}.score`,"desc"), limit(max));
+    }
+    const snap = await getDocs(qref);
+    return snap.docs.map(d => d.data());
   }
 
   function renderTable(rows, kind){
-    const getPts = (d) => {
-      if (kind === 'd1') return Number(d?.d1?.score ?? 0);
-      if (kind === 'd2') return Number(d?.d2?.score ?? 0);
-      if (kind === 'd3') return Number(d?.d3?.score ?? 0);
-      return Math.round(Number(d?.overallAvg ?? 0));
-    };
-
-    function initials(name){
-      const parts = String(name||'').trim().split(/\s+/).filter(Boolean);
-      if (!parts.length) return '🎅';
-      const a = parts[0][0] || '';
-      const b = (parts.length>1 ? parts[parts.length-1][0] : '') || '';
-      return (a+b).toUpperCase();
-    }
-
+    const isOverall = kind === "overall";
     return `
-      <div class="rank-list">
-        <div class="rank-head">
-          <div>#</div><div>Jogador</div><div>Setor</div><div style="text-align:right">Pontos</div>
-        </div>
-        ${rows.map((d,i)=>{
-          const pts = getPts(d);
-          const c = Number(d?.d1?.correct||0)+Number(d?.d2?.correct||0)+Number(d?.d3?.correct||0);
-          const w = Number(d?.d1?.wrong||0)+Number(d?.d2?.wrong||0)+Number(d?.d3?.wrong||0);
-          const medal = (i===0?'🥇':i===1?'🥈':i===2?'🥉':String(i+1));
-          const av = getAvatarForHash(d?.emailHash);
-          const avHtml = av
-            ? `<img class="rank-avatar" src="${esc(av)}" alt="" loading="lazy" referrerpolicy="no-referrer" />`
-            : `<div class="rank-avatar fallback">${esc(initials(d?.name||''))}</div>`;
+      <div class="rank-table">
+        ${rows.map((r, i)=>{
+          const pos = i+1;
+          const score = isOverall ? Number(r.overallAvg ?? 0) : Number(r?.[kind]?.score ?? 0);
+          const trophy = pos===1?"🏆":pos===2?"🥈":pos===3?"🥉":"";
           return `
             <div class="rank-row">
-              <div>${medal}</div>
-              <div class="rank-name">
-                ${avHtml}
-                <span>${esc(d?.name||'')}</span>
+              <div class="rank-pos">${pos} ${trophy}</div>
+              <div class="rank-who">
+                ${renderAvatar(r)}
+                <div class="rank-meta">
+                  <div class="rank-name">${esc(r.name || "Jogador")}</div>
+                  <div class="rank-sector">${esc(r.sector || "")}</div>
+                </div>
               </div>
-              <div class="rank-sector">${esc(d?.sector||'')}</div>
-              <div style="text-align:right">${pts}</div>
+              <div class="rank-score">${score}</div>
             </div>`;
-        }).join('')}
+        }).join("")}
       </div>`;
   }
 
   async function open(){
-    const selected = { kind: 'overall' };
-
-    const my = await getMyEntry();
-    const logged = app.auth?.isLogged?.();
-    const visible = getVisiblePref();
-    const overallComplete = !!(my && Number(my?.d1?.score ?? -1) >= 0 && Number(my?.d2?.score ?? -1) >= 0 && Number(my?.d3?.score ?? -1) >= 0);
-
-    const header = `
+    const body = `
       <div class="rank-tiles">
         <button class="rank-tile" data-kind="d1">Desafio 1</button>
         <button class="rank-tile" data-kind="d2">Desafio 2</button>
         <button class="rank-tile" data-kind="d3">Desafio 3</button>
-        <button class="rank-tile" data-kind="overall">Ranking geral <span class="rank-help" title="A média simples dos 3 desafios">❓</span></button>
+        <button class="rank-tile" data-kind="overall">Ranking geral <span class="rank-help" title="A média simples dos 3 desafios. Só aparece quando o usuário conclui os 3.">?</span></button>
       </div>
-      <div id="rankHint" class="muted" style="margin-top:10px"></div>
-      <div id="rankBody" style="margin-top:10px">Carregando...</div>
-      <div class="rank-footer" style="margin-top:14px">
-        <div class="rank-visible">
-          <strong>Participando do ranking:</strong> <span id="rankVisibleValue">${logged ? (visible?'Sim':'Não') : '—'}</span>
-          <span class="rank-help" title="Você pode ocultar seu nome no ranking sem perder as pontuações.">❓</span>
-        </div>
-        <div style="margin-top:8px">
-          <button id="rankToggleVisible" class="btn small" ${logged ? '' : 'disabled'}>
-            ${visible ? 'Ocultar meu nome' : 'Mostrar meu nome'}
-          </button>
-          ${logged ? '' : '<div class="muted" style="margin-top:6px">Faça login para aparecer no ranking.</div>'}
-        </div>
+      <div id="rankBody" style="margin-top:12px">Carregando...</div>
+      <div class="rank-footer" style="margin-top:12px">
+        <button class="btn" id="rankRefreshBtn">Atualizar</button>
       </div>
     `;
+    app.ui?.openModal?.({ title:"Ranking", bodyHTML: body, size:"lg" });
 
-    app.modal.openModal({
-      title: '🏆 Rankings',
-      bodyHTML: header,
-      buttons: [ { label:'Fechar', variant:'primary', onClick: () => app.modal.closeModal?.() } ]
-    });
+    const modal = document.getElementById("modalBody");
+    const rankBody = document.getElementById("rankBody");
 
-    const hintEl = document.getElementById('rankHint');
-    const bodyEl = document.getElementById('rankBody');
+    let currentKind = "overall";
 
-    async function render(kind){
-      selected.kind = kind;
-      if (!hintEl || !bodyEl) return;
-      if (kind === 'overall') {
-        if (!overallComplete) {
-          hintEl.innerHTML = `❌ <strong>Você só entra no Ranking geral</strong> ao concluir os 3 desafios.`;
-        } else {
-          hintEl.innerHTML = `✅ <strong>Ranking geral</strong>: média simples dos 3 desafios.`;
-        }
-      } else {
-        hintEl.textContent = '';
-      }
-      bodyEl.innerHTML = '<div class="muted">Carregando...</div>';
-      try {
-        const rows = await loadTop(kind);
-        bodyEl.innerHTML = renderTable(rows, kind);
-      } catch (e){
-        console.error('[ranking] loadTop falhou', e);
-        bodyEl.innerHTML = '<div class="muted">Falha ao carregar ranking.</div>';
+    async function load(){
+      if (!rankBody) return;
+      rankBody.innerHTML = "Carregando...";
+      try{
+        const kind = currentKind === "overall" ? "overall" : currentKind;
+        const rows = await fetchTop(kind === "overall" ? "overall" : kind);
+        rankBody.innerHTML = renderTable(rows, kind === "overall" ? "overall" : kind);
+      }catch(e){
+        console.warn("[ranking] falha ao carregar", e);
+        rankBody.innerHTML = `<div class="muted">Falha ao carregar ranking.</div>`;
       }
     }
 
-    // initial
-    await render('overall');
+    await load();
 
-    // tile clicks
-    document.querySelectorAll('.rank-tile').forEach(btn => {
-      btn.addEventListener('click', (ev)=>{
-        const k = ev.currentTarget.getAttribute('data-kind');
-        if (k) render(k);
-      });
-    });
-
-    // toggle visible
-    const toggleBtn = document.getElementById('rankToggleVisible');
-    const valueEl = document.getElementById('rankVisibleValue');
-    if (toggleBtn){
-      toggleBtn.addEventListener('click', async ()=>{
-        if (!logged) return;
-        const next = !(getVisiblePref());
-        setVisiblePref(next);
-        if (valueEl) valueEl.textContent = next ? 'Sim' : 'Não';
-        toggleBtn.textContent = next ? 'Ocultar meu nome' : 'Mostrar meu nome';
-        // Atualiza o doc do ranking para refletir visibilidade
-        try {
-          const me = await getMyEntry();
-          if (me){
-            const u = fb.auth.currentUser;
-            const emailHash = me.emailHash;
-            const ref = fb.doc(fb.db, 'rankingByEmail', emailHash);
-            const nowTs = fb.serverTimestamp();
-            const payload = {
-              emailHash: me.emailHash,
-              email: me.email,
-              uid: me.uid,
-              name: me.name,
-              sector: me.sector,
-              visible: next,
-              d1: me.d1 || emptyD(),
-              d2: me.d2 || emptyD(),
-              d3: me.d3 || emptyD(),
-              overallAvg: Number(me.overallAvg||0),
-              createdAt: me.createdAt || nowTs,
-              updatedAt: nowTs,
-            };
-            await fb.setDoc(ref, payload);
-          }
-        } catch(e){
-          console.warn('[ranking] toggle visible falhou', e);
-        }
-        // re-render
-        render(selected.kind);
-      });
-    }
+    modal?.addEventListener("click", (ev)=>{
+      const btn = ev.target.closest?.(".rank-tile");
+      if (btn){
+        currentKind = btn.dataset.kind || "overall";
+        load();
+      }
+      if (ev.target?.id === "rankRefreshBtn") load();
+    }, { once:false });
   }
 
-  // Interface usada pela engine
   app.ranking = {
     open,
-    submitChallengeScore: upsertForChallenge,
-    // usado pelo módulo de conta (auth) para cachear avatar
-    setMyAvatar: async (photoURL) => {
-      try{
-        const u = fb.auth.currentUser;
-        const email = (u?.email || '').trim().toLowerCase();
-        if (!email) return;
-        const h = await sha256Hex(email);
-        if (photoURL) setAvatarForHash(h, photoURL);
-        else {
-          const map = loadAvatarMap();
-          delete map[h];
-          saveAvatarMap(map);
-        }
-      }catch{}
-    },
-    // usado por "Excluir conta" para ocultar (soft) no ranking
-    setMyVisibility: async (visible) => {
-      if (!app.auth?.isLogged?.()) return;
-      try{
-        const u = fb.auth.currentUser;
-        const email = (u?.email || '').trim().toLowerCase();
-        if (!email) return;
-        const emailHash = await sha256Hex(email);
-        const ref = fb.doc(fb.db, 'rankingByEmail', emailHash);
-        const snap = await fb.getDoc(ref);
-        const prev = snap.exists()? (snap.data()||{}) : null;
-        if (!prev) return;
-        const nowTs = fb.serverTimestamp();
-        await fb.setDoc(ref, {
-          ...prev,
-          visible: !!visible,
-          updatedAt: nowTs,
-        });
-      }catch(e){
-        console.warn('[ranking] setMyVisibility falhou', e);
-      }
-    }
+    submitChallengeScore,
+    setMyAvatar,
+    getMyEntry,
   };
-
-  // botão do topo (🏆)
-  try{
-    app.dom?.rankingBtn?.addEventListener("click", () => open());
-  }catch(e){ /* noop */ }
-
-  return app.ranking;
 }

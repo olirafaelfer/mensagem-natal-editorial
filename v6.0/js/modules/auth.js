@@ -67,7 +67,22 @@ export function bootAuth(app) {
     document.getElementById("accountBtn");
 
   // Estado
-  let currentUser = null;
+  
+function getLocalAvatarByEmail(email){
+  try{
+    const em = String(email||"").trim().toLowerCase();
+    if (!em) return "";
+    return localStorage.getItem(`avatar:${em}`) || "";
+  }catch{ return ""; }
+}
+function setLocalAvatarByEmail(email, avatar){
+  try{
+    const em = String(email||"").trim().toLowerCase();
+    if (!em) return;
+    localStorage.setItem(`avatar:${em}`, avatar || "");
+  }catch{}
+}
+let currentUser = null;
   let currentProfile = null;
   let gateOpen = false;
 function cleanEmail(e){
@@ -238,7 +253,7 @@ onClick: () => {
     const sector = p?.sector || "";
     const participating = (localStorage.getItem('mission_visible_in_ranking') !== '0') ? "Sim" : "Não";
 
-    const photoURL = currentUser.photoURL || '';
+    const photoURL = getLocalAvatarByEmail(currentUser?.email) || currentUser.photoURL || '';
     openModal({
       title: "👤 Minha conta",
       bodyHTML: `
@@ -307,6 +322,7 @@ onClick: () => {
         try{
           const dataUrl = await imageFileToDataURL(f, 160, 0.86);
           await updateMyPhotoURL(dataUrl);
+          setLocalAvatarByEmail(currentUser?.email, dataUrl);
           if (preview){
             if (preview.tagName === 'IMG') preview.src = dataUrl;
             else preview.outerHTML = `<img id="accountAvatarImg" src="${escapeHtml(dataUrl)}" alt="" referrerpolicy="no-referrer"/>`;
@@ -324,6 +340,7 @@ onClick: () => {
       removeBtn.addEventListener('click', async () => {
         try{
           await updateMyPhotoURL('');
+          setLocalAvatarByEmail(currentUser?.email, '');
           setStatus('Foto removida ✅');
           // Atualiza UI
           if (preview){
@@ -346,6 +363,7 @@ onClick: () => {
         const dataUrl = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
         try{
           await updateMyPhotoURL(dataUrl);
+          setLocalAvatarByEmail(currentUser?.email, dataUrl);
           setStatus('Ícone definido ✅');
           const p = document.getElementById('accountAvatarImg');
           if (p) p.outerHTML = `<img id="accountAvatarImg" src="${escapeHtml(dataUrl)}" alt="" referrerpolicy="no-referrer"/>`;
@@ -363,59 +381,42 @@ onClick: () => {
     return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
   }
 
-  async function updateMyPhotoURL(photoURL){
-    if (!currentUser) return;
+  async function updateMyPhotoURL(photoDataURL){
+    // ✅ Sem Firebase Storage (pago). Usamos:
+    // - Ícone: salva token "icon:<id>"
+    // - Upload: salva dataURL comprimido (pequeno) no rankingByEmail.avatar (público)
+    if (!currentUser) throw new Error("Sem usuário");
     try{
-      let finalURL = photoURL || '';
-      // Se for dataURL (upload), não dá pra salvar direto no Auth (limite). Subimos no Storage e usamos URL curta.
-      if (finalURL && String(finalURL).startsWith('data:')){
-        const email = (currentUser.email || '').trim().toLowerCase();
-        const emailHash = email ? await sha256Hex(email) : (currentUser.uid || 'anon');
-        const storage = app.firebase?.storage;
-        const sref = app.firebase?.storageRef?.(storage, `avatars/${emailHash}.jpg`);
-        if (!storage || !sref || !app.firebase?.uploadString || !app.firebase?.getDownloadURL){
-          throw new Error('Storage não inicializado (firebase-storage).');
+      let avatar = photoDataURL || "";
+      // limita/normaliza: se for dataURL gigante, recusa
+      if (typeof avatar === "string" && avatar.startsWith("data:image/")){
+        if (avatar.length > 200000){
+          throw new Error("Imagem muito grande. Use uma imagem menor.");
         }
-        try {
-  await app.firebase.uploadString(sref, finalURL, 'data_url');
-} catch (e) {
-  // Alguns projetos usam bucket appspot.com; em caso de CORS/404, tentamos fallback
-  try {
-    const alt = app.firebase?.getStorageForBucket?.(`gs://missao-natal-ranking.appspot.com`);
-    const altRef = app.firebase?.storageRef?.(alt, `avatars/${emailHash}.jpg`);
-    if (alt && altRef) {
-      await app.firebase.uploadString(altRef, finalURL, 'data_url');
-      finalURL = await app.firebase.getDownloadURL(altRef);
-    } else {
-      throw e;
-    }
-  } catch {
-    throw e;
-  }
-}
-        finalURL = finalURL.startsWith("http") ? finalURL : await app.firebase.getDownloadURL(sref);
       }
+      // Cache local por email (melhora load)
+      try{
+        const em = (currentUser.email || "").trim().toLowerCase();
+        if (em) localStorage.setItem(`avatar:${em}`, avatar || "");
+      }catch{}
 
-      await updateProfile(currentUser, { photoURL: finalURL });
-      try {
-        const em = (currentUser.email || '').trim().toLowerCase();
-        if (em) localStorage.setItem(`avatar:${em}`, finalURL || '');
-      } catch {}
-
-      // Propaga para ranking local (se existir hook)
-      try {
-        const em = (currentUser.email || '').trim().toLowerCase();
-        if (em && app.ranking?.setMyAvatar){
-          await app.ranking.setMyAvatar(finalURL || '');
-        }
-      } catch {}
+      // Propaga pro ranking (Firestore)
+      if (app.ranking?.setMyAvatar){
+        await app.ranking.setMyAvatar(avatar || "");
+      }
+      // Atualiza UI imediata
+      try{
+        const img = document.getElementById("myAvatarImg");
+        if (img && typeof avatar === "string" && avatar.startsWith("data:image/")) img.src = avatar;
+      }catch{}
+      return true;
     }catch(e){
-      console.warn('[auth] falha ao atualizar foto', e);
+      console.warn("[auth] falha ao atualizar foto", e);
       throw e;
     }
   }
 
-  function imageFileToDataURL(file, maxSizePx = 160, quality = 0.86){
+function imageFileToDataURL(file, maxSizePx = 160, quality = 0.86){
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onerror = reject;
@@ -927,7 +928,16 @@ function applyLoggedProfileToForm(profile) {
     return e?.message ? String(e.message) : "Erro inesperado.";
   }
 
-  function escapeHtml(s) {
+  
+function setStatus(msg){
+  try{
+    const el = document.getElementById('accountStatus');
+    if (el) el.textContent = msg || '';
+    else console.log('[status]', msg);
+  }catch{}
+}
+
+function escapeHtml(s) {
     return String(s)
       .replaceAll("&", "&amp;")
       .replaceAll("<", "&lt;")
