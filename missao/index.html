@@ -1,13 +1,126 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Missão Especial</title>
-  <link rel="stylesheet" href="missao.css">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Cartão Personalizável</title>
+  <meta name="theme-color" content="#0b0f1a" />
+  <link rel="stylesheet" href="styles.css" />
 </head>
-<body class="center">
-  <button id="openMission" class="open-btn">🎄 Abrir Missão Especial</button>
-  <script src="missao.js"></script>
+<body>
+  <main class="page">
+    <header class="hero">
+      <div class="hero__inner">
+        <h1>Cartão de Natal</h1>
+        <p>Personalize a mensagem, cores e fonte. Exporte em PNG ou compartilhe um link.</p>
+        <div class="hero__actions">
+          <button id="btnOpen" class="btn btn--primary">🎄 Criar cartão</button>
+          <button id="btnOpenFromUrl" class="btn btn--ghost" title="Recarrega o estado do link (se houver)">🔗 Carregar do link</button>
+        </div>
+      </div>
+    </header>
+
+    <section class="tips">
+      <div class="tip">✅ Funciona em desktop e mobile</div>
+      <div class="tip">🧩 Enfeites em SVG (leve)</div>
+      <div class="tip">📲 Compartilhamento via Web Share (quando disponível)</div>
+    </section>
+  </main>
+
+  <!-- Modal -->
+  <div id="modal" class="modal hidden" role="dialog" aria-modal="true" aria-label="Editor do cartão">
+    <div class="modal__scrim" data-close></div>
+
+    <div class="modal__panel" role="document">
+      <div class="modal__topbar">
+        <div class="modal__title">Editor do Cartão</div>
+        <div class="modal__topbarActions">
+          <button class="iconBtn" id="btnShareLink" title="Compartilhar link">🔗</button>
+          <button class="iconBtn" data-close title="Fechar">✖</button>
+        </div>
+      </div>
+
+      <div class="workspace">
+        <div class="previewWrap">
+          <div class="cardFrame">
+            <div id="card" class="card" aria-label="Prévia do cartão">
+              <img id="cardLogo" class="card__logo hidden" src="assets/logo-natal.png" alt="Logo" />
+              <div id="cardMessage" class="card__message"></div>
+
+              <!-- stickers are absolutely positioned inside card -->
+              <div id="stickerLayer" class="card__stickers" aria-hidden="true"></div>
+            </div>
+          </div>
+
+          <div class="quickActions">
+            <button id="btnExport" class="btn btn--primary">🖼 Exportar PNG</button>
+            <button id="btnShareImg" class="btn btn--secondary">📲 Compartilhar imagem</button>
+          </div>
+
+          <p class="hint">Dica: toque no enfeite para selecionar • arraste para mover • use “+ / -” para escala • 🗑 para remover.</p>
+        </div>
+
+        <aside class="panel">
+          <div class="panel__section">
+            <div class="panel__label">Mensagem</div>
+            <textarea id="inpMessage" class="textarea" rows="6" placeholder="Escreva sua mensagem..."></textarea>
+          </div>
+
+          <div class="panel__grid2">
+            <div class="panel__section">
+              <div class="panel__label">Fonte</div>
+              <select id="selFont" class="select">
+                <option value="system">Sistema (recomendado)</option>
+                <option value="serif">Serif</option>
+                <option value="mono">Monospace</option>
+              </select>
+            </div>
+
+            <div class="panel__section">
+              <div class="panel__label">Tamanho</div>
+              <input id="rngFontSize" type="range" min="12" max="22" value="16" />
+            </div>
+          </div>
+
+          <div class="panel__grid2">
+            <div class="panel__section">
+              <div class="panel__label">Texto</div>
+              <input id="colText" type="color" value="#ffffff" />
+            </div>
+
+            <div class="panel__section">
+              <div class="panel__label">Logo</div>
+              <label class="check">
+                <input id="chkLogo" type="checkbox" />
+                <span>Mostrar no cartão</span>
+              </label>
+            </div>
+          </div>
+
+          <div class="panel__section">
+            <div class="panel__label">Fundo (gradiente)</div>
+            <div class="panel__grid2">
+              <input id="colBg1" type="color" value="#0e2a5a" />
+              <input id="colBg2" type="color" value="#b5179e" />
+            </div>
+          </div>
+
+          <div class="panel__section">
+            <div class="panel__label">Enfeites (SVG)</div>
+            <div id="stickerTray" class="tray"></div>
+          </div>
+
+          <div class="panel__section panel__row">
+            <button id="btnMinus" class="miniBtn" title="Diminuir escala">−</button>
+            <button id="btnPlus" class="miniBtn" title="Aumentar escala">+</button>
+            <button id="btnDelete" class="miniBtn miniBtn--danger" title="Remover selecionado">🗑</button>
+            <span id="selStatus" class="status">Nenhum enfeite selecionado</span>
+          </div>
+        </aside>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
 </body>
 </html>
