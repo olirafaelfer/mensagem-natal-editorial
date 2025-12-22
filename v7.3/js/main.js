@@ -1,5 +1,5 @@
 // Cache-buster para imports (garante que o browser não use arquivos antigos)
-const BUILD_ID = "v7.0";
+const BUILD_ID = "v7.3.1";
 import { APP_VERSION } from "./config/version.js";
 import { openModal, closeModal } from "./ui/modal.js";
 window.openModal = openModal;
