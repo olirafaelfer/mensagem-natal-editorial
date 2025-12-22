@@ -12,8 +12,11 @@
     defs: $("#svgDefs"),
     bgRect: $("#bgRect"),
     patternLayer: $("#patternLayer"),
+    textGroup: $("#textGroup"),
+    textHit: $("#textHit"),
     msgText: $("#msgText"),
     signText: $("#signText"),
+    logoImg: $("#logoImg"),
     stickersLayer: $("#stickersLayer"),
     toast: $("#toast"),
     floating: $("#floatingTools"),
@@ -22,7 +25,7 @@
     messagePills: $("#messagePills"),
     fontSelect: $("#fontSelect"),
     fontSizeSelect: $("#fontSizeSelect"),
-    showLogo: $("#showLogo"),
+    fontSizeRange: $("#fontSizeRange"),
 
     themeGrid: $("#themeGrid"),
     bgA: $("#bgA"),
@@ -170,7 +173,8 @@
     msgIndex: 0,
     fontFamily: "Inter",
     fontSize: 76,
-    showLogo: false,
+    textDx: 0,
+    textDy: 0,
 
     bgA: "#0b1220",
     bgB: "#0f2a4a",
@@ -269,7 +273,7 @@
   function syncControls(){
     els.fontSelect.value = state.fontFamily;
     els.fontSizeSelect.value = String(state.fontSize);
-    els.showLogo.checked = !!state.showLogo;
+    els.fontSizeRange.value = String(state.fontSize);
 
     els.bgA.value = state.bgA;
     els.bgB.value = state.bgB;
@@ -420,7 +424,8 @@
     els.signText.setAttribute("x","540");
     els.signText.setAttribute("y", String(Math.round(startY + (lines*lineH) + 58)));
 
-    renderLogo();
+    // aplica deslocamento (drag)
+    els.textGroup.setAttribute("transform", `translate(${state.textDx} ${state.textDy})`);
   }
 
   function wrapSvgText(textEl, maxWidth){
@@ -453,20 +458,7 @@
     });
   }
 
-  function renderLogo(){
-    // logo as SVG image element inside card for export reliability
-    const existing = $("#exportLogo", els.svg);
-    if (existing) existing.remove();
-    if (!state.showLogo) return;
-
-    const img = document.createElementNS("http://www.w3.org/2000/svg","image");
-    img.setAttribute("id","exportLogo");
-    img.setAttribute("href","assets/logo-natal.svg");
-    img.setAttribute("x","66"); img.setAttribute("y","70");
-    img.setAttribute("width","86"); img.setAttribute("height","86");
-    img.setAttribute("opacity","0.95");
-    els.svg.insertBefore(img, $("#patternLayer"));
-  }
+  // Logo fixa: o href é setado em init (dataURL) para funcionar no export
 
   function addSticker(stickerId){
     const s = STICKERS.find(x => x.id === stickerId);
@@ -493,6 +485,8 @@
       g.setAttribute("cursor","grab");
       g.style.transformBox = "fill-box";
       g.style.transformOrigin = "center";
+      g.style.pointerEvents = "all";
+      g.style.touchAction = "none";
 
       // embed sticker SVG as <g> via parsing
       const wrap = document.createElementNS("http://www.w3.org/2000/svg","g");
@@ -569,6 +563,15 @@
     origY: 0,
   };
 
+  // Drag do texto (mensagem/assinatura)
+  const textDrag = {
+    active: false,
+    startX: 0,
+    startY: 0,
+    origDx: 0,
+    origDy: 0,
+  };
+
   function svgPointFromEvent(ev){
     const pt = els.svg.createSVGPoint();
     pt.x = ev.clientX; pt.y = ev.clientY;
@@ -624,13 +627,51 @@
     saveToHash();
   }
 
+  function onTextPointerDown(ev){
+    // não iniciar drag se clicou em um sticker
+    const inSticker = ev.target && ev.target.closest && ev.target.closest("#stickersLayer g");
+    if (inSticker) return;
+    ev.preventDefault();
+    ev.stopPropagation();
+
+    textDrag.active = true;
+    const p = svgPointFromEvent(ev);
+    textDrag.startX = p.x; textDrag.startY = p.y;
+    textDrag.origDx = state.textDx; textDrag.origDy = state.textDy;
+
+    els.textGroup.setPointerCapture(ev.pointerId);
+    els.textGroup.style.cursor = "grabbing";
+    els.textGroup.addEventListener("pointermove", onTextPointerMove);
+    els.textGroup.addEventListener("pointerup", onTextPointerUp, { once: true });
+    els.textGroup.addEventListener("pointercancel", onTextPointerUp, { once: true });
+  }
+
+  function onTextPointerMove(ev){
+    if (!textDrag.active) return;
+    const p = svgPointFromEvent(ev);
+    const dx = textDrag.origDx + (p.x - textDrag.startX);
+    const dy = textDrag.origDy + (p.y - textDrag.startY);
+    // limites para não sumir do cartão
+    state.textDx = clamp(dx, -260, 260);
+    state.textDy = clamp(dy, -320, 320);
+    els.textGroup.setAttribute("transform", `translate(${state.textDx} ${state.textDy})`);
+  }
+
+  function onTextPointerUp(){
+    textDrag.active = false;
+    els.textGroup.style.cursor = "grab";
+    els.textGroup.removeEventListener("pointermove", onTextPointerMove);
+    saveToHash();
+  }
+
   // Hash state (shareable)
   function saveToHash(){
     const payload = {
       m: state.msgIndex,
       f: state.fontFamily,
       fs: state.fontSize,
-      l: state.showLogo ? 1 : 0,
+      tx: round(state.textDx),
+      ty: round(state.textDy),
       a: state.bgA,
       b: state.bgB,
       tc: state.textColor,
@@ -652,7 +693,8 @@
       if (typeof payload.m === "number") state.msgIndex = clamp(payload.m, 0, MSGS.length-1);
       if (typeof payload.f === "string") state.fontFamily = payload.f;
       if (typeof payload.fs === "number") state.fontSize = clamp(payload.fs, 56, 110);
-      state.showLogo = payload.l === 1;
+      if (typeof payload.tx === "number") state.textDx = clamp(payload.tx, -260, 260);
+      if (typeof payload.ty === "number") state.textDy = clamp(payload.ty, -320, 320);
 
       if (typeof payload.a === "string") state.bgA = payload.a;
       if (typeof payload.b === "string") state.bgB = payload.b;
@@ -685,6 +727,26 @@
     renderPattern();
     renderText();
     renderStickers();
+  }
+
+  let logoDataUrl = null;
+  async function ensureLogo(){
+    if (logoDataUrl) return logoDataUrl;
+    try{
+      const res = await fetch("assets/logo-natal.png", { cache: "force-cache" });
+      const blob = await res.blob();
+      logoDataUrl = await new Promise((resolve) => {
+        const r = new FileReader();
+        r.onload = () => resolve(r.result);
+        r.readAsDataURL(blob);
+      });
+    }catch(e){
+      console.warn("Não consegui carregar a logo", e);
+      logoDataUrl = "assets/logo-natal.png";
+    }
+    // aplica no SVG (pra export funcionar)
+    els.logoImg.setAttribute("href", logoDataUrl);
+    return logoDataUrl;
   }
 
   async function exportPng(){
@@ -751,7 +813,12 @@
     // text controls
     els.fontSelect.addEventListener("change", () => { state.fontFamily = els.fontSelect.value; renderText(); saveToHash(); });
     els.fontSizeSelect.addEventListener("change", () => { state.fontSize = Number(els.fontSizeSelect.value) || 76; renderText(); saveToHash(); });
-    els.showLogo.addEventListener("change", () => { state.showLogo = !!els.showLogo.checked; renderLogo(); saveToHash(); });
+    els.fontSizeRange.addEventListener("input", () => {
+      state.fontSize = Number(els.fontSizeRange.value) || state.fontSize;
+      els.fontSizeSelect.value = String(state.fontSize);
+      renderText();
+      saveToHash();
+    });
 
     // sticker tools
     els.btnDelete.addEventListener("click", deleteSelected);
@@ -768,6 +835,10 @@
         renderStickers();
       }
     });
+
+    // drag do texto
+    els.textGroup.style.cursor = "grab";
+    els.textGroup.addEventListener("pointerdown", onTextPointerDown);
 
     els.btnClearDecor.addEventListener("click", () => {
       state.stickers = [];
@@ -793,7 +864,11 @@
   }
 
   // Init
-  function init(){
+  async function init(){
+    // garante drag consistente no mobile
+    els.svg.style.touchAction = "none";
+
+    await ensureLogo();
     buildMessagePills();
     buildThemes();
     buildDecos();

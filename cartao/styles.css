@@ -77,6 +77,27 @@ body{
   font-weight:800;
 }
 .btn--ghost{background:rgba(255,255,255,.03)}
+.btn--share{
+  background: linear-gradient(135deg, rgba(99,102,241,.30), rgba(34,197,94,.28));
+  border-color: rgba(255,255,255,.20);
+  position:relative;
+  overflow:hidden;
+}
+.btn--share::before{
+  content:"";
+  position:absolute;
+  inset:-2px;
+  background: radial-gradient(12px 12px at 18% 30%, rgba(255,255,255,.55), transparent 55%),
+              linear-gradient(90deg, rgba(236,72,153,.35), rgba(34,197,94,.35), rgba(59,130,246,.35));
+  filter: blur(10px);
+  opacity:.75;
+  animation: sharePulse 1.7s ease-in-out infinite;
+}
+.btn--share > *{position:relative; z-index:1}
+@keyframes sharePulse{
+  0%,100%{opacity:.55; transform: translateX(-8px)}
+  50%{opacity:1; transform: translateX(8px)}
+}
 .btn__label{font-weight:700; font-size:13px}
 .btn__icon{font-size:14px}
 
@@ -116,6 +137,7 @@ body{
   max-height:100%;
   border-radius:24px;
   display:block;
+  touch-action:none; /* crucial for drag on mobile */
 }
 
 .hint{
@@ -199,9 +221,9 @@ body{
   background: rgba(255,255,255,.08);
 }
 
-.tabpanels{flex:1 1 auto; min-height:0; padding:12px; overflow:hidden;}
+.tabpanels{flex:1 1 auto; min-height:0; padding:12px; overflow:auto; -webkit-overflow-scrolling: touch;}
 .tabpanel{
-  height:100%;
+  min-height:100%;
   display:none;
   flex-direction:column;
   gap:12px;
@@ -237,6 +259,7 @@ body{
   outline:none;
   font-weight:700;
 }
+.range{width:100%}
 .field{min-width:0}
 .field__label{font-size:11px; color:var(--muted); margin-bottom:6px}
 .color{
@@ -353,4 +376,5 @@ body{
 /* Respect reduced motion */
 @media (prefers-reduced-motion: reduce){
   *{transition:none !important}
+  .btn--share::before{animation:none !important}
 }
