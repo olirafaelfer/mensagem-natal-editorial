@@ -1,0 +1,16 @@
+<div class="overlay" id="missionOverlay">
+  <div class="modal">
+    <button class="close-btn" onclick="closeMission()">✖</button>
+    <h2>✨ Missão Especial de Natal ✨</h2>
+    <textarea id="missionText" maxlength="280"
+      placeholder="Escreva sua mensagem de Natal (máx. 280 caracteres)"></textarea>
+    <div class="counter"><span id="charCount">0</span>/280</div>
+    <div class="decorations">
+      <img src="assets/rena.png" onclick="addDecoration(this.src)" />
+      <img src="assets/papai-noel.png" onclick="addDecoration(this.src)" />
+      <img src="assets/panetone.png" onclick="addDecoration(this.src)" />
+    </div>
+    <div id="canvasArea"></div>
+    <button class="share-btn" onclick="shareMessage()">📲 Compartilhar</button>
+  </div>
+</div>
