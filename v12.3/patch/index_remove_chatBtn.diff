@@ -1,0 +1,4 @@
+--- a/index.html
++++ b/index.html
+@@
+-<button class="icon-btn" id="chatBtn" title="Chat Natalino" type="button">💬</button>

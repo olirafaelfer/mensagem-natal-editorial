@@ -1,45 +1,12 @@
-// js/data/challenges/challenge1-3.js
-// Desafio 1 — Tarefa 3 (erros fáceis: ortografia/acentuação)
-
-const RULES = [
-  {
-    id: "d1t3_1",
-    label: "Acentuação",
-    wrong: "\\bNatal e o\\b",
-    flags: "g",
-    correct: "Natal é o",
-    hint: "Verbo 'ser' com acento." 
-  },
-  {
-    id: "d1t3_2",
-    label: "Ortografia",
-    wrong: "\\bcomecos\\b",
-    flags: "gi",
-    correct: "começos",
-    hint: "Falta cedilha." 
-  },
-  {
-    id: "d1t3_3",
-    label: "Ortografia",
-    wrong: "\\bforcas\\b",
-    flags: "gi",
-    correct: "forças",
-    hint: "Falta cedilha." 
-  },
-  {
-    id: "d1t3_4",
-    label: "Acentuação",
-    wrong: "\\bamanha\\b",
-    flags: "gi",
-    correct: "amanhã",
-    hint: "Falta til." 
-  }
-];
-
 export default {
-  name: "Desafio 1 — Tarefa 3",
-  intro: "Erros simples (4) em um texto um pouco maior.",
-  instruction: "Encontre os erros no texto e corrija.",
-  raw: "O Natal e o momento de renascimento e de novos comecos. Que a luz desta data especial ilumine seus caminhos e renove suas forcas para enfrentar os desafios do amanha.",
-  rules: RULES
+  id: "1-3",
+  title: "Desafio 1 • Tarefa 3",
+  textWrong: `O Natal é o momento de renascimento e de novos começos. Que a luz desta data especial ilumine seus caminhos e renóve suas forças para enfrentar os desafios do amanhã. Que Deus abencoe voce e sua familia.`,
+  textCorrect: `O Natal é o momento de renascimento e de novos começos. Que a luz desta data especial ilumine seus caminhos e renove suas forças para enfrentar os desafios do amanhã. Que Deus abençoe você e sua família.`,
+  rules: [
+    { type: "word", wrong: "abencoe", correct: "abençoe", hint: "Falta cedilha." },
+    { type: "word", wrong: "voce", correct: "você", hint: "Falta acento circunflexo." },
+    { type: "word", wrong: "familia", correct: "família", hint: "Falta acento agudo no \"i\"." },
+    { type: "word", wrong: "renóve", correct: "renove", hint: "Não tem acento agudo no \"o\"." }
+  ]
 };
