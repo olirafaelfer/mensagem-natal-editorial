@@ -24,5 +24,14 @@ quaisquer preconceitos vão…
 Natal é Jesus se dizendo
 que todos somos irmão.
 (Chico Xavier)`,
+correctText: `O Natal em toda idade
+é sempre nova alegria,
+mas nos dons da caridade,
+o Natal é todo dia.
+Natal! Festeja esquecendo
+quaisquer preconceitos vãos…
+Natal é Jesus dizendo
+que todos somos irmãos.
+(Chico Xavier)`,
   rules: RULES
 };
