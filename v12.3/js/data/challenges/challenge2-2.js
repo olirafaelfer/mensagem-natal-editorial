@@ -58,7 +58,7 @@ const RULES = [
 
 export default {
   id: "d2-t2",
-  name: "Tarefa 2 — Médio",
+  name: "Desafio 2 — Tarefa 2",
   intro: "Encontre 5 erros (vírgulas indevidas e ortografia) e corrija.",
   raw:
     "Façamos de nossa vida uma extensão, da noite de Natal, renascendo continuamente em amor, e fraternidade.\n" +

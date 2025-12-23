@@ -4,7 +4,7 @@
 export default {
   punctuationOnly: true,
   id: "d2-t1",
-  name: "Tarefa 1 — Fácil",
+  name: "Desafio 2 — Tarefa 1",
   intro: "Aqui você só precisa REMOVER pontuações indevidas. Clique apenas na vírgula que estiver sobrando.",
   // Observação: a vírgula após \"metas\" é considerada correta nesta tarefa.
   raw: "É tempo de traçar, novas metas, de transformar desejos, em ações, e aproveitar, as novas oportunidades. Que esse Natal venha, cheio de boas energias, saúde e amor. Feliz Natal e Boas Festas!",

@@ -58,7 +58,7 @@ const RULES = [
 
 export default {
   id: "challenge2-3",
-  title: "Atividade 3 — Difícil",
+  name: "Desafio 2 — Tarefa 3",
   difficulty: "Difícil",
   goal: "Remova as vírgulas indevidas e corrija duas palavras.",
   raw: "O Natal, é um tempo de benevolência, perdão, generozidade e alegria. A única época, em que homens e mulheres parecem, de comum acordo abrir livrimente seus corações.",

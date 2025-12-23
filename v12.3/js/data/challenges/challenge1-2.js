@@ -38,7 +38,7 @@ const RULES = [
 
 export default {
   id: "challenge1-2",
-  title: "Atividade 2",
+  name: "Desafio 1 — Tarefa 2",
   difficulty: "Médio",
   goal: "Encontre os erros no texto e corrija.",
   raw: "Que o nacimento de Jesus inspire voce a acreditar na forca dos novos ciclos, nas segundas chances e na luz que sempre volta a briliar.",
