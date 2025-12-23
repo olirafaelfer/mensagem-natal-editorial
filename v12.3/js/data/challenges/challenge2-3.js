@@ -17,7 +17,7 @@ const RULES = [
   {
     id: "d2t3_2",
     label: "Ortografia",
-    wrong: "\bgenerozidade\b",
+    wrong: "\\bgenerozidade\\b",
     flags: "gi",
     correct: "generosidade",
     hint: "A escrita correta é com 's'."
@@ -49,7 +49,7 @@ const RULES = [
   {
     id: "d2t3_5",
     label: "Ortografia",
-    wrong: "\blivrimente\b",
+    wrong: "\\blivrimente\\b",
     flags: "gi",
     correct: "livremente",
     hint: "A forma correta é 'livremente'."

@@ -288,20 +288,24 @@ if (dom.finalMissionSpecialBtn){
       buttons: [
         { label: 'Fazer tutorial', onClick: () => {
             closeModal();
-            runTutorial(()=>{
-              try { localStorage.setItem(tutorialKey(), '1'); } catch {}
-              updateChallengeButtons();
-              // Ao terminar, volta para o início e oferece ir para o Desafio 1
-              ui.showOnly(dom.screenForm);
-              openModal({
-                title: '✅ Tutorial concluído',
-                bodyHTML: `<p>Pronto! Você já sabe usar a correção manual, a dica, a correção automática e o avançar sem concluir.</p>`,
-                buttons: [
-                  { label: 'Início', variant: 'ghost', onClick: closeModal },
-                  { label: 'Ir para o Desafio 1', onClick: () => { closeModal(); } },
-                ]
-              });
-            });
+            runTutorial(() => {
+  try { localStorage.setItem(tutorialKey(), '1'); } catch {}
+  updateChallengeButtons();
+  ui.showOnly(dom.screenForm);
+
+  const hardRefresh = () => {
+    window.location.replace(window.location.pathname + "?r=" + Date.now());
+  };
+
+  openModal({
+    title: '✅ Tutorial concluído',
+    bodyHTML: `<p>Pronto! Você já sabe usar a correção manual, a dica, a correção automática e o avançar sem concluir.</p>`,
+    buttons: [
+      { label: 'Início', variant: 'ghost', onClick: hardRefresh },
+      { label: 'OK', onClick: hardRefresh },
+    ]
+  });
+});
           } },
         { label: 'Pular tutorial', variant: 'ghost', onClick: () => {
             try { localStorage.setItem(tutorialKey(), '1'); } catch {}
