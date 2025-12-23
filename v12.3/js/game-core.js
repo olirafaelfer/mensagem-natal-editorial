@@ -298,7 +298,8 @@ if (dom.finalMissionSpecialBtn){
                 bodyHTML: `<p>Pronto! Você já sabe usar a correção manual, a dica, a correção automática e o avançar sem concluir.</p>`,
                 buttons: [
                   { label: 'Início', variant: 'ghost', onClick: closeModal },
-                  ]
+                  { label: 'Ir para o Desafio 1', onClick: closeModal },
+                ]
               });
             });
           } },
