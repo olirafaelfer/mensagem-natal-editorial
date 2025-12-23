@@ -128,47 +128,91 @@ async function safeImportOptional(path, name){
    - Só uma vez por sessão
    ========================================================= */
 function showWelcomeGateIfNeeded(){
+  // Só para visitantes (não logados)
   try {
-    if (app?.auth?.isLogged?.()) return; // logado => não mostra
+    if (app?.auth?.isLogged?.()) return;
   } catch {}
 
+  // Evita repetir na mesma sessão
   try {
-    if (localStorage.getItem("welcome_gate_seen") === "1") return;
-    localStorage.setItem("welcome_gate_seen", "1");
+    if (sessionStorage.getItem("welcome_gate_seen") === "1") return;
+    sessionStorage.setItem("welcome_gate_seen", "1");
   } catch {}
 
-  const open = app?.ui?.openModal || window.openModal;
-  const close = app?.ui?.closeModal || window.closeModal;
+  // Evita duplicar
+  if (document.getElementById("welcomeGateOverlay")) return;
 
-  if (typeof open !== "function") return;
+  const overlay = document.createElement("div");
+  overlay.id = "welcomeGateOverlay";
+  overlay.style.cssText = `
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,.62);
+    display: flex; align-items: center; justify-content: center;
+    padding: 16px;
+    z-index: 999999;
+  `;
 
-  open({
-    title: "🎄 Bem-vindo ao nosso cartão interativo!",
-    bodyHTML: `
-      <p><b>Ajude o Noel</b> com a missão de corrigir os textos natalinos antes que seja tarde!</p>
+  const card = document.createElement("div");
+  card.style.cssText = `
+    width: min(560px, 100%);
+    background: rgba(14,18,28,.96);
+    border: 1px solid rgba(255,255,255,.12);
+    border-radius: 18px;
+    padding: 16px 16px 14px;
+    box-shadow: 0 18px 50px rgba(0,0,0,.45);
+    color: #fff;
+    backdrop-filter: blur(10px);
+  `;
 
-      <p>Os <b>Desafios 2, 3</b> e a <b>Missão Especial</b> só estarão liberados para usuários cadastrados.</p>
+  card.innerHTML = `
+    <div style="font-weight:900; font-size:18px; margin-bottom:10px;">🎄 Bem-vindo ao nosso cartão interativo!</div>
 
-      <p>Se quiser participar de <b>toda a experiência natalina</b>, basta criar a sua conta ou fazer login se já for cadastrado.</p>
+    <div style="line-height:1.45; font-size:14px; opacity:.95;">
+      <p style="margin:0 0 10px;"><b>Ajude o Noel</b> com a missão de corrigir os textos natalinos antes que seja tarde!</p>
 
-      <p class="muted"><b>Spoiler:</b> o desafio 3 é de alto nível — realmente desafiador e difícil! Não se preocupe com o seu desempenho quando chegar nele. A intenção é mostrar os desafios que os revisores enfrentam todos os dias!</p>
-    `,
-    buttons: [
-      {
-        label: "Criar conta / Login",
-        onClick: () => {
-          try { close?.(); } catch {}
-          app?.auth?.openAuthGate?.();
-        }
-      },
-      {
-        label: "Agora não",
-        variant: "ghost",
-        onClick: () => { try { close?.(); } catch {} }
-      }
-    ]
+      <p style="margin:0 0 10px;">
+        Os <b>Desafios 2, 3</b> e a <b>Missão Especial</b> só estarão liberados para usuários cadastrados.
+      </p>
+
+      <p style="margin:0 0 10px;">
+        Se quiser participar de <b>toda a experiência natalina</b>, basta criar a sua conta ou fazer o login se já for cadastrado.
+      </p>
+
+      <p style="margin:0; opacity:.8;">
+        <b>Spoiler:</b> o desafio 3 é de alto nível — realmente desafiador e difícil!
+        Não se preocupe com o seu desempenho quando chegar nele. A intenção é mostrar os desafios que os revisores enfrentam todos os dias!
+      </p>
+    </div>
+
+    <div style="display:flex; gap:10px; margin-top:14px; justify-content:flex-end; flex-wrap:wrap;">
+      <button id="welcomeGateLoginBtn"
+        style="padding:10px 14px; border-radius:12px; border:1px solid rgba(255,255,255,.18);
+               background: rgba(255,255,255,.10); color:#fff; font-weight:800; cursor:pointer;">
+        Criar conta / Login
+      </button>
+      <button id="welcomeGateCloseBtn"
+        style="padding:10px 14px; border-radius:12px; border:1px solid rgba(255,255,255,.12);
+               background: transparent; color:#fff; opacity:.85; cursor:pointer;">
+        Agora não
+      </button>
+    </div>
+  `;
+
+  overlay.appendChild(card);
+  document.body.appendChild(overlay);
+
+  const close = () => overlay.remove();
+
+  card.querySelector("#welcomeGateCloseBtn")?.addEventListener("click", close);
+  overlay.addEventListener("click", (e) => { if (e.target === overlay) close(); });
+
+  card.querySelector("#welcomeGateLoginBtn")?.addEventListener("click", () => {
+    close();
+    // abre seu gate de login/cadastro
+    app?.auth?.openAuthGate?.();
   });
 }
+
 
 async function bootAll(){
   try {
