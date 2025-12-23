@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8"/>
+<meta content="only light" name="color-scheme"/>
+<meta content="width=device-width,initial-scale=1" name="viewport">
+<meta content="#0b1020" name="theme-color"/>
+<title>Missão Editorial de Natal 🎄</title>
+<link href="data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A//www.w3.org/2000/svg%27%20viewBox%3D%270%200%20100%20100%27%3E%3Ctext%20y%3D%270.9em%27%20font-size%3D%2790%27%3E%F0%9F%8E%84%3C/text%3E%3C/svg%3E" rel="icon"/>
+<link href="css/style.css" rel="stylesheet">
+<link href="css/admin.css" rel="stylesheet"/>
+<link href="css/auth.css" rel="stylesheet"/>
+<link href="css/chat.css" rel="stylesheet"/>
+<!-- LGPD removido -->
+</link></meta><meta content="light" name="supported-color-schemes"/></head>
+<body>
+<canvas aria-hidden="true" id="snow"></canvas>
+<div aria-hidden="true" class="reindeer-layer" id="reindeerLayer"></div>
+<main class="app">
+<div class="container">
+<!-- HEADER (logo + título + botões) -->
+<header class="topbar-banner">
+  <div class="container">
+<div class="topbar-row topbar-row-1">
+<div class="topbar-left">
+<img id="logoTop" alt="Logo de Natal" class="topbar-logo" src="asset/logo-natal.png"/>
+</div>
+<div class="top-actions">
+<button class="icon-btn" id="customizeBtn" title="Personalizar" type="button">⚙️</button>
+        <button class="icon-btn" id="rankingBtn" title="Ranking" type="button">🏆</button>
+        <button class="icon-btn" id="cardBtn" title="Cartão personalizável" type="button">✉️</button>
+        <button class="icon-btn" id="chatBtn" title="Chat Natalino" type="button">💬</button>
+<button class="icon-btn" id="loginBtn" title="Entrar / Criar conta" type="button">👤</button>
+</div>
+</div>
+</div>
+  </div>
+</header></div>
+
+<div class="container" id="mainCenter">
+
+<!-- Loading fake -->
+<section class="card" id="screenLoading">
+<div class="card-inner center">
+<img id="logoHome" alt="Logo natalina" class="logo-pulse" src="asset/logo-natal.png"/>
+<h2 class="loading-title">Preparando sua missão…</h2>
+<p class="muted">Carregando o conteúdo especial de Natal ❄️</p>
+</div>
+</section>
+<!-- Auth (seu sistema hoje abre por modal, mas manter a section não atrapalha) -->
+<section class="hidden" id="screenAuth">
+<div class="auth-card">
+<div class="auth-inner">
+<div class="auth-head">
+<h2 class="auth-title">Entrar ou criar conta</h2>
+<p class="auth-sub">
+                Para participar do ranking, será necessário ter uma conta.
+                Se preferir, você pode continuar no modo anônimo.
+              </p>
+</div>
+<div class="auth-tabs">
+<div class="auth-tab active" id="authTabLogin" role="button" tabindex="0">Login</div>
+<div class="auth-tab" id="authTabSignup" role="button" tabindex="0">Criar conta</div>
+</div>
+<div class="auth-status" id="authStatus"></div>
+<div id="authPanelLogin">
+<div class="auth-grid onecol">
+<label class="field">
+<span>E-mail</span>
+<input autocomplete="email" class="input" id="authLoginEmail" placeholder="seuemail@empresa.com" type="email"/>
+</label>
+<label class="field">
+<span>Senha</span>
+<input autocomplete="current-password" class="input" id="authLoginPass" placeholder="••••••••" type="password"/>
+</label>
+</div>
+<div class="auth-actions">
+<button class="btn" id="authLoginBtn" type="button">Entrar</button>
+<button class="btn ghost" id="authForgotBtn" type="button">Esqueci minha senha</button>
+<button class="btn ghost" id="authAnonBtn" type="button">Prefiro seguir no modo anônimo</button>
+</div>
+<hr class="auth-divider"/>
+<p class="auth-mini" style="margin:0">
+                Ao entrar, seu <strong>nome</strong> e <strong>setor</strong> poderão ser preenchidos automaticamente.
+              </p>
+</div>
+<div class="hidden" id="authPanelSignup">
+<div class="auth-grid">
+<label class="field">
+<span>Nome</span>
+<input autocomplete="name" class="input" id="authSignupName" maxlength="60" placeholder="Ex.: Rafael" type="text"/>
+</label>
+<label class="field">
+<span>Setor</span>
+<select class="input" id="authSignupSector"></select>
+</label>
+<label class="field">
+<span>E-mail</span>
+<input autocomplete="email" class="input" id="authSignupEmail" placeholder="seuemail@empresa.com" type="email"/>
+</label>
+<label class="field">
+<span>Senha</span>
+<input autocomplete="new-password" class="input" id="authSignupPass" placeholder="mín. 6 caracteres" type="password"/>
+</label>
+</div>
+<div class="auth-actions">
+<button class="btn" id="authSignupBtn" type="button">Criar conta</button>
+<button class="btn ghost" id="authBackToLoginBtn" type="button">Já tenho conta</button>
+<button class="btn ghost" id="authAnonBtn2" type="button">Prefiro seguir no modo anônimo</button>
+</div>
+<div class="auth-note">
+                Dica: depois a gente pode adicionar verificação por código no e-mail, mas primeiro vamos deixar login/cadastro funcionando.
+              </div>
+</div>
+</div>
+</div>
+</section>
+<!-- Form -->
+<section class="card hidden" id="screenForm">
+<div class="card-inner">
+<h2 class="h2">Antes de começar</h2>
+<p class="muted">
+            Informe seu nome e selecione seu setor para registrar o desempenho <strong>por setor</strong>.
+          </p>
+<div class="form-grid">
+<label class="field">
+<span>Nome</span>
+<input class="input" id="userName" maxlength="60" placeholder="Ex.: Rafael"/>
+</label>
+<label class="field">
+<span>Setor</span>
+<select class="input" id="userSector"></select>
+</label>
+</div>
+
+<div class="actions" id="challengeActions">
+  <div class="home-groups">
+
+    <div class="home-group">
+      <div class="home-group-title">Desafios de correção textual</div>
+      <div class="actions">
+        <button class="btn ghost" id="tutorialBtn" type="button">📘 Tutorial</button>
+        <button class="btn" id="challenge1Btn" type="button">Desafio 1</button>
+        <button class="btn ghost btn-disabled" id="challenge2Btn" type="button">Desafio 2 🔒</button>
+        <button class="btn ghost btn-disabled" id="challenge3Btn" type="button">Desafio 3 🔒</button>
+        <button class="btn ghost btn-disabled" id="missionSpecialHomeBtn" type="button">Missão especial 🔒</button>
+      </div>
+    </div>
+
+    <div class="home-group">
+      <div class="home-group-title">Desafio do quebra-cabeça</div>
+      <div class="actions">
+        <button class="btn ghost btn-disabled" id="puzzleTutorialBtn" type="button">📘 Tutorial</button>
+        <button class="btn ghost btn-disabled" id="challenge4Btn" type="button">Desafio 4</button>
+      </div>
+      <div class="muted home-devnote">(em desenvolvimento)</div>
+    </div>
+
+    <div class="home-group">
+      <div class="home-group-title">Desafio da nuvem de palavras</div>
+      <div class="actions">
+        <button class="btn ghost btn-disabled" id="cloudTutorialBtn" type="button">📘 Tutorial</button>
+        <button class="btn ghost btn-disabled" id="challenge5Btn" type="button">Desafio 5</button>
+      </div>
+      <div class="muted home-devnote">(em desenvolvimento)</div>
+    </div>
+
+  </div>
+</div></div>
+</div>
+</section>
+<!-- Game -->
+<section class="card hidden" id="screenGame">
+<div class="card-inner">
+<div class="status-row">
+<div class="pill">Nível: <strong id="levelLabel">Fácil</strong></div>
+<div class="pill">Correções a serem feitas: <strong id="remainingCount">0</strong>/<span id="totalFix">0</span></div>
+<div class="pill">Pontos: <strong id="scoreCount">0</strong></div>
+</div>
+<p class="lead" id="instruction"></p>
+<article aria-label="Mensagem para revisar" class="message" id="messageArea"></article>
+<div class="hintbar">
+            💡 Dica: você pode <button class="linklike" id="openCustomizeInline" type="button">personalizar a página</button> a qualquer momento.
+          </div>
+<div class="actions">
+<button class="btn ghost" id="hintBtn" type="button">Me dê uma cola!</button>
+<button class="btn btn-ghost" id="skipLevelBtn" type="button">Avançar sem concluir (-5)</button>
+<button aria-disabled="true" class="btn btn-disabled" id="nextLevelBtn" type="button">Próximo nível</button>
+</div>
+</div>
+</section>
+<!-- Final -->
+<section class="card hidden" id="screenFinal">
+<div class="card-inner center">
+<h2 class="final-title">🎄</h2>
+<p class="final-text" id="finalCongrats"></p>
+<div class="stat-grid" id="finalStatGrid"></div>
+<p class="final-sub" id="finalStats"></p>
+<br/>
+<br/>
+<div class="actions center-actions" style="margin-top:10px">
+<button aria-expanded="false" class="btn" id="toggleFinalMsgs" type="button">Ver mensagens corrigidas</button>
+</div>
+<!-- ✅ A DICA AGORA FICA SÓ AQUI DENTRO (aparece quando abrir as mensagens) -->
+<div class="hidden" id="finalMsgsWrap">
+<div class="hintbar" style="text-align:left; margin-top:12px">
+              💡 Dica: nas mensagens abaixo, clique nos trechos
+              <span class="final-correct"><strong>verdes</strong></span>
+              e
+              <span class="final-wrong"><strong>vermelhos</strong></span>
+              para ver a explicação.
+            </div>
+<div class="final-activity">
+<div class="final-activity-head">
+<strong>Atividade 1 — Fácil</strong>
+<!-- removido: Correções e justificativas (agora a explicação aparece ao clicar nos trechos verde/vermelho) -->
+</div>
+<div class="final-box" id="finalBox1"></div>
+</div>
+<div class="final-activity">
+<div class="final-activity-head">
+<strong>Atividade 2 — Médio</strong>
+<!-- removido: Correções e justificativas (agora a explicação aparece ao clicar nos trechos verde/vermelho) -->
+</div>
+<div class="final-box" id="finalBox2"></div>
+</div>
+<div class="final-activity">
+<div class="final-activity-head">
+<strong>Atividade 3 — Difícil</strong>
+          <!-- removido: Correções e justificativas (agora a explicação aparece ao clicar nos trechos verde/vermelho) -->
+</div>
+<div class="final-box" id="finalBox3"></div>
+</div>
+</div>
+<hr/>
+<div class="credits">
+<p class="credits-title"><strong>Com carinho:</strong></p>
+<p class="credits-names">
+              Aline dos Santos Carneiro<br/>
+              Amanda Firme<br/>
+              Anna Catharina Miranda<br/>
+              Bianca Gribel<br/>
+              Edrian Josué Pasini<br/>
+              Eric Parrot<br/>
+              Leonardo A.R.T. dos Santos<br/>
+              Marilac Loraine Oleniki<br/>
+              Mirela de Oliveira<br/>
+              Rafael de Oliveira<br/>
+              Samuel Rezende<br/>
+              Verônica M. Guedes<br/>
+              Vitória Firmino<br/>
+              Welder Lancieri Marchini
+            </p>
+</div>
+<hr/>
+<div class="actions center-actions">
+<button class="btn ghost" id="finalHomeBtn" type="button">Início</button>
+<button class="btn" id="finalRankingBtn" type="button">Ranking</button>
+        <!-- removido: Próxima tarefa (evita fluxo quebrado) -->
+<button class="btn" id="finalMissionSpecialBtn" type="button">Missão especial 🎁</button>
+</div>
+</div>
+</section>
+
+</div>
+</main>
+<!-- ✅ Modal (OBRIGATÓRIO pro app funcionar) -->
+<div aria-labelledby="modalTitle" aria-modal="true" class="hidden" id="overlay" role="dialog">
+<div class="modal">
+<div class="modal-head">
+<h3 id="modalTitle">Mensagem</h3>
+<button aria-label="Fechar" class="icon-btn" id="closeModal" type="button">✕</button>
+</div>
+<div class="modal-body" id="modalBody"></div>
+<div class="modal-foot" id="modalFoot"></div>
+</div>
+</div>
+<footer class="app-footer"><span id="appVersion"></span></footer>
+
+<script type="module" src="js/main.js"></script>
+</body>
+</html>
