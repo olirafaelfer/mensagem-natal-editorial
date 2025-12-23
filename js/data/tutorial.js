@@ -16,11 +16,11 @@ export function getTutorialLevels(){
       name: "Tutorial 2/5 — Pontuação",
       intro: "Agora vamos remover uma vírgula indevida.",
       instruction: "Clique na vírgula destacada e remova-a.",
-      raw: "Que o seu Natal seja de paz, alegria, e união.",
+      raw: "Que o seu Natal seja de paz,, alegria, e união.",
       focusRuleId: "t2",
       hintEnabled: false,
       rules: [
-        { id:"t2", label:"Pontuação", wrong:/,/g, correct:"", reason:"Aqui a vírgula não é necessária." }
+        { id:"t2", label:"Pontuação", wrong:/,/g, correct:"", reason:"Aqui a vírgula está duplicada." }
       ]
     },
     {
