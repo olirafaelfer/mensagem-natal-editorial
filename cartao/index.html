@@ -7,7 +7,7 @@
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Poppins:wght@400;600;700&family=Nunito:wght@400;700&family=Montserrat:wght@400;600;700&family=DM+Sans:wght@400;600;700&family=Playfair+Display:wght@400;600;700&family=Merriweather:wght@400;700&family=Pacifico&family=Great+Vibes&family=Raleway:wght@400;600;700&family=Lato:wght@400;700&family=Roboto+Slab:wght@400;700&family=Dancing+Script:wght@400;600;700&family=Abril+Fatface&display=swap" rel="stylesheet">
+  <link id="gfLink" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Poppins:wght@400;600;800&family=Nunito:wght@400;600;800&family=Montserrat:wght@400;600;800&family=DM+Sans:wght@400;600;800&family=Playfair+Display:wght@400;700&family=Merriweather:wght@400;700&family=Pacifico&family=Great+Vibes&display=swap" rel="stylesheet">
 
   <link rel="stylesheet" href="styles.css" />
 </head>
@@ -15,25 +15,15 @@
   <div class="app" id="app">
     <header class="topbar">
       <div class="brand">
-        <img class="brand__logo" src="assets/logo-natal.png" alt="Logo" />
+        <div class="brand__dot"></div>
         <div class="brand__text">
           <div class="brand__title">Cartão Natalino</div>
-          <div class="brand__subtitle">Personalize tema e enfeites</div>
+          <div class="brand__sub">crie e compartilhe em segundos</div>
         </div>
       </div>
 
-      <div class="actions">
-        <button class="btn btn--share" id="btnShare" type="button" title="Compartilhar">
-          <span class="btn__icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24" width="18" height="18" xmlns="http://www.w3.org/2000/svg" fill="none">
-              <path d="M14 9l-4 4" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
-              <path d="M14 9H9.5A3.5 3.5 0 0 0 6 12.5v4A3.5 3.5 0 0 0 9.5 20h5A3.5 3.5 0 0 0 18 16.5V12" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
-              <path d="M14 9V4m0 0l2.5 2.5M14 4L11.5 6.5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-          </span>
-          <span class="btn__label">Compartilhar</span>
-        </button>
-        <button class="btn btn--primary" id="btnExport" type="button" title="Baixar PNG">
+      <div class="topbar__actions">
+        <button class="btn btn--ghost" id="btnExport" type="button" title="Baixar PNG">
           <span class="btn__icon" aria-hidden="true">⬇</span>
           <span class="btn__label">PNG</span>
         </button>
@@ -45,148 +35,126 @@
         <div class="preview__frame">
           <svg id="cardSvg" class="card" viewBox="0 0 1080 1350" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Cartão">
             <defs id="svgDefs"></defs>
-            <rect id="bgRect" x="0" y="0" width="1080" height="1350" rx="80" ry="80"></rect>
 
+            <rect id="bgRect" x="0" y="0" width="1080" height="1350" rx="80" ry="80"></rect>
             <g id="patternLayer" opacity="0.22"></g>
 
-            <g id="contentLayer">
-              <!-- grupo movível (mensagem + assinatura) -->
-              <g id="textGroup">
-                <rect id="textHit" x="220" y="420" width="640" height="360" rx="28" ry="28" fill="transparent" pointer-events="all" />
-                <text id="msgText" x="540" y="560" text-anchor="middle"></text>
-                <text id="signText" x="540" y="690" text-anchor="middle"></text>
-              </g>
+            <!-- Logo fixa (href setado via JS como data URI para export funcionar) -->
+            <image id="logoImg" x="70" y="70" width="260" height="120" preserveAspectRatio="xMinYMin meet" />
 
-              <!-- logo fixa -->
-              <g id="logoGroup" opacity="0.96">
-                <image id="logoImg" x="110" y="1066" width="860" height="230" preserveAspectRatio="xMidYMid meet" />
+            <g id="contentLayer">
+              <g id="messageGroup" class="draggable">
+                <text id="msgText" x="540" y="640" text-anchor="middle"></text>
+                <text id="signText" x="540" y="765" text-anchor="middle"></text>
               </g>
             </g>
 
             <g id="stickersLayer"></g>
 
             <g id="uiLayer" pointer-events="none">
-              <rect x="26" y="26" width="1028" height="1298" rx="70" ry="70" fill="none" stroke="rgba(255,255,255,0.14)" stroke-width="4"/>
+              <rect x="26" y="26" width="1028" height="1298" rx="72" ry="72" fill="none" stroke="rgba(255,255,255,0.14)" stroke-width="4"/>
             </g>
           </svg>
         </div>
 
         <div class="hint" id="hint">
-          Toque em um enfeite para selecionar. Arraste para mover. Use +/− para escala.
-        </div>
-
-        <div class="floating" id="floatingTools" aria-label="Ferramentas do enfeite selecionado">
-          <button class="chip" id="btnScaleDown" type="button" aria-label="Diminuir">−</button>
-          <button class="chip" id="btnScaleUp" type="button" aria-label="Aumentar">+</button>
-          <button class="chip chip--danger" id="btnDelete" type="button" aria-label="Remover">🗑</button>
+          Toque nos enfeites para mover • Toque no texto para reposicionar
         </div>
       </section>
 
-      <section class="panel" aria-label="Controles">
+      <section class="panel" aria-label="Personalização">
         <div class="tabs" role="tablist" aria-label="Abas">
-          <button class="tab is-active" data-tab="tab-text" role="tab" aria-selected="true" type="button">Mensagem</button>
-          <button class="tab" data-tab="tab-theme" role="tab" aria-selected="false" type="button">Tema</button>
-          <button class="tab" data-tab="tab-decor" role="tab" aria-selected="false" type="button">Enfeites</button>
+          <button class="tab is-active" data-tab="text" type="button">Texto</button>
+          <button class="tab" data-tab="theme" type="button">Tema</button>
+          <button class="tab" data-tab="decor" type="button">Enfeites</button>
         </div>
 
-        <div class="tabpanels">
-          <div class="tabpanel is-active" id="tab-text" role="tabpanel">
+        <div class="pages">
+          <div class="page is-active" id="tab-text" role="tabpanel">
             <div class="section">
-              <div class="section__title">Escolha a mensagem</div>
-              <div class="pillgrid" id="messagePills"></div>
+              <div class="section__title">Mensagem</div>
+              <div class="chips" id="msgChips"></div>
             </div>
 
-            <div class="section">
-              <div class="section__title">Fonte</div>
-              <div class="row">
-                <select id="fontSelect" class="select" aria-label="Fonte">
-                  <option value="Inter">Inter</option>
-                  <option value="Poppins">Poppins</option>
-                  <option value="DM Sans">DM Sans</option>
-                  <option value="Nunito">Nunito</option>
-                  <option value="Montserrat">Montserrat</option>
-                  <option value="Raleway">Raleway</option>
-                  <option value="Lato">Lato</option>
-                  <option value="Playfair Display">Playfair Display</option>
-                  <option value="Merriweather">Merriweather</option>
-                  <option value="Roboto Slab">Roboto Slab</option>
-                  <option value="Pacifico">Pacifico</option>
-                  <option value="Dancing Script">Dancing Script</option>
-                  <option value="Great Vibes">Great Vibes</option>
-                  <option value="Abril Fatface">Abril Fatface</option>
-                </select>
-
-                <select id="fontSizeSelect" class="select" aria-label="Tamanho">
-                  <option value="92">Grande</option>
-                  <option value="76" selected>Médio</option>
-                  <option value="62">Compacto</option>
-                </select>
+            <div class="row2">
+              <div class="field">
+                <label class="label" for="fontSelect">Fonte</label>
+                <select id="fontSelect" class="select"></select>
               </div>
-
-              <div class="row">
-                <div class="field" style="width:100%">
-                  <div class="field__label">Tamanho (ajuste fino)</div>
-                  <input id="fontSizeRange" class="range" type="range" min="56" max="112" step="1" value="76" />
-                </div>
+              <div class="field">
+                <label class="label" for="fontSize">Tamanho</label>
+                <input id="fontSize" class="range" type="range" min="44" max="92" step="1" />
               </div>
+            </div>
 
-              <div class="small">Dica: arraste a mensagem no cartão para posicionar.</div>
+            <div class="section section--compact">
+              <div class="section__title">Dica</div>
+              <div class="note">Arraste o texto no cartão para ajustar a posição.</div>
             </div>
           </div>
 
-          <div class="tabpanel" id="tab-theme" role="tabpanel">
+          <div class="page" id="tab-theme" role="tabpanel">
             <div class="section">
               <div class="section__title">Temas prontos</div>
-              <div class="themegrid" id="themeGrid"></div>
+              <div class="theme-grid" id="themeGrid"></div>
+              <button class="btn btn--ghost btn--small" id="btnRandomTheme" type="button">🎲 Tema aleatório</button>
             </div>
 
-            <div class="section">
-              <div class="section__title">Ajustes finos</div>
-              <div class="row row--3">
-                <div class="field">
-                  <div class="field__label">Fundo A</div>
-                  <input id="bgA" type="color" value="#0b1220" class="color" />
-                </div>
-                <div class="field">
-                  <div class="field__label">Fundo B</div>
-                  <input id="bgB" type="color" value="#0f2a4a" class="color" />
-                </div>
-                <div class="field">
-                  <div class="field__label">Texto</div>
-                  <input id="textColor" type="color" value="#ffffff" class="color" />
-                </div>
+            <div class="row3">
+              <div class="field">
+                <label class="label" for="bgA">Fundo A</label>
+                <input id="bgA" type="color" class="color" />
               </div>
+              <div class="field">
+                <label class="label" for="bgB">Fundo B</label>
+                <input id="bgB" type="color" class="color" />
+              </div>
+              <div class="field">
+                <label class="label" for="textColor">Texto</label>
+                <input id="textColor" type="color" class="color" />
+              </div>
+            </div>
 
-              <div class="row">
-                <select id="patternSelect" class="select" aria-label="Padrão">
-                  <option value="none">Sem padrão</option>
-                  <option value="snow">Neve</option>
-                  <option value="stars">Estrelas</option>
-                  <option value="dots">Pontos</option>
-                  <option value="waves">Ondas</option>
-                </select>
-              </div>
+            <div class="field">
+              <label class="label" for="patternSelect">Padrão</label>
+              <select id="patternSelect" class="select">
+                <option value="none">Sem padrão</option>
+                <option value="snow">Neve</option>
+                <option value="stars">Estrelas</option>
+                <option value="dots">Pontinhos</option>
+                <option value="waves">Ondas</option>
+              </select>
             </div>
           </div>
 
-          <div class="tabpanel" id="tab-decor" role="tabpanel">
+          <div class="page" id="tab-decor" role="tabpanel">
             <div class="section">
               <div class="section__title">Adicionar enfeites</div>
-              <div class="decogrid" id="decoGrid"></div>
-              <div class="small">Dica: toque para adicionar. Depois arraste no cartão.</div>
+              <div class="deco-grid" id="decoGrid"></div>
             </div>
 
-            <div class="section">
-              <div class="section__title">Atalhos</div>
-              <div class="row">
-                <button class="btn btn--ghost" id="btnClearDecor" type="button">Remover todos</button>
-                <button class="btn btn--ghost" id="btnRandomTheme" type="button">Tema aleatório</button>
-              </div>
+            <div class="toolbar">
+              <button class="btn btn--ghost" id="btnScaleDown" type="button" title="Diminuir">−</button>
+              <button class="btn btn--ghost" id="btnScaleUp" type="button" title="Aumentar">+</button>
+              <button class="btn btn--danger" id="btnDelete" type="button" title="Remover">🗑</button>
+              <div class="toolbar__spacer"></div>
+              <button class="btn btn--ghost" id="btnClearDecor" type="button">Limpar</button>
             </div>
           </div>
         </div>
       </section>
     </main>
+
+    <button class="share-fab" id="btnShare" type="button" aria-label="Compartilhar">
+      <span class="share-fab__glow" aria-hidden="true"></span>
+      <span class="share-fab__icon" aria-hidden="true">
+        <!-- seta chamativa -->
+        <svg viewBox="0 0 24 24" width="22" height="22" xmlns="http://www.w3.org/2000/svg">
+          <path d="M14 3l7 7-7 7v-4H3v-6h11V3z" fill="currentColor"/>
+        </svg>
+      </span>
+      <span class="share-fab__text">Compartilhar</span>
+    </button>
 
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
   </div>
