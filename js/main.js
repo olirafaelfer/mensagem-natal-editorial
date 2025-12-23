@@ -133,8 +133,8 @@ function showWelcomeGateIfNeeded(){
   } catch {}
 
   try {
-    if (sessionStorage.getItem("welcome_gate_seen") === "1") return;
-    sessionStorage.setItem("welcome_gate_seen", "1");
+    if (localStorage.getItem("welcome_gate_seen") === "1") return;
+    localStorage.setItem("welcome_gate_seen", "1");
   } catch {}
 
   const open = app?.ui?.openModal || window.openModal;
