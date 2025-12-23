@@ -2,7 +2,7 @@
 // Desafio 3 — Tarefa 1 (erros difíceis: concordância/colocação pronominal etc.)
 
 const RULES = [
-  { id: "d3t1_1", label: "Concordância", wrong: "todas", flags: "gi", correct: "toda", hint: "Concordância entre determinante e substantivo." },
+  { id: "d3t1_1", label: "Concordância", wrong: "tola", flags: "gi", correct: "toda", hint: "Concordância entre determinante e substantivo." },
   { id: "d3t1_2", label: "Concordância", wrong: "novo", flags: "gi", correct: "nova", hint: "Adjetivo no feminino." },
   { id: "d3t1_3", label: "Ortografia", wrong: "mais", flags: "gi", correct: "mas", hint: "Conjunção x advérbio." },
   { id: "d3t1_4", label: "Ortografia", wrong: "Festeija", flags: "g", correct: "Festeja", hint: "Grafia correta." },
@@ -15,7 +15,7 @@ export default {
   name: "Desafio 3 — Tarefa 1",
   intro: "Agora fica mais difícil: 7 correções.",
   instruction: "Encontre 7 erros (concordância/colocação pronominal etc.) e corrija.",
-  raw: `O Natal em todas idade
+  raw: `O Natal em tola idade
 é sempre novo alegria,
 mais nos dons da caridade,
 o Natal é todo dia.

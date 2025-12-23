@@ -29,7 +29,7 @@ const RULES = [
   {
     id: "d2t2_3",
     label: "Ortografia",
-    wrong: "\\bbonanssa\\b",
+    wrong: "bonanssa",
     flags: "gi",
     correct: "bonança",
     hint: "A forma correta é com 'ç': bonança."
@@ -49,7 +49,7 @@ const RULES = [
   {
     id: "d2t2_5",
     label: "Ortografia",
-    wrong: "\\bfloreça\\b",
+    wrong: "floreça",
     flags: "gi",
     correct: "floresça",
     hint: "A escrita correta é 'floresça'."
