@@ -29,7 +29,7 @@ const RULES = [
 ];
 
 export default {
-  id: "challenge1-2",
+  id: "challenge1-1",
   title: "Atividade 2 — Médio",
   difficulty: "Médio",
   goal: "Encontre os erros no texto e corrija.",

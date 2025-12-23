@@ -38,7 +38,7 @@ const RULES = [
 
 export default {
   id: "challenge1-3",
-  title: "Atividade 3 — Difícil",
+  title: "Atividade 3",
   difficulty: "Difícil",
   goal: "Encontre os erros no texto e corrija.",
   raw: "O Natal é o momento de renascimento e de novos começos. Que a luz desta data especial ilumine seus caminhos e abencoe voce e sua familia. Que a luz desta data especial ilumine seus caminhos e renóve suas forças para enfrentar os desafios do amanhã.",
