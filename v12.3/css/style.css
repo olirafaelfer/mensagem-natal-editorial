@@ -1667,9 +1667,12 @@ body > .container,
 body > .top-actions,
 body > .topbar,
 body > .header{
-  width: min(var(--container), calc(100% - 24px)) !important;
-  margin-left:auto !important;
-  margin-right:auto !important;
+position: sticky; /* ou fixed */
+  top: 0;
+  z-index: 9999;
+
+  padding-top: env(safe-area-inset-top);
+  background: var(--bg, #0b0f14);
 }
 
 
