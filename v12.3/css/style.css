@@ -1662,12 +1662,13 @@ body{
   flex-direction:column !important;
   align-items:center !important;
   padding:0 !important;
+  body { padding-top: var(--header-h, 56px); }
 }
 body > .container,
 body > .top-actions,
 body > .topbar,
 body > .header{
-position: sticky; /* ou fixed */
+position: fixed;
   top: 0;
   z-index: 9999;
 
