@@ -148,7 +148,7 @@
     fontId: "Inter",
     fontSize: 66,
     msgX: 540,
-    msgY: 720,
+    msgY: 620,
     themeId: "noite",
     bgA: "#0b1220",
     bgB: "#0f2a4a",
@@ -160,8 +160,7 @@
   let state = defaultState();
 
   // === Layout constants (must match index.html clipPath) ===
-  // Área do texto: quase o cartão todo, com pequena margem externa.
-  const CLIP = { x: 70, y: 90, w: 940, h: 1180, pad: 70, margin: 18 };
+  const CLIP = { x: 80, y: 320, w: 920, h: 720, pad: 90 };
 
   function toast(text){
     els.toast.textContent = text || "";
@@ -196,7 +195,7 @@
       if (typeof obj.m === "number") state.msgIdx = clamp(obj.m, 0, MESSAGES.length-1);
       if (typeof obj.s === "string") state.sign = obj.s.slice(0, 36);
       if (typeof obj.f === "string") state.fontId = obj.f;
-      if (typeof obj.fs === "number") state.fontSize = clamp(obj.fs, 40, 112);
+      if (typeof obj.fs === "number") state.fontSize = clamp(obj.fs, 40, 96);
       if (typeof obj.mx === "number") state.msgX = clamp(obj.mx, CLIP.x + CLIP.pad, CLIP.x + CLIP.w - CLIP.pad);
       if (typeof obj.my === "number") state.msgY = clamp(obj.my, CLIP.y + CLIP.pad, CLIP.y + CLIP.h - CLIP.pad);
       if (typeof obj.th === "string") state.themeId = obj.th;
@@ -212,8 +211,8 @@
             id: x.id,
             x: clamp(+x.x || 540, 80, 1000),
             y: clamp(+x.y || 900, 140, 1240),
-            s: clamp(+x.s || 1, 0.45, 2.9),
-            r: clamp(+x.r || 0, -180, 180),
+            s: clamp(+x.s || 1, 0.45, 2.6),
+            r: clamp(+x.r || 0, -35, 35),
           }));
       }
       return true;
@@ -397,35 +396,8 @@
 
     const sign = (state.sign || "").trim();
     els.signText.textContent = sign ? sign : "";
-
-    // === manter bloco (mensagem + assinatura) dentro do clip ===
-    const signSize = Math.round(fs * 0.44);
-    const signGap = Math.round(fs * 0.95);
-    const blockTop = () => (state.msgY - totalH/2 - Math.round(fs * 0.62));
-    const blockBottom = () => {
-      if (!sign) return state.msgY + totalH/2 + Math.round(fs * 0.62);
-      return state.msgY + totalH/2 + signGap + Math.round(signSize * 0.72);
-    };
-
-    const minY = CLIP.y + CLIP.margin;
-    const maxY = CLIP.y + CLIP.h - CLIP.margin;
-    // Ajuste suave (máx 2 iterações) para evitar corte no meio.
-    for (let i=0;i<2;i++){
-      const top = blockTop();
-      const bot = blockBottom();
-      if (top < minY) state.msgY += (minY - top);
-      if (bot > maxY) state.msgY -= (bot - maxY);
-    }
-    state.msgY = clamp(state.msgY, CLIP.y + CLIP.pad, CLIP.y + CLIP.h - CLIP.pad);
-
-    // Reposiciona após possível ajuste
-    els.msgText.setAttribute("x", state.msgX);
-    els.msgText.setAttribute("y", state.msgY - totalH/2);
-    tspans.forEach((t,i) => t.setAttribute("x", state.msgX));
-
-    els.signText.setAttribute("font-size", String(signSize));
     els.signText.setAttribute("x", state.msgX);
-    els.signText.setAttribute("y", state.msgY + totalH/2 + signGap);
+    els.signText.setAttribute("y", state.msgY + totalH/2 + Math.round(fs*0.95));
   }
 
   function uid(){
@@ -450,48 +422,17 @@
       g.innerHTML = base.svg;
 
       if (state.selectedKey === st.key){
-        // UI de seleção (não deve sair no export)
-        const ui = document.createElementNS("http://www.w3.org/2000/svg","g");
-        ui.setAttribute("class","selectionUi");
-        ui.style.pointerEvents = "all";
-
         const ring = document.createElementNS("http://www.w3.org/2000/svg","rect");
         ring.setAttribute("class","selectionRing");
-        ring.setAttribute("x","-6"); ring.setAttribute("y","-6");
-        ring.setAttribute("width","60"); ring.setAttribute("height","60");
-        ring.setAttribute("rx","14"); ring.setAttribute("ry","14");
+        ring.setAttribute("x","-4"); ring.setAttribute("y","-4");
+        ring.setAttribute("width","56"); ring.setAttribute("height","56");
+        ring.setAttribute("rx","12"); ring.setAttribute("ry","12");
         ring.setAttribute("fill","none");
-        ring.setAttribute("stroke","rgba(255,255,255,.82)");
+        ring.setAttribute("stroke","rgba(255,255,255,.75)");
         ring.setAttribute("stroke-width","3");
-        ring.setAttribute("stroke-dasharray","7 6");
-        ring.setAttribute("opacity",".98");
-        ui.appendChild(ring);
-
-        const mkHandle = (cx, cy, kind) => {
-          const c = document.createElementNS("http://www.w3.org/2000/svg","circle");
-          c.setAttribute("class","selectionHandle");
-          c.setAttribute("data-handle", kind);
-          c.setAttribute("cx", String(cx));
-          c.setAttribute("cy", String(cy));
-          c.setAttribute("r", "7.5");
-          c.setAttribute("fill", "rgba(255,255,255,.95)");
-          c.setAttribute("stroke", "rgba(15,42,74,.85)");
-          c.setAttribute("stroke-width", "2");
-          c.style.cursor = (kind === "rotate") ? "grab" : "nwse-resize";
-          c.style.touchAction = "none";
-          c.addEventListener("pointerdown", (ev) => startTransformSticker(ev, st.key, kind));
-          return c;
-        };
-
-        // 4 cantos para escalar
-        ui.appendChild(mkHandle(-6, -6, "scale"));
-        ui.appendChild(mkHandle(54, -6, "scale"));
-        ui.appendChild(mkHandle(-6, 54, "scale"));
-        ui.appendChild(mkHandle(54, 54, "scale"));
-        // handle de rotação
-        ui.appendChild(mkHandle(24, -22, "rotate"));
-
-        g.appendChild(ui);
+        ring.setAttribute("stroke-dasharray","8 7");
+        ring.setAttribute("opacity",".95");
+        g.appendChild(ring);
       }
 
       stickerTransform(g, st);
@@ -533,46 +474,7 @@
   }
 
   // Drag engine
-  const drag = {
-    mode:null,
-    key:null,
-    start:null,
-    orig:null,
-    pointerId:null,
-    center:null,
-    startDist:null,
-    startScale:null,
-    startAngle:null,
-    startRot:null,
-  };
-
-  function startTransformSticker(ev, key, kind){
-    ev.preventDefault();
-    ev.stopPropagation();
-    selectSticker(key);
-
-    const st = state.stickers.find(s => s.key === key);
-    if (!st) return;
-
-    const p = svgClientToViewBox(ev.clientX, ev.clientY);
-    const c = { x: st.x, y: st.y };
-    const vx = p.x - c.x;
-    const vy = p.y - c.y;
-
-    drag.mode = (kind === "rotate") ? "sticker-rotate" : "sticker-scale";
-    drag.key = key;
-    drag.pointerId = ev.pointerId;
-    drag.center = c;
-    drag.startDist = Math.max(1, Math.hypot(vx, vy));
-    drag.startScale = st.s;
-    drag.startAngle = Math.atan2(vy, vx);
-    drag.startRot = st.r;
-
-    window.addEventListener("pointermove", onDragMove, { passive:false });
-    window.addEventListener("pointerup", endDrag, { once:true });
-    window.addEventListener("pointercancel", endDrag, { once:true });
-    try{ ev.target.setPointerCapture && ev.target.setPointerCapture(ev.pointerId); }catch(_e){}
-  }
+  const drag = { mode:null, key:null, start:null, orig:null, pointerId:null };
 
   function startDragSticker(ev, key){
     ev.preventDefault();
@@ -614,33 +516,14 @@
     ev.preventDefault();
 
     const p = svgClientToViewBox(ev.clientX, ev.clientY);
-    const dx = drag.start ? (p.x - drag.start.x) : 0;
-    const dy = drag.start ? (p.y - drag.start.y) : 0;
+    const dx = p.x - drag.start.x;
+    const dy = p.y - drag.start.y;
 
     if (drag.mode === "sticker"){
       const st = state.stickers.find(s => s.key === drag.key);
       if (!st) return;
       st.x = clamp(drag.orig.x + dx, 80, 1000);
       st.y = clamp(drag.orig.y + dy, 140, 1240);
-
-      const g = els.stickersLayer.querySelector(`[data-key="${drag.key}"]`);
-      if (g) stickerTransform(g, st);
-    } else if (drag.mode === "sticker-scale" || drag.mode === "sticker-rotate"){
-      const st = state.stickers.find(s => s.key === drag.key);
-      if (!st || !drag.center) return;
-      const vx = p.x - drag.center.x;
-      const vy = p.y - drag.center.y;
-
-      if (drag.mode === "sticker-scale"){
-        const dist = Math.max(1, Math.hypot(vx, vy));
-        const factor = dist / (drag.startDist || 1);
-        st.s = clamp((drag.startScale || st.s) * factor, 0.45, 2.6);
-      } else {
-        const a = Math.atan2(vy, vx);
-        const da = a - (drag.startAngle || 0);
-        const deg = (da * 180 / Math.PI);
-        st.r = clamp((drag.startRot || 0) + deg, -180, 180);
-      }
 
       const g = els.stickersLayer.querySelector(`[data-key="${drag.key}"]`);
       if (g) stickerTransform(g, st);
@@ -659,24 +542,14 @@
   }
 
   // Export
-  function deselectAll(){
-    if (!state.selectedKey) return;
-    state.selectedKey = null;
-    renderStickers();
-  }
-
-  function nextFrame(){
-    return new Promise(r => requestAnimationFrame(() => r()));
-  }
-
   function svgToPngBlob(svgEl, scale=2){
     return new Promise((resolve, reject) => {
       const clone = svgEl.cloneNode(true);
       const img = clone.querySelector("#logoImg");
       if (img) img.setAttribute("href", LOGO_DATA_URI);
 
-      // Remove UI-only selection adorners from export
-      clone.querySelectorAll(".selectionRing, .selectionUi, .selectionHandle").forEach(n => n.remove());
+      // Remove UI-only selection rings from export
+      clone.querySelectorAll(".selectionRing").forEach(n => n.remove());
 
       const xml = new XMLSerializer().serializeToString(clone);
       const blob = new Blob([xml], { type: "image/svg+xml;charset=utf-8" });
@@ -704,9 +577,6 @@
 
   async function exportPng(download=true){
     try{
-      // garante que nada esteja "selecionado" no export
-      deselectAll();
-      await nextFrame();
       toast("Gerando imagem…");
       const blob = await svgToPngBlob(els.svg, 2);
       const fileName = "cartao-natal.png";

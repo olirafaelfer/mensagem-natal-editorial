@@ -1,0 +1,253 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+
+    function hasAuthEmail() {
+      return isSignedIn()
+        && request.auth.token.email != null
+        && request.auth.token.email is string;
+    }
+
+    // Admin simples (para o /admin)
+    function isAdmin() {
+      return isSignedIn()
+        && request.auth.token.email is string
+        && request.auth.token.email == 'admin@missao-natal.local';
+    }
+
+    function isValidName(n) {
+      return n is string
+        && n.size() >= 2
+        && n.size() <= 60;
+    }
+
+    function isValidSector(s) {
+      return s is string
+        && s.size() >= 2
+        && s.size() <= 120;
+    }
+
+    function isValidNumber(x) { return x is number; }
+    function isValidBool(b) { return b is bool; }
+
+    function isValidEmailHash(h) {
+      return h is string
+        && h.size() == 64
+        && h.matches('^[0-9a-f]{64}$');
+    }
+
+    function isValidAvatar(a) {
+      return a is string
+        && a.size() <= 200000;
+    }
+
+    /* =========================
+       APP CONFIG (reset de progresso local)
+       /appConfig/global
+       ========================= */
+    match /appConfig/{docId} {
+      allow read: if true; // só contém resetEpoch
+      allow write: if isAdmin();
+    }
+
+    /* =========================
+       CHAT (v8.4+)
+       /chatRooms/global/messages/{messageId}
+       /chatRooms/global/messages/{messageId}/reactions/{uid}
+       ========================= */
+
+    function isValidChatText(t) {
+      return t is string && t.size() >= 1 && t.size() <= 400;
+    }
+    function isValidChatSector(s) {
+      return s is string && s.size() <= 120;
+    }
+    function isAllowedStickerEmoji(e) {
+      return e is string && e.size() <= 4
+        && (e in ['🎁','🎄','⭐','🦌','🍪','🎅','❄️','✨','🌟']);
+    }
+    function isValidReactionCounts(rc) {
+      return rc is map
+        && rc.keys().hasOnly(['like','laugh','heart'])
+        && isValidNumber(rc.like) && rc.like >= 0
+        && isValidNumber(rc.laugh) && rc.laugh >= 0
+        && isValidNumber(rc.heart) && rc.heart >= 0;
+    }
+    function isValidReactionType(t) {
+      return t is string && (t in ['like','laugh','heart']);
+    }
+
+    match /chatRooms/{roomId} {
+      match /messages/{messageId} {
+
+        allow read: if isSignedIn();
+
+        allow create: if isSignedIn()
+          && request.resource.data.keys().hasOnly([
+            'uid','name','sector','avatar','text','sticker','reactionCounts','createdAt'
+          ])
+          && request.resource.data.uid == request.auth.uid
+          && isValidName(request.resource.data.name)
+          && isValidChatSector(request.resource.data.sector)
+          && (!('avatar' in request.resource.data) || isValidAvatar(request.resource.data.avatar))
+          && request.resource.data.createdAt is timestamp
+          && isValidReactionCounts(request.resource.data.reactionCounts)
+          && (
+            (('text' in request.resource.data) && isValidChatText(request.resource.data.text))
+            || (('sticker' in request.resource.data) && isAllowedStickerEmoji(request.resource.data.sticker))
+          );
+
+        allow update: if isSignedIn()
+          && request.resource.data.keys().hasOnly([
+            'uid','name','sector','avatar','text','sticker','reactionCounts','createdAt'
+          ])
+          && request.resource.data.uid == resource.data.uid
+          && request.resource.data.name == resource.data.name
+          && request.resource.data.sector == resource.data.sector
+          && request.resource.data.text == resource.data.text
+          && request.resource.data.sticker == resource.data.sticker
+          && request.resource.data.createdAt == resource.data.createdAt
+          && request.resource.data.reactionCounts is map
+          && isValidReactionCounts(request.resource.data.reactionCounts);
+
+        allow delete: if (isSignedIn() && resource.data.uid == request.auth.uid) || isAdmin();
+
+        match /reactions/{uid} {
+          allow read: if isSignedIn();
+          allow create, update: if isOwner(uid)
+            && request.resource.data.keys().hasOnly(['type','createdAt'])
+            && isValidReactionType(request.resource.data.type)
+            && request.resource.data.createdAt is timestamp;
+
+          allow delete: if isOwner(uid) || isAdmin();
+        }
+      }
+    }
+
+    /* =========================
+       /users/{uid}
+       ========================= */
+    match /users/{uid} {
+
+      allow read: if isOwner(uid) || isAdmin();
+
+      allow create: if isOwner(uid)
+        && request.resource.data.keys().hasOnly([
+          'uid','email','name','sector','avatar','createdAt','updatedAt'
+        ])
+        && request.resource.data.uid == uid
+        && request.resource.data.email is string
+        && isValidName(request.resource.data.name)
+        && isValidSector(request.resource.data.sector)
+        && (!('avatar' in request.resource.data) || isValidAvatar(request.resource.data.avatar))
+        && request.resource.data.createdAt is timestamp
+        && request.resource.data.updatedAt is timestamp;
+
+      allow update: if isOwner(uid)
+        && request.resource.data.keys().hasOnly([
+          'uid','email','name','sector','avatar','createdAt','updatedAt'
+        ])
+        && request.resource.data.uid == uid
+        && request.resource.data.email is string
+        && isValidName(request.resource.data.name)
+        && isValidSector(request.resource.data.sector)
+        && (!('avatar' in request.resource.data) || isValidAvatar(request.resource.data.avatar))
+        && request.resource.data.createdAt is timestamp
+        && request.resource.data.updatedAt is timestamp;
+
+      allow delete: if isOwner(uid) || isAdmin();
+    }
+
+    /* =========================
+       /rankingByEmail/{emailHash}
+       ========================= */
+    match /rankingByEmail/{emailHash} {
+
+      allow read: if true;
+
+      allow create, update: if hasAuthEmail()
+        && isValidEmailHash(emailHash)
+        && request.resource.data.emailHash == emailHash
+        && request.resource.data.email == request.auth.token.email
+        && request.resource.data.keys().hasOnly([
+          'emailHash','email','uid','name','sector','avatar','visible',
+          'd1','d2','d3','overallAvg',
+          'createdAt','updatedAt'
+        ])
+        && (!('uid' in request.resource.data) || request.resource.data.uid is string)
+        && isValidName(request.resource.data.name)
+        && isValidSector(request.resource.data.sector)
+        && (!('avatar' in request.resource.data) || isValidAvatar(request.resource.data.avatar))
+        && isValidBool(request.resource.data.visible)
+        && isValidNumber(request.resource.data.overallAvg)
+        && request.resource.data.createdAt is timestamp
+        && request.resource.data.updatedAt is timestamp
+
+        && request.resource.data.d1 is map
+        && request.resource.data.d1.keys().hasOnly(['score','correct','wrong','updatedAt'])
+        && isValidNumber(request.resource.data.d1.score)
+        && isValidNumber(request.resource.data.d1.correct)
+        && isValidNumber(request.resource.data.d1.wrong)
+        && request.resource.data.d1.updatedAt is timestamp
+
+        && request.resource.data.d2 is map
+        && request.resource.data.d2.keys().hasOnly(['score','correct','wrong','updatedAt'])
+        && isValidNumber(request.resource.data.d2.score)
+        && isValidNumber(request.resource.data.d2.correct)
+        && isValidNumber(request.resource.data.d2.wrong)
+        && request.resource.data.d2.updatedAt is timestamp
+
+        && request.resource.data.d3 is map
+        && request.resource.data.d3.keys().hasOnly(['score','correct','wrong','updatedAt'])
+        && isValidNumber(request.resource.data.d3.score)
+        && isValidNumber(request.resource.data.d3.correct)
+        && isValidNumber(request.resource.data.d3.wrong)
+        && request.resource.data.d3.updatedAt is timestamp;
+
+      allow delete: if isAdmin();
+    }
+
+    /* =========================
+       /individualRanking/{uid}
+       ========================= */
+    match /individualRanking/{uid} {
+
+      allow read: if true;
+
+      allow create, update: if isOwner(uid)
+        && request.resource.data.keys().hasOnly([
+          'uid', 'name', 'sector',
+          'score', 'correct', 'wrong',
+          'createdAt', 'updatedAt'
+        ])
+        && request.resource.data.uid == uid
+        && isValidName(request.resource.data.name)
+        && isValidSector(request.resource.data.sector)
+        && isValidNumber(request.resource.data.score)
+        && isValidNumber(request.resource.data.correct)
+        && isValidNumber(request.resource.data.wrong)
+        && (!('createdAt' in request.resource.data) || request.resource.data.createdAt is timestamp)
+        && (!('updatedAt' in request.resource.data) || request.resource.data.updatedAt is timestamp);
+
+      allow delete: if isOwner(uid) || isAdmin();
+    }
+
+    match /sectorStats/{sectorId} {
+      allow read: if true;
+      allow create, update: if true;
+      allow delete: if isAdmin();
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
