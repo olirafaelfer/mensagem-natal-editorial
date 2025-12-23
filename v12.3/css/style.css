@@ -247,6 +247,19 @@ hr{
   justify-content: flex-end;
 }
 
+/* ✅ Mobile: evita quebrar ícones em 2 linhas.
+   Se não couber, permite scroll horizontal (sem mostrar barra). */
+@media (max-width: 520px){
+  .top-actions{
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .top-actions::-webkit-scrollbar{ height: 0; }
+  .icon-btn{ width: 40px; height: 40px; border-radius: 12px; }
+}
+
 .icon-btn{
   width: 42px;
   height: 42px;
@@ -628,6 +641,18 @@ select.input option{
   border: 1px solid rgba(255,255,255,.10);
   border-radius: 18px;
   padding: 14px 14px;
+}
+
+/* ✅ Scroll interno para a área de mensagens corrigidas no final
+   (evita travar a tela quando há muito texto, especialmente no mobile) */
+#finalMsgsWrap{
+  max-height: min(58vh, 520px);
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+@media (max-width: 520px){
+  #finalMsgsWrap{ max-height: min(64vh, 560px); }
 }
 
 .final-correct{

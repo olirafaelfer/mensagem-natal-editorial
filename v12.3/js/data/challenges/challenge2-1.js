@@ -27,11 +27,11 @@ export default {
       token: ",",
       clickTokenOnly: true,
       fast: true,
-      wrong: " metas, de",
-      correct: " metas de",
+      wrong: " metas. de",
+      correct: " metas, de",
       labelWrong: ",",
       labelCorrect: "(remover)",
-      hint: "Não se separa o termo \"metas\" do complemento \"de transformar...\"."
+      hint: "Não se utiliza ponto após a palavra \"metas\" e a vírgula simboliza a omissão verbal na repetição de ideias."
     },
     {
       id: "d2t1_3",
