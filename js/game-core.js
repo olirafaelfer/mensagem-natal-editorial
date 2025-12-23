@@ -381,6 +381,37 @@ if (dom.finalMissionSpecialBtn){
       ]
     });
   }
+if (ch === 3 && shouldShowChallenge3Warning()){
+  openModal({
+    title: "⚠️ Desafio avançado",
+    bodyHTML: `
+      <p>
+        Neste desafio você vai encarar <b>textos maiores</b> e com
+        <b>erros de difícil correção e percepção</b>.
+      </p>
+      <p>
+        Não se preocupe com o seu desempenho.
+        A intenção é mostrar o quão <b>minucioso e complexo</b> pode ser
+        o trabalho de revisão textual.
+      </p>
+      <p class="muted">
+        Vá com calma, observe os detalhes e aproveite o aprendizado ✨
+      </p>
+    `,
+    buttons: [
+      {
+        label: "Entendi, começar",
+        onClick: () => {
+          try { localStorage.setItem("challenge3_warning_seen", "1"); } catch {}
+          closeModal();
+          startChallenge(3);
+        }
+      }
+    ],
+    dismissible: false
+  });
+  return; // ⚠️ IMPORTANTE: impede iniciar direto
+}
 
   function startChallenge(ch){
     const levels = getChallengeLevels(ch);

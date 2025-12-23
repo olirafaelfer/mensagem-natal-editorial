@@ -14,13 +14,13 @@ export function getTutorialLevels(){
     },
     {
       name: "Tutorial 2/5 — Pontuação",
-      intro: "Agora vamos remover uma vírgula indevida.",
+      intro: "Agora vamos remover uma vírgula para você ver como funciona (a vírgula está correta, é só um exemplo do mecanismo de remoção).",
       instruction: "Clique na vírgula destacada e remova-a.",
-      raw: "Que o seu Natal seja de paz,, alegria, e união.",
+      raw: "Que o seu Natal seja de paz, alegria, e união.",
       focusRuleId: "t2",
       hintEnabled: false,
       rules: [
-        { id:"t2", label:"Pontuação", wrong:/,/g, correct:"", reason:"Aqui a vírgula está duplicada." }
+        { id:"t2", label:"Pontuação", wrong:/,/g, correct:"", reason:"Assim que se remove uma pontuação errada no game!" }
       ]
     },
     {

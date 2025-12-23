@@ -1139,7 +1139,7 @@ if (dom.finalMissionSpecialBtn){
       {label:"Aplicar", onClick: () => {
         closeModal();
 
-        const tokenEl = dom.messageArea?.querySelector(`.token.error[data-ruleid="${rule.id}"]`) || null;
+        const tokenEl = dom.messageArea?.querySelector(`.token[data-ruleid="${rule.id}"]`) || null;
 
         const delta = engine.autoCorrect(rule.id);
         scoreFloat(delta, tokenEl || anchorEl || dom.hintBtn);
