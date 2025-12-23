@@ -30,7 +30,7 @@ const RULES = [
 
 export default {
   id: "challenge1-1",
-  title: "Atividade 2 — Médio",
+  title: "Atividade 1",
   difficulty: "Médio",
   goal: "Encontre os erros no texto e corrija.",
   raw: "Que o espirito do Natal renovee sua alma e traga um recomeco repleto de paz e esperança.",
