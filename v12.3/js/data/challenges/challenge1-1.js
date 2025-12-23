@@ -8,7 +8,7 @@ const RULES = [
     wrong: "\\bespirito\\b",
     flags: "gi",
     correct: "espírito",
-    hint: "Falta um acento agudo em uma palavra com a letra í."
+    hint: "Falta acento."
   },
   {
     id: "d1t1_2",
@@ -16,7 +16,7 @@ const RULES = [
     wrong: "\\balmaa\\b",
     flags: "gi",
     correct: "alma",
-    hint: "Há uma vogal repetida em uma palavra."
+    hint: "Há uma letra a mais."
   },
   {
     id: "d1t1_3",
@@ -24,7 +24,7 @@ const RULES = [
     wrong: "\\brecomeco\\b",
     flags: "gi",
     correct: "recomeço",
-    hint: "Falta cedilha em uma palavra."
+    hint: "Falta cedilha e acento."
   },
   {
     id: "d1t1_4",
@@ -32,13 +32,13 @@ const RULES = [
     wrong: "\\besperanca\\b",
     flags: "gi",
     correct: "esperança",
-    hint: "Falta cedilha em uma palavra."
+    hint: "Falta cedilha."
   }
 ];
 
 export default {
   name: "Desafio 1 — Tarefa 1",
-  intro: "Erros simples para aquecer.",
+  intro: "Erros simples para aquecer (4).",
   instruction: "Encontre os erros no texto e corrija.",
   raw: "Que o espirito do Natal renove sua almaa e traga um recomeco repleto de paz e esperanca.",
   rules: RULES

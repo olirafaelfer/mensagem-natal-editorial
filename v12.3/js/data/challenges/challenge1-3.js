@@ -16,7 +16,7 @@ const RULES = [
     wrong: "\\bcomecos\\b",
     flags: "gi",
     correct: "começos",
-    hint: "Falta cedilha em uma palavra." 
+    hint: "Falta cedilha." 
   },
   {
     id: "d1t3_3",
@@ -24,7 +24,7 @@ const RULES = [
     wrong: "\\bforcas\\b",
     flags: "gi",
     correct: "forças",
-    hint: "Falta cedilha em uma palavra." 
+    hint: "Falta cedilha." 
   },
   {
     id: "d1t3_4",
@@ -32,13 +32,13 @@ const RULES = [
     wrong: "\\bamanha\\b",
     flags: "gi",
     correct: "amanhã",
-    hint: "Falta til em uma palavra." 
+    hint: "Falta til." 
   }
 ];
 
 export default {
   name: "Desafio 1 — Tarefa 3",
-  intro: "Erros simples em um texto um pouco maior.",
+  intro: "Erros simples (4) em um texto um pouco maior.",
   instruction: "Encontre os erros no texto e corrija.",
   raw: "O Natal e o momento de renascimento e de novos comecos. Que a luz desta data especial ilumine seus caminhos e renove suas forcas para enfrentar os desafios do amanha.",
   rules: RULES

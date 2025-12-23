@@ -899,6 +899,14 @@ if (dom.finalMissionSpecialBtn){
       const target = (lvl.focusMisclickWord||"").toLowerCase();
       if (target && el.textContent.toLowerCase() !== target) return;
     }
+    // Se já marcou este trecho como clique errado, não penaliza de novo
+    try{
+      if (el?.dataset?.misclicked === '1'){
+        miniToast('⚠️ Trecho já marcado como erro');
+        return;
+      }
+    }catch(e){}
+
     openModal({
       title:"Tem certeza que deseja corrigir este trecho?",
       bodyHTML:`<p><b>${escapeHtml(el.textContent)}</b></p>`,
@@ -907,6 +915,13 @@ if (dom.finalMissionSpecialBtn){
         {label:"Confirmar", onClick: () => {
           closeModal();
           const delta = engine.penalizeMisclick();
+          // Marca visualmente (vermelho) para indicar que o usuário tentou corrigir algo certo
+          try{
+            if (el){
+              el.classList.add('wrong');
+              el.dataset.misclicked = '1';
+            }
+          }catch(e){}
           // Tutorial: marca passo concluído
           if (engine.challenge===0 && lvl?.tutorialMode==="force-misclick"){
             tutorialFlags[idx] = { ...(tutorialFlags[idx]||{}), misclickDone: true };
@@ -965,7 +980,7 @@ if (dom.finalMissionSpecialBtn){
               // marca visualmente e bloqueia novo clique (evita penalizar 2x)
               try{
                 if (el){
-                  el.classList.add("token-wrong");
+                  el.classList.add("wrong");
                   el.classList.add("token-locked");
                   el.style.pointerEvents = "none";
                 }

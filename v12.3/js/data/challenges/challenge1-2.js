@@ -8,7 +8,7 @@ const RULES = [
     wrong: "\\bnacimento\\b",
     flags: "gi",
     correct: "nascimento",
-    hint: "Está faltando uma letra s em uma palavra."
+    hint: "Está faltando uma letra."
   },
   {
     id: "d1t2_2",
@@ -16,7 +16,7 @@ const RULES = [
     wrong: "\\bvoce\\b",
     flags: "gi",
     correct: "você",
-    hint: "Falta acento em uma palavra."
+    hint: "Falta acento."
   },
   {
     id: "d1t2_3",
@@ -32,13 +32,13 @@ const RULES = [
     wrong: "\\bbrilar\\b",
     flags: "gi",
     correct: "brilhar",
-    hint: "Falta uma letra h em uma palavra."
+    hint: "Falta uma letra."
   }
 ];
 
 export default {
   name: "Desafio 1 — Tarefa 2",
-  intro: "Erros simples.",
+  intro: "Erros simples (4).",
   instruction: "Encontre os erros no texto e corrija.",
   raw: "Que o nacimento de Jesus inspire voce a acreditar na forca dos novos ciclos, nas segundas chances e na luz que sempre volta a brilar.",
   rules: RULES

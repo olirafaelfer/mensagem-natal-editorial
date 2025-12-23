@@ -6,7 +6,7 @@ export default {
   id: "d2-t2",
   name: "Tarefa 2 — Pontuação",
   intro: "Aqui você só precisa REMOVER pontuações indevidas. Clique apenas na vírgula que estiver sobrando.",
-  raw: "Façamos de nossa vida, uma extensão da noite, de Natal, renascendo continuamente, em amor, e fraternidade. Natal, noite de alegria, canções, festejos e bonança. Que seu coração floresça, em amor e esperança!",
+  raw: "Façamos de nossa vida, uma extensão da noite, de Natal, renascendo continuamente, em amor, e fraternidade. Natal, noite de alegria, canções, festejos, bonança. Que seu coração floresça, em amor e esperança!",
   rules: [
     {
       id: "d2t2_1",
