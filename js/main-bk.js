@@ -121,54 +121,6 @@ async function safeImportOptional(path, name){
   }
 }
 
-/* =========================================================
-   ✅ Welcome Gate (somente visitantes)
-   - Mostra modal de boas-vindas com CTA de login/cadastro
-   - NÃO aparece se estiver logado
-   - Só uma vez por sessão
-   ========================================================= */
-function showWelcomeGateIfNeeded(){
-  try {
-    if (app?.auth?.isLogged?.()) return; // logado => não mostra
-  } catch {}
-
-  try {
-    if (sessionStorage.getItem("welcome_gate_seen") === "1") return;
-    sessionStorage.setItem("welcome_gate_seen", "1");
-  } catch {}
-
-  const open = app?.ui?.openModal || window.openModal;
-  const close = app?.ui?.closeModal || window.closeModal;
-
-  if (typeof open !== "function") return;
-
-  open({
-    title: "🎄 Bem-vindo ao nosso cartão interativo!",
-    bodyHTML: `
-      <p><b>Ajude o Noel</b> com a missão de corrigir os textos natalinos antes que seja tarde!</p>
-
-      <p>Os <b>Desafios 2, 3</b> e a <b>Missão Especial</b> só estarão liberados para usuários cadastrados.</p>
-
-      <p>Se quiser participar de <b>toda a experiência natalina</b>, basta criar a sua conta ou fazer login se já for cadastrado.</p>
-
-      <p class="muted"><b>Spoiler:</b> o desafio 3 é de alto nível — realmente desafiador e difícil! Não se preocupe com o seu desempenho quando chegar nele. A intenção é mostrar os desafios que os revisores enfrentam todos os dias!</p>
-    `,
-    buttons: [
-      {
-        label: "Criar conta / Login",
-        onClick: () => {
-          try { close?.(); } catch {}
-          app?.auth?.openAuthGate?.();
-        }
-      },
-      {
-        label: "Agora não",
-        variant: "ghost",
-        onClick: () => { try { close?.(); } catch {} }
-      }
-    ]
-  });
-}
 
 async function bootAll(){
   try {
@@ -180,8 +132,8 @@ async function bootAll(){
     const gameMod    = await safeImport("./game-core.js", "game-core.js");
     const adminMod   = await safeImport("./modules/admin.js", "admin.js");
     const googleMod  = await safeImportOptional("./modules/google-auth.js", "google-auth.js");
-    const chatMod    = await safeImportOptional("./modules/chat.js", "chat.js");
-    const cardMod    = await safeImportOptional("./modules/card.js", "card.js");
+        const chatMod    = await safeImportOptional("./modules/chat.js", "chat.js");
+        const cardMod    = await safeImportOptional("./modules/card.js", "card.js");
 
     const bootModal   = pickBoot(modalMod,   ["bootModal", "boot", "init"]);
     const bootThemeFx = pickBoot(themeMod,   ["bootThemeFx", "bootTheme", "boot", "init"]); 
@@ -212,17 +164,14 @@ async function bootAll(){
     bootAdmin?.(app);
     bootAuth?.(app);
     bootGoogle?.(app);
-    bootChat?.(app);
-    bootCard?.(app);
+        bootChat?.(app);
+        bootCard?.(app);
 
     // Garante rolagem vertical habilitada (alguns modais podem travar o scroll)
     try{
-      document.documentElement.style.overflowY = "auto";
-      document.body.style.overflowY = "auto";
+      document.documentElement.style.overflowY = 'auto';
+      document.body.style.overflowY = 'auto';
     }catch(e){}
-
-    // ✅ Mostra boas-vindas depois do auth bootar
-    setTimeout(showWelcomeGateIfNeeded, 450);
 
   } catch (err){
     console.error("❌ Falha no boot dos módulos:", err);
@@ -231,3 +180,4 @@ async function bootAll(){
 }
 
 bootAll();
+
