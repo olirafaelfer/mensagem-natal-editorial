@@ -18,14 +18,6 @@ import {
   deleteDoc,
 } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
 
-function setChatViewportVar(){
-  try{
-    const h = (window.visualViewport && window.visualViewport.height) ? Math.round(window.visualViewport.height) : window.innerHeight;
-    document.documentElement.style.setProperty('--chat-vh', h + 'px');
-  }catch(e){}
-}
-
-
 const ROOM_ID = "global";
 const MAX_TEXT = 280;
 const STICKERS = [
@@ -211,13 +203,19 @@ export function bootChat(app) {
   let meUid = null;
 
   function openPanel() {
-    setChatViewportVar();
-  if(window.visualViewport){ window.visualViewport.addEventListener("resize", setChatViewportVar); }
-  window.addEventListener("resize", setChatViewportVar);
-  panel.classList.remove("hidden");
+    _chatApplyViewportVars();
+    if(window.visualViewport && !panel.__vvBound){
+      panel.__vvBound = true;
+      const onVV = () => _chatApplyViewportVars();
+      window.visualViewport.addEventListener('resize', onVV);
+      window.visualViewport.addEventListener('scroll', onVV);
+      window.addEventListener('orientationchange', onVV);
+    }
+
+    panel.classList.remove("hidden");
     panel.classList.add("show");
     opened = true;
-    setTimeout(() => input?.focus(), 30);
+    setTimeout(() => { input?.focus(); _chatApplyViewportVars(); }, 30);
   }
   function closePanel() {
     panel.classList.remove("show");
@@ -408,3 +406,20 @@ export function bootChat(app) {
     close: closePanel,
   };
 }
+
+
+
+function _chatApplyViewportVars(){
+  try{
+    const vv = window.visualViewport;
+    if(!vv){
+      document.documentElement.style.setProperty('--chat-vvh', '100vh');
+      document.documentElement.style.setProperty('--chat-kb', '0px');
+      return;
+    }
+    document.documentElement.style.setProperty('--chat-vvh', vv.height + 'px');
+    const kb = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
+    document.documentElement.style.setProperty('--chat-kb', kb + 'px');
+  }catch(_e){}
+}
+

@@ -1680,29 +1680,25 @@ body > .header{
 @media (max-width: 520px){.card-embed iframe{height:min(78vh, 680px);} }
 
 
-/* Mobile: keep top icon buttons in a single row (scroll if needed) */
+
+/* === Mobile topbar: keep all icons visible on one row (no wrap) === */
 @media (max-width: 520px){
-  .topbar-row-1{
-    justify-content: flex-start;
-    padding-left: 12px;
-    padding-right: 12px;
+  .topbar-row .top-actions{
+    display:flex;
+    flex-wrap:nowrap;
+    align-items:center;
+    justify-content:space-between;
+    gap:8px;
+    width: min(360px, 100%);
   }
-  .topbar-row-1 .top-actions{
-    width: 100%;
-    justify-content: flex-end;
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    overflow-y: hidden;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
-    gap: 8px;
-    padding: 4px 0;
+  .topbar-row .top-actions .icon-btn{
+    min-width:44px;
+    height:44px;
+    font-size:18px;
+    padding:0;
+    border-radius:14px;
   }
-  .topbar-row-1 .top-actions::-webkit-scrollbar{ display:none; }
-  .icon-btn{
-    width: 40px;
-    height: 40px;
-    border-radius: 13px;
-    flex: 0 0 auto;
-  }
+  /* allow slight logo shrink so ⚙️ fits */
+  .topbar-left .topbar-logo{ width: 118px; }
 }
+
