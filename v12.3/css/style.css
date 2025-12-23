@@ -144,7 +144,6 @@ hr{
   padding: calc(12px + env(safe-area-inset-top)) 0 14px;
   border-bottom: 1px solid rgba(255,255,255,.10);
 
-  background: rgba(11,15,20,.88); /* leve fundo p/ leitura */
   backdrop-filter: blur(8px);
 }
 
