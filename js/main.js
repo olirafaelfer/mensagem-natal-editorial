@@ -89,6 +89,53 @@ const app = (createAppFn ?? window.createApp)({ firebase, THEME_PRESETS, SECTORS
 const vEl = document.getElementById("appVersion");
 if (vEl) vEl.textContent = APP_VERSION;
 
+function showWelcomeGateIfNeeded(){
+  // se estiver logado, não mostra
+  if (app.auth?.isLogged?.()) return;
+
+  // evita mostrar toda vez na mesma sessão
+  try {
+    if (sessionStorage.getItem("welcome_gate_seen") === "1") return;
+    sessionStorage.setItem("welcome_gate_seen", "1");
+  } catch {}
+
+  openModal({
+    title: "🎄 Bem-vindo ao nosso cartão interativo!",
+    bodyHTML: `
+      <p><b>Ajude o Noel</b> com a missão de corrigir os textos natalinos antes que seja tarde!</p>
+
+      <p>
+        Os <b>Desafios 2, 3</b> e a <b>Missão Especial</b> estarão disponíveis
+        apenas para usuários cadastrados.
+      </p>
+
+      <p>
+        Se quiser participar de <b>toda a experiência natalina</b>,
+        basta criar a sua conta ou fazer login.
+      </p>
+
+      <p class="muted">
+        <b>Spoiler:</b> o Desafio 3 é de alto nível — realmente desafiador.
+        Não se preocupe com o desempenho quando chegar nele:
+        a ideia é mostrar o quão minucioso é o trabalho de revisão!
+      </p>
+    `,
+    buttons: [
+      {
+        label: "Criar conta / Login",
+        onClick: () => {
+          closeModal();
+          app.auth?.openAuthGate?.();
+        }
+      },
+      {
+        label: "Agora não",
+        variant: "ghost",
+        onClick: closeModal
+      }
+    ]
+  });
+}
 
 function pickBoot(mod, candidates){
   if (!mod) return null;
@@ -183,50 +230,4 @@ bootAll();
 
 setTimeout(showWelcomeGateIfNeeded, 300);
 
-function showWelcomeGateIfNeeded(){
-  // se estiver logado, não mostra
-  if (app.auth?.isLogged?.()) return;
 
-  // evita mostrar toda vez na mesma sessão
-  try {
-    if (sessionStorage.getItem("welcome_gate_seen") === "1") return;
-    sessionStorage.setItem("welcome_gate_seen", "1");
-  } catch {}
-
-  openModal({
-    title: "🎄 Bem-vindo ao nosso cartão interativo!",
-    bodyHTML: `
-      <p><b>Ajude o Noel</b> com a missão de corrigir os textos natalinos antes que seja tarde!</p>
-
-      <p>
-        Os <b>Desafios 2, 3</b> e a <b>Missão Especial</b> estarão disponíveis
-        apenas para usuários cadastrados.
-      </p>
-
-      <p>
-        Se quiser participar de <b>toda a experiência natalina</b>,
-        basta criar a sua conta ou fazer login.
-      </p>
-
-      <p class="muted">
-        <b>Spoiler:</b> o Desafio 3 é de alto nível — realmente desafiador.
-        Não se preocupe com o desempenho quando chegar nele:
-        a ideia é mostrar o quão minucioso é o trabalho de revisão!
-      </p>
-    `,
-    buttons: [
-      {
-        label: "Criar conta / Login",
-        onClick: () => {
-          closeModal();
-          app.auth?.openAuthGate?.();
-        }
-      },
-      {
-        label: "Agora não",
-        variant: "ghost",
-        onClick: closeModal
-      }
-    ]
-  });
-}
