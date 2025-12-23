@@ -5,7 +5,7 @@ const RULES = [
   {
     id: "d1t3_1",
     label: "Ortografia",
-    wrong: "\\babencoe\\b",
+    wrong: "abencoe",
     flags: "gi",
     correct: "abençoe",
     hint: "Falta cedilha."
@@ -13,7 +13,7 @@ const RULES = [
   {
     id: "d1t3_2",
     label: "Acentuação",
-    wrong: "\\bvoce\\b",
+    wrong: "voce",
     flags: "gi",
     correct: "você",
     hint: "Falta acento circunflexo."
@@ -21,7 +21,7 @@ const RULES = [
   {
     id: "d1t3_3",
     label: "Acentuação",
-    wrong: "\\bfamilia\\b",
+    wrong: "familia",
     flags: "gi",
     correct: "família",
     hint: "Falta acento agudo no \"i\"."
@@ -29,7 +29,7 @@ const RULES = [
   {
     id: "d1t3_4",
     label: "Acentuação",
-    wrong: "\\brenóve\\b",
+    wrong: "renóve",
     flags: "gi",
     correct: "renove",
     hint: "Não tem acento agudo no \"o\"."
