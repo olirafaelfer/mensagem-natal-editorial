@@ -159,6 +159,9 @@
 
   let state = defaultState();
 
+  // === Layout constants (must match index.html clipPath) ===
+  const CLIP = { x: 80, y: 320, w: 920, h: 720, pad: 90 };
+
   function toast(text){
     els.toast.textContent = text || "";
     if (!text) return;
@@ -193,8 +196,8 @@
       if (typeof obj.s === "string") state.sign = obj.s.slice(0, 36);
       if (typeof obj.f === "string") state.fontId = obj.f;
       if (typeof obj.fs === "number") state.fontSize = clamp(obj.fs, 40, 96);
-      if (typeof obj.mx === "number") state.msgX = clamp(obj.mx, 160, 920);
-      if (typeof obj.my === "number") state.msgY = clamp(obj.my, 480, 900);
+      if (typeof obj.mx === "number") state.msgX = clamp(obj.mx, CLIP.x + CLIP.pad, CLIP.x + CLIP.w - CLIP.pad);
+      if (typeof obj.my === "number") state.msgY = clamp(obj.my, CLIP.y + CLIP.pad, CLIP.y + CLIP.h - CLIP.pad);
       if (typeof obj.th === "string") state.themeId = obj.th;
       if (typeof obj.a === "string") state.bgA = obj.a;
       if (typeof obj.b === "string") state.bgB = obj.b;
@@ -377,7 +380,7 @@
     els.signText.setAttribute("text-anchor","middle");
     els.signText.setAttribute("dominant-baseline","middle");
 
-    const maxWidth = 840 - 80; // clip 840 minus padding
+    const maxWidth = CLIP.w - (CLIP.pad * 2);
     const lineHeight = Math.round(fs * 1.10);
     wrapSvgText(els.msgText, msg, maxWidth, lineHeight);
 
@@ -420,6 +423,7 @@
 
       if (state.selectedKey === st.key){
         const ring = document.createElementNS("http://www.w3.org/2000/svg","rect");
+        ring.setAttribute("class","selectionRing");
         ring.setAttribute("x","-4"); ring.setAttribute("y","-4");
         ring.setAttribute("width","56"); ring.setAttribute("height","56");
         ring.setAttribute("rx","12"); ring.setAttribute("ry","12");
@@ -524,8 +528,8 @@
       const g = els.stickersLayer.querySelector(`[data-key="${drag.key}"]`);
       if (g) stickerTransform(g, st);
     } else if (drag.mode === "text"){
-      state.msgX = clamp(drag.orig.x + dx, 160, 920);
-      state.msgY = clamp(drag.orig.y + dy, 480, 900);
+      state.msgX = clamp(drag.orig.x + dx, CLIP.x + CLIP.pad, CLIP.x + CLIP.w - CLIP.pad);
+      state.msgY = clamp(drag.orig.y + dy, CLIP.y + CLIP.pad, CLIP.y + CLIP.h - CLIP.pad);
       renderText();
     }
   }
@@ -543,6 +547,9 @@
       const clone = svgEl.cloneNode(true);
       const img = clone.querySelector("#logoImg");
       if (img) img.setAttribute("href", LOGO_DATA_URI);
+
+      // Remove UI-only selection rings from export
+      clone.querySelectorAll(".selectionRing").forEach(n => n.remove());
 
       const xml = new XMLSerializer().serializeToString(clone);
       const blob = new Blob([xml], { type: "image/svg+xml;charset=utf-8" });
