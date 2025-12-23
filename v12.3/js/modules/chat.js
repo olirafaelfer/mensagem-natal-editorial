@@ -83,20 +83,17 @@ function reactionHTML(emoji) {
   return `<img class="chat-reaction-emoji" src="${url}" alt="${esc(emoji)}" loading="lazy" referrerpolicy="no-referrer"/>`;
 }
 
-function ensureChatButton() {
-  // Botão no topo (header) — criado no index.html
-  const btn = document.getElementById("chatBtn");
-  return btn || null;
-}
-
-function ensureBackdrop() {
-  let bd = document.getElementById("chatBackdrop");
-  if (bd) return bd;
-  bd = document.createElement("div");
-  bd.id = "chatBackdrop";
-  bd.className = "chat-backdrop hidden";
-  document.body.appendChild(bd);
-  return bd;
+function ensureFab() {
+  let fab = document.getElementById("chatFab");
+  if (fab) return fab;
+  fab = document.createElement("button");
+  fab.id = "chatFab";
+  fab.type = "button";
+  fab.className = "chat-fab";
+  fab.title = "Chat Natalino";
+  fab.innerHTML = `${stickerHTML("💬", "Chat")}`;
+  document.body.appendChild(fab);
+  return fab;
 }
 
 function ensurePanel() {
@@ -185,9 +182,7 @@ export function bootChat(app) {
   const auth = app.firebase?.auth;
   if (!db || !auth) return;
 
-  const chatBtn = ensureChatButton();
-  const backdrop = ensureBackdrop();
-  if (!chatBtn) return;
+  const fab = ensureFab();
   const panel = ensurePanel();
   const stream = panel.querySelector("#chatStream");
   const stickerTray = panel.querySelector("#chatStickers");
@@ -308,7 +303,7 @@ export function bootChat(app) {
 
   // (sem listener global) — meUid é lido no momento do render/subscribe
 
-  chatBtn.addEventListener("click", () => {
+  fab.addEventListener("click", () => {
     if (!ensureLoggedOrRedirect()) return;
     subscribe();
     openPanel();
@@ -393,7 +388,7 @@ export function bootChat(app) {
 
   // expõe API simples
   app.chat = {
-    open: () => chatBtn.click(),
+    open: () => fab.click(),
     close: closePanel,
   };
 }
