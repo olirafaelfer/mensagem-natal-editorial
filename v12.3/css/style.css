@@ -35,47 +35,6 @@ body{
           contrast(calc(1.01 * var(--intensity)));
 }
 
-/* =========================
-   Game screen: rolagem DENTRO da mensagem
-   (evita "travar" quando o texto é grande no PC/mobile)
-   ========================= */
-#screenGame .card-inner{
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  /* Header + margens variam; esse valor dá folga sem "estourar" */
-  max-height: calc(100vh - 132px);
-}
-
-#messageArea{
-  flex: 1 1 auto;
-  overflow: auto;
-  -webkit-overflow-scrolling: touch;
-  overscroll-behavior: contain;
-}
-
-/* opcional: esconder a barra sem perder rolagem */
-#messageArea::-webkit-scrollbar{ width: 0; height: 0; }
-
-#screenGame .actions,
-#screenGame .hintbar,
-#screenGame .status-row,
-#screenGame .lead{
-  flex: 0 0 auto;
-}
-
-@media (max-width: 520px){
-  #screenGame .card-inner{
-    max-height: calc(100vh - 110px);
-  }
-}
-
-@media (max-height: 700px){
-  #screenGame .card-inner{
-    max-height: calc(100vh - 96px);
-  }
-}
-
 /* 🔒 quando modal abre: trava o fundo no lugar correto (mobile-friendly)
    IMPORTANTÍSSIMO: o JS usa body.style.top = -scrollY.
    Se o body não for fixed, o overlay "herda" o deslocamento e o modal parece abrir "no topo". */
@@ -245,19 +204,6 @@ hr{
   gap: 10px;
   align-items: center;
   justify-content: flex-end;
-}
-
-/* ✅ Mobile: evita quebrar ícones em 2 linhas.
-   Se não couber, permite scroll horizontal (sem mostrar barra). */
-@media (max-width: 520px){
-  .top-actions{
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
-  }
-  .top-actions::-webkit-scrollbar{ height: 0; }
-  .icon-btn{ width: 40px; height: 40px; border-radius: 12px; }
 }
 
 .icon-btn{
@@ -641,18 +587,6 @@ select.input option{
   border: 1px solid rgba(255,255,255,.10);
   border-radius: 18px;
   padding: 14px 14px;
-}
-
-/* ✅ Scroll interno para a área de mensagens corrigidas no final
-   (evita travar a tela quando há muito texto, especialmente no mobile) */
-#finalMsgsWrap{
-  max-height: min(58vh, 520px);
-  overflow: auto;
-  -webkit-overflow-scrolling: touch;
-}
-
-@media (max-width: 520px){
-  #finalMsgsWrap{ max-height: min(64vh, 560px); }
 }
 
 .final-correct{
@@ -1091,25 +1025,6 @@ img, svg, video, canvas { filter: none !important; }
   align-items:center;
   justify-content:flex-end;
   gap:10px;
-}
-
-/* Mobile: evita cortar botões do topo (login/chat/cartão etc.) */
-@media (max-width: 520px){
-  .topbar-row-1{
-    align-items: flex-start;
-  }
-  .topbar-left{ min-width: 96px; }
-  .topbar-row-1 .top-actions{
-    gap: 8px;
-    flex-wrap: wrap;
-    justify-content: flex-end;
-  }
-  .icon-btn{
-    width: 38px;
-    height: 38px;
-    border-radius: 14px;
-  }
-  .icon-btn svg{ width: 18px; height: 18px; }
 }
 
 
@@ -1763,3 +1678,31 @@ body > .header{
 .card-embed{width:100%;}
 .card-embed iframe{width:100%; height:min(72vh, 720px); border:0; border-radius:18px; background:transparent;}
 @media (max-width: 520px){.card-embed iframe{height:min(78vh, 680px);} }
+
+
+/* Mobile: keep top icon buttons in a single row (scroll if needed) */
+@media (max-width: 520px){
+  .topbar-row-1{
+    justify-content: flex-start;
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+  .topbar-row-1 .top-actions{
+    width: 100%;
+    justify-content: flex-end;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    gap: 8px;
+    padding: 4px 0;
+  }
+  .topbar-row-1 .top-actions::-webkit-scrollbar{ display:none; }
+  .icon-btn{
+    width: 40px;
+    height: 40px;
+    border-radius: 13px;
+    flex: 0 0 auto;
+  }
+}

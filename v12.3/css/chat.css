@@ -32,7 +32,8 @@
   left: 50%;
   top: 50%;
   width: min(720px, calc(100vw - 32px));
-  max-height: min(720px, calc(100vh - 140px));
+  height: min(720px, calc(var(--chat-vh, 100vh) - 140px));
+  max-height: min(720px, calc(var(--chat-vh, 100vh) - 140px));
   border-radius: 18px;
   border: 1px solid rgba(255,255,255,0.14);
   background: rgba(10,14,28,0.98);

@@ -18,6 +18,14 @@ import {
   deleteDoc,
 } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
 
+function setChatViewportVar(){
+  try{
+    const h = (window.visualViewport && window.visualViewport.height) ? Math.round(window.visualViewport.height) : window.innerHeight;
+    document.documentElement.style.setProperty('--chat-vh', h + 'px');
+  }catch(e){}
+}
+
+
 const ROOM_ID = "global";
 const MAX_TEXT = 280;
 const STICKERS = [
@@ -203,7 +211,10 @@ export function bootChat(app) {
   let meUid = null;
 
   function openPanel() {
-    panel.classList.remove("hidden");
+    setChatViewportVar();
+  if(window.visualViewport){ window.visualViewport.addEventListener("resize", setChatViewportVar); }
+  window.addEventListener("resize", setChatViewportVar);
+  panel.classList.remove("hidden");
     panel.classList.add("show");
     opened = true;
     setTimeout(() => input?.focus(), 30);
