@@ -165,7 +165,7 @@ function showWelcomeGateIfNeeded(){
   `;
 
   card.innerHTML = `
-    <div style="font-weight:900; font-size:18px; margin-bottom:10px;">🎄 Bem-vindo ao nosso cartão interativo!</div>
+    <div style="font-weight:900; font-size:18px; margin-bottom:10px;">🎄 Bem-vindo ao nosso cartão de natal interativo!</div>
 
     <div style="line-height:1.45; font-size:14px; opacity:.95;">
       <p style="margin:0 0 10px;"><b>Ajude o Noel</b> com a missão de corrigir os textos natalinos antes que seja tarde!</p>
@@ -181,6 +181,10 @@ function showWelcomeGateIfNeeded(){
       <p style="margin:0; opacity:.8;">
         <b>Spoiler:</b> o desafio 3 é de alto nível — realmente desafiador e difícil!
         Não se preocupe com o seu desempenho quando chegar nele. A intenção é mostrar os desafios que os revisores enfrentam todos os dias!
+      </p>
+      <hr>
+        <p style="margin:0; opacity:.8;">
+        <b>Obs:</b> <i>se encontrar bugs ou alguma falha de correção e similares, desconsidere. O intuito do app é trazer interatividade e dinanismo para atividades relacionadas à revisão textual e ainda estamos em uma versão experimental.</i>
       </p>
     </div>
 
