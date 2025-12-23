@@ -786,7 +786,7 @@ function renderAuthHTML() {
         app.modal?.openModal?.({
           title: "Completar cadastro",
           bodyHTML: `
-            <p class="muted" style="margin-top:0">Confirmar seu nome e selecione seu setor para continuar.</p>
+            <p class="muted" style="margin-top:0">Confirme seu nome e selecione seu setor para continuar.</p> <p>Se quiser colocar sua foto ou escolher um ícone, acesse o seu perfil no botão de menu e faça o upload.</p>
             <label class="field" style="gap:6px;margin-top:10px">
               <span class="muted" style="font-size:13px">Nome</span>
               <input class="input" id="cpName" type="text" value="${String(draft.name||"").replace(/"/g,'&quot;')}" maxlength="60"/>
