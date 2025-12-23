@@ -5,7 +5,7 @@ const RULES = [
   {
     id: "d1t2_1",
     label: "Ortografia",
-    wrong: "\\bnacimento\\b",
+    wrong: "nacimento",
     flags: "gi",
     correct: "nascimento",
     hint: "Está faltando uma letra s."
@@ -13,7 +13,7 @@ const RULES = [
   {
     id: "d1t2_2",
     label: "Acentuação",
-    wrong: "\\bvoce\\b",
+    wrong: "voce",
     flags: "gi",
     correct: "você",
     hint: "Falta acento circunflexo."
@@ -21,7 +21,7 @@ const RULES = [
   {
     id: "d1t2_3",
     label: "Ortografia",
-    wrong: "\\bforca\\b",
+    wrong: "forca",
     flags: "gi",
     correct: "força",
     hint: "Falta cedilha."
@@ -29,7 +29,7 @@ const RULES = [
   {
     id: "d1t2_4",
     label: "Ortografia",
-    wrong: "\\bbriliar\\b",
+    wrong: "briliar",
     flags: "gi",
     correct: "brilhar",
     hint: "A escrita correta é com \"lh\", não com \"li\"."

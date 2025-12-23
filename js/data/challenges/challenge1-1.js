@@ -5,7 +5,7 @@ const RULES = [
   {
     id: "d1t1_1",
     label: "Ortografia",
-    wrong: "\\bespirito\\b",
+    wrong: "espirito",
     flags: "gi",
     correct: "espírito",
     hint: 'Falta acento agudo na letra "i".'
@@ -13,7 +13,7 @@ const RULES = [
   {
     id: "d1t1_2",
     label: "Ortografia",
-    wrong: "\\brenovee\\b",
+    wrong: "renovee",
     flags: "gi",
     correct: "renove",
     hint: 'Tem uma letra "e" a mais.'
@@ -21,7 +21,7 @@ const RULES = [
   {
     id: "d1t1_3",
     label: "Ortografia",
-    wrong: "\\brecomeco\\b",
+    wrong: "recomeco",
     flags: "gi",
     correct: "recomeço",
     hint: "Falta cedilha."
