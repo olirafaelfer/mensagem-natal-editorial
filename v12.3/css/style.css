@@ -1679,30 +1679,9 @@ body > .header{
 .card-embed iframe{width:100%; height:min(72vh, 720px); border:0; border-radius:18px; background:transparent;}
 @media (max-width: 520px){.card-embed iframe{height:min(78vh, 680px);} }
 
-/* === PATCH (mobile/pc): topo não cortar ícones === */
-/* A UI do topo estava com max-width muito pequeno e cortando botões. */
-.topbar-banner .container{
-  max-width: 760px !important;
-  width: min(760px, calc(100% - 24px)) !important;
+/* PATCH: evitar corte no mobile */
+body{overflow-x:hidden;}
+@media (max-width: 520px){
+  .container{width: calc(100% - 16px) !important;}
 }
 
-.top-actions{
-  flex-wrap: nowrap;
-  overflow: visible;
-}
-
-@media (max-width: 560px){
-  .topbar-banner .container{
-    width: calc(100% - 16px) !important;
-    max-width: none !important;
-  }
-  .top-actions{
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    gap: 10px;
-    padding-bottom: 2px;
-  }
-  /* não mostrar scrollbar em navegadores que suportam */
-  .top-actions::-webkit-scrollbar{ height: 0; }
-  .icon-btn{ width: 44px; height: 44px; }
-}
