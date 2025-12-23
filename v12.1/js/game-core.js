@@ -911,10 +911,10 @@ if (dom.finalMissionSpecialBtn){
     });
   }
 
-  function onTokenClick\(el, rule\)\{
-    const st = engine\.getState\?\.\(\);
-    const lvl = st\?\.level;
-    if \(engine\.isDone\?\.\(\) && engine\.challenge!==0\) return;
+  function onTokenClick(el, rule){
+    const st = engine.getState?.();
+    const lvl = st?.level;
+    if (engine.isDone?.() && engine.challenge!==0) return;
     // Já bloqueado (correção errada anterior): não penaliza novamente
     try{
       if (engine.lockedRuleIds && rule && engine.lockedRuleIds.has(rule.id)){
