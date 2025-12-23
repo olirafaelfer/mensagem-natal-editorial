@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Cartão Natalino</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Poppins:wght@400;600;800&family=Nunito:wght@400;600;800&family=Montserrat:wght@400;600;800&family=DM+Sans:wght@400;600;800&family=Playfair+Display:wght@400;600;800&family=Merriweather:wght@400;700;900&family=Pacifico&family=Great+Vibes&display=swap">
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="app" id="app">
+    <header class="topbar">
+      <div class="brand">
+        <img class="brand__logo" src="assets/logo-natal.png" alt="Logo" />
+        <div class="brand__text">
+          <div class="brand__title">Cartão Natalino</div>
+          <div class="brand__sub">personalize e compartilhe como imagem</div>
+        </div>
+      </div>
+
+      <button id="btnShare" class="shareBtn" type="button" title="Compartilhar imagem">
+        <span class="shareBtn__icon" aria-hidden="true">
+          <!-- seta / share -->
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none">
+            <path d="M16 8l-4-4-4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M12 4v12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            <path d="M20 14v5a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+        </span>
+        <span class="shareBtn__label">Compartilhar</span>
+        <span class="shareBtn__glow" aria-hidden="true"></span>
+      </button>
+    </header>
+
+    <main class="main">
+      <section class="preview" aria-label="Prévia">
+        <div class="frame">
+          <svg id="cardSvg" class="card" viewBox="0 0 1080 1350" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Cartão">
+            <defs id="svgDefs">
+              <clipPath id="msgClip">
+                <!-- caixa onde o texto deve ficar -->
+                <rect x="70" y="90" width="940" height="1180" rx="60" ry="60"></rect>
+              </clipPath>
+            </defs>
+
+            <rect id="bgRect" x="0" y="0" width="1080" height="1350" rx="86" ry="86"></rect>
+            <g id="patternLayer" opacity="0.20"></g>
+
+            <!-- logo fixa -->
+            <image id="logoImg" x="74" y="74" width="300" height="140" preserveAspectRatio="xMinYMin meet" />
+
+            <!-- conteúdo -->
+            <g id="contentLayer">
+              <g id="messageGroup" clip-path="url(#msgClip)">
+                <text id="msgText" x="540" y="620" text-anchor="middle"></text>
+                <text id="signText" x="540" y="820" text-anchor="middle"></text>
+              </g>
+              <g id="stickersLayer"></g>
+            </g>
+
+            <!-- moldura -->
+            <g id="uiLayer" pointer-events="none">
+              <rect x="26" y="26" width="1028" height="1298" rx="74" ry="74" fill="none" stroke="rgba(255,255,255,0.16)" stroke-width="4"/>
+            </g>
+          </svg>
+        </div>
+        <div class="toast" id="toast" role="status" aria-live="polite"></div>
+      </section>
+
+      <section class="panel" aria-label="Personalização">
+        <div class="tabs" role="tablist" aria-label="Seções">
+          <button class="tab is-active" data-tab="texto" role="tab" aria-selected="true">Texto</button>
+          <button class="tab" data-tab="tema" role="tab" aria-selected="false">Tema</button>
+          <button class="tab" data-tab="enfeites" role="tab" aria-selected="false">Enfeites</button>
+        </div>
+
+        <div class="panelBody">
+          <div class="tabPane is-active" data-pane="texto" role="tabpanel">
+            <div class="cardRow">
+              <div class="label">Mensagem</div>
+              <div class="pills" id="msgPills"></div>
+            </div>
+
+            <div class="grid2">
+              <div class="cardRow">
+                <div class="label">Fonte</div>
+                <select id="fontSel" class="select"></select>
+              </div>
+
+              <div class="cardRow">
+                <div class="label">Tamanho</div>
+                <div class="rangeRow">
+                  <input id="fontSize" type="range" min="40" max="96" step="1" />
+                  <div class="badge" id="fontSizeVal">—</div>
+                </div>
+                <div class="help">Dica: você pode arrastar o texto direto no cartão.</div>
+              </div>
+            </div>
+
+            <div class="cardRow">
+              <div class="label">Assinatura</div>
+              <input id="signInput" class="input" maxlength="36" placeholder="Ex: Com carinho, Rafa" />
+            </div>
+          </div>
+
+          <div class="tabPane" data-pane="tema" role="tabpanel">
+            <div class="cardRow">
+              <div class="label">Temas</div>
+              <div class="themeRow" id="themeRow"></div>
+            </div>
+
+            <div class="grid2">
+              <div class="cardRow">
+                <div class="label">Fundo A</div>
+                <input id="bgA" type="color" class="color" />
+              </div>
+              <div class="cardRow">
+                <div class="label">Fundo B</div>
+                <input id="bgB" type="color" class="color" />
+              </div>
+            </div>
+
+            <div class="cardRow">
+              <div class="label">Padrão</div>
+              <div class="pills" id="patternPills"></div>
+            </div>
+          </div>
+
+          <div class="tabPane" data-pane="enfeites" role="tabpanel">
+            <div class="cardRow">
+              <div class="label">Adicionar enfeites</div>
+              <div class="stickerRow" id="stickerRow"></div>
+              <div class="help">Arraste para mover. Selecione um enfeite para aumentar/diminuir ou apagar.</div>
+            </div>
+
+            <div class="grid2">
+              <div class="cardRow">
+                <div class="label">Selecionado</div>
+                <div class="miniTools">
+                  <button id="btnSmaller" class="btn" type="button">−</button>
+                  <button id="btnBigger" class="btn" type="button">+</button>
+                  <button id="btnDelete" class="btn btn--danger" type="button">🗑</button>
+                </div>
+              </div>
+
+              <div class="cardRow">
+                <div class="label">Dica</div>
+                <div class="help">Para facilitar no mobile: o painel rola, mas a tela toda não.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="panelFooter">
+          <button id="btnExport" class="btn btn--ghost" type="button">Baixar PNG</button>
+          <button id="btnReset" class="btn" type="button">Resetar</button>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

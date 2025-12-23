@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <meta name="theme-color" content="#0b1020"/>
+  <title>Admin — Missão Editorial de Natal</title>
+  <link rel="stylesheet" href="../css/admin.css"/>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Console Admin</h1>
+    <p class="muted">Ferramentas para zerar dados antes do lançamento.</p>
+
+    <section class="card" id="loginCard">
+      <h2>Login</h2>
+      <p class="muted">Usuário: <b>admin</b> • Senha: <b>canada1996</b></p>
+      <div class="row">
+        <label>Usuário</label>
+        <input id="admUser" type="text" autocomplete="username" placeholder="admin"/>
+      </div>
+      <div class="row">
+        <label>Senha</label>
+        <input id="admPass" type="password" autocomplete="current-password" placeholder="••••••••"/>
+      </div>
+      <button id="btnLogin">Entrar</button>
+      <div class="status" id="loginStatus"></div>
+
+      <details class="hint">
+        <summary>Primeira vez? (necessário no Firebase)</summary>
+        <p>
+          Este console usa Firebase Auth (Email/Senha) por trás. Crie um usuário no Firebase Auth com:
+        </p>
+        <ul>
+          <li><code>admin@missao-natal.local</code></li>
+          <li>senha: <code>canada1996</code></li>
+        </ul>
+        <p class="muted">Depois disso, o login acima funciona.</p>
+      </details>
+    </section>
+
+    <section class="card hidden" id="actionsCard">
+      <h2>Ações</h2>
+      <p class="warn">Atenção: ações destrutivas. Não há “desfazer”.</p>
+
+      <div class="grid">
+        <div class="action">
+          <h3>Zerar Chat</h3>
+          <p class="muted">Apaga mensagens e reações do chat global.</p>
+          <button id="btnClearChat" class="danger">Apagar Chat</button>
+        </div>
+
+        <div class="action">
+          <h3>Zerar Ranking</h3>
+          <p class="muted">Apaga rankingByEmail, individualRanking e sectorStats.</p>
+          <button id="btnClearRanking" class="danger">Apagar Ranking</button>
+        </div>
+
+        <div class="action">
+          <h3>Resetar Progresso (local)</h3>
+          <p class="muted">Força todos a “zerarem” progresso local no próximo carregamento.</p>
+          <button id="btnResetProgress" class="danger">Forçar Reset de Progresso</button>
+        </div>
+
+        <div class="action">
+          <h3>Reset Total</h3>
+          <p class="muted">Chat + Ranking + Reset de progresso.</p>
+          <button id="btnNuke" class="danger">Executar Reset Total</button>
+        </div>
+      </div>
+
+      <div class="status" id="actionStatus"></div>
+
+      <details class="hint">
+        <summary>Notas sobre “progressos dos usuários”</summary>
+        <p>
+          O progresso do jogo fica no <b>localStorage</b> de cada dispositivo. Este botão não apaga diretamente
+          do navegador de todos, mas publica um marcador (<code>appConfig/global.resetEpoch</code>) que faz o app
+          limpar o progresso local automaticamente no próximo carregamento.
+        </p>
+      </details>
+    </section>
+  </div>
+
+  <script type="module" src="./admin.js"></script>
+</body>
+</html>
