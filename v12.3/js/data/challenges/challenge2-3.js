@@ -61,9 +61,7 @@ export default {
   title: "Atividade 3 — Difícil",
   difficulty: "Difícil",
   goal: "Remova as vírgulas indevidas e corrija duas palavras.",
-  raw: "O Natal, é um tempo de benevolência, perdão, generozidade e alegria.
-A única época, em que homens e mulheres parecem, de comum acordo abrir livrimente seus corações.",
-  correctText: "O Natal é um tempo de benevolência, perdão, generosidade e alegria.
-A única época em que homens e mulheres parecem de comum acordo abrir livremente seus corações.",
+  raw: "O Natal, é um tempo de benevolência, perdão, generozidade e alegria. A única época, em que homens e mulheres parecem, de comum acordo abrir livrimente seus corações.",
+  correctText: "O Natal é um tempo de benevolência, perdão, generosidade e alegria. A única época em que homens e mulheres parecem de comum acordo abrir livremente seus corações.",
   rules: RULES
 };
