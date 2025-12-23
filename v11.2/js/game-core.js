@@ -328,7 +328,7 @@ if (dom.finalMissionSpecialBtn){
     // Bloqueia refazer desafio concluído (mostra resultado resumido)
     if (isChallengeDone(ch)){
       const p = (getProgress() || {})["c"+ch] || {};
-      const pts = Number(p.score ?? 0);
+      const pts = Math.max(0, Number(p.score ?? 0));
 
       // Posição no ranking (x de y)
       let rankLine = "";
@@ -618,6 +618,27 @@ if (dom.finalMissionSpecialBtn){
     const text = st.text;
     const rules = engine.currentRules;
 
+    // Mapa de vírgulas removíveis (Desafio 2): pos -> rule
+    const commaPosToRule = new Map();
+    if (engine.challenge === 2 && lvl?.punctuationOnly){
+      for (const rule of rules){
+        if (engine.fixedRuleIds.has(rule.id)) continue;
+        if (rule?.token !== ",") continue;
+        try{
+          const re = new RegExp(rule.wrong.source, rule.wrong.flags.includes("g") ? rule.wrong.flags : rule.wrong.flags + "g");
+          let m;
+          while ((m = re.exec(text))){
+            const rel = String(m[0]).indexOf(",");
+            if (rel >= 0){
+              commaPosToRule.set(m.index + rel, rule);
+            }
+            // evita loop infinito em regex sem avanço
+            if (m.index === re.lastIndex) re.lastIndex++;
+          }
+        }catch(e){ /* noop */ }
+      }
+    }
+
     // build a set of matches (simple: first occurrence per rule, then remaining via regex scanning)
     // We'll render by scanning text from left to right and taking earliest match among unfixed rules.
     let pos = 0;
@@ -658,6 +679,10 @@ if (dom.finalMissionSpecialBtn){
             cspan.textContent = tok;
             cspan.dataset.kind = "error";
             cspan.dataset.ruleid = bestRule.id;
+            if (engine.lockedRuleIds?.has?.(bestRule.id)){
+              cspan.classList.add("wrong","blocked","token-locked");
+              cspan.style.pointerEvents = "none";
+            }
             cspan.addEventListener("click", () => onTokenClick(cspan, bestRule));
             dom.messageArea.appendChild(cspan);
           } else {
@@ -671,6 +696,10 @@ if (dom.finalMissionSpecialBtn){
         span.textContent = best.text;
         span.dataset.kind = "error";
         span.dataset.ruleid = bestRule.id;
+        if (engine.lockedRuleIds?.has?.(bestRule.id)){
+          span.classList.add("wrong","blocked","token-locked");
+          span.style.pointerEvents = "none";
+        }
         span.addEventListener("click", () => onTokenClick(span, bestRule));
         dom.messageArea.appendChild(span);
       }
@@ -679,22 +708,47 @@ if (dom.finalMissionSpecialBtn){
     }
 
     // plain tokens as selectable spans (for misclicks)
-    function appendPlain(seg){
-      // agrupa por espaços e tokens (palavras/pontuação) — evita “clicar só numa letra”
-      const parts = seg.match(/\s+|[^\s]+/g) || [];
-      for (const part of parts){
-        if (/^\s+$/.test(part)){
-          dom.messageArea.appendChild(document.createTextNode(part));
+    // ✅ separa pontuação da palavra (vírgulas sempre clicáveis)
+    function appendPlain(seg, startPos=0){
+      let i = 0;
+      let abs = startPos;
+      const pushText = (t) => dom.messageArea.appendChild(document.createTextNode(t));
+      const pushSpan = (txt, isPunct=false, pos=null) => {
+        const s = document.createElement("span");
+        s.className = "token plain" + (isPunct ? " punct" : "");
+        s.textContent = txt;
+        s.dataset.kind = "plain";
+        if (pos != null) s.dataset.pos = String(pos);
+        s.addEventListener("click", () => onPlainClick(s, commaPosToRule));
+        dom.messageArea.appendChild(s);
+      };
+      while (i < seg.length){
+        const ch = seg[i];
+        // whitespace as text node
+        if (/\s/.test(ch)){
+          let j = i;
+          while (j < seg.length && /\s/.test(seg[j])) j++;
+          pushText(seg.slice(i, j));
+          abs += (j - i);
+          i = j;
           continue;
         }
-        const s = document.createElement("span");
-        const isPunct = /^[,.;:!?]+$/.test(part);
-        s.className = "token plain" + (isPunct ? " punct" : "");
-        s.textContent = part;
-        s.dataset.kind = "plain";
-        s.addEventListener("click", () => onPlainClick(s));
-        dom.messageArea.appendChild(s);
+        // word (letters/numbers/_)
+        if (/[-\p{L}\p{N}_]/u.test(ch)){
+          let j = i;
+          while (j < seg.length && /[-\p{L}\p{N}_]/u.test(seg[j])) j++;
+          const word = seg.slice(i, j);
+          pushSpan(word, false, abs);
+          abs += (j - i);
+          i = j;
+          continue;
+        }
+        // punctuation/symbol (single char)
+        pushSpan(ch, true, abs);
+        abs += 1;
+        i += 1;
       }
+      return abs;
     }
 
     // tutorial "focus" (optional): dim everything else and lock clicks
@@ -763,11 +817,60 @@ if (dom.finalMissionSpecialBtn){
 // =========================
   // Token click flows
   // =========================
-  function onPlainClick(el){
+  function onPlainClick(el, commaPosToRule){
     if (engine.isDone?.() && engine.challenge!==0) return;
     const st = engine.getState?.();
     const lvl = st?.level;
     const idx = st?.levelIndex ?? 0;
+
+    // Desafio 2 (pontuação): vírgulas sempre clicáveis, com confirmação.
+    if (engine.challenge === 2 && lvl?.punctuationOnly && el?.textContent === ","){
+      const pos = Number(el.dataset.pos ?? -1);
+      if (!Number.isFinite(pos) || pos < 0) return;
+      if (engine.lockedPositions?.has?.(pos) || el.classList.contains('token-locked')) return;
+
+      openModal({
+        title: "Remover vírgula?",
+        bodyHTML: `<p>Você realmente deseja remover esta <b>vírgula</b>?</p>`,
+        buttons: [
+          {label:"Cancelar", variant:"ghost", onClick: closeModal},
+          {label:"Remover", onClick: () => {
+            closeModal();
+            engine.lockedPositions.add(pos);
+
+            const rule = commaPosToRule?.get?.(pos) || null;
+            if (!rule){
+              // clique errado: penaliza 1x e bloqueia este token
+              const delta = engine.penalizeMisclick();
+              scoreFloat(delta, el);
+              el.classList.add('wrong','blocked','token-locked');
+              el.style.pointerEvents = 'none';
+              miniToast('❌ Vírgula correta — penalidade');
+              updateHUD();
+              return;
+            }
+
+            // clique certo: aplica correção rápida
+            try{
+              engine.logFix({ kind:"manual", label: rule.label||"", before: ",", after: "", reason: (rule.hint||rule.reason||"") });
+              engine.currentText = engine.currentText.replace(rule.wrong, rule.correct);
+              const delta = engine.applyCorrect(rule.id);
+              scoreFloat(delta, el);
+              el.classList.add('correct','blocked','token-locked');
+              el.style.pointerEvents = 'none';
+              el.remove();
+              miniToast('✅ Vírgula removida');
+              renderMessage(false);
+              updateHUD();
+            }catch(e){
+              console.warn('[game] remover vírgula falhou', e);
+            }
+          }}
+        ],
+        dismissible: true
+      });
+      return;
+    }
     if (engine.challenge===0 && lvl?.tutorialMode==="force-misclick"){
       const target = (lvl.focusMisclickWord||"").toLowerCase();
       if (target && el.textContent.toLowerCase() !== target) return;
@@ -856,9 +959,28 @@ if (dom.finalMissionSpecialBtn){
         return;
       }
     }
-    // ✅ Pontuação removível (ex.: vírgulas indevidas no Desafio 2):
-    // um clique já aplica a correção, sem redigitar.
+    // ✅ Pontuação removível (ex.: vírgulas indevidas no Desafio 2)
+    // Para vírgulas, pedimos confirmação para evitar misclick.
     if (engine.challenge !== 0 && rule?.fast === true){
+      const isComma = (rule?.token === ",");
+      if (isComma && lvl?.punctuationOnly){
+        openModal({
+          title: "Remover vírgula?",
+          bodyHTML: `<p>Você realmente deseja remover esta <b>vírgula</b>?</p>`,
+          buttons: [
+            {label:"Cancelar", variant:"ghost", onClick: closeModal},
+            {label:"Remover", onClick: () => { closeModal(); /* continua */ doFastFix(); }}
+          ],
+          dismissible: true
+        });
+        return;
+      }
+
+      doFastFix();
+      return;
+    }
+
+    function doFastFix(){
       try{
         engine.logFix({ kind:"manual", label: rule.label||"", before: el?.textContent||"", after: (rule.correct ?? ""), reason: (rule.hint||rule.reason||"") });
 
@@ -881,7 +1003,6 @@ if (dom.finalMissionSpecialBtn){
       }catch(e){
         console.warn('[game] fast fix falhou', e);
       }
-      return;
     }
 
     openModal({
@@ -916,7 +1037,11 @@ if (dom.finalMissionSpecialBtn){
           // normaliza comparação
           const ok = (normText(v) === normText(correct ?? ""));
           if (!ok){
-            if (tokenEl){ tokenEl.classList.add("wrong","blocked"); }
+            // marca em vermelho e bloqueia novas tentativas neste mesmo trecho
+            if (tokenEl){
+              tokenEl.classList.add("wrong","blocked","token-locked");
+              tokenEl.style.pointerEvents = "none";
+            }
           const delta = engine.applyWrong(rule.id);
             scoreFloat(delta, dom.nextLevelBtn);
             openModal({
@@ -1058,32 +1183,7 @@ if (dom.finalMissionSpecialBtn){
 
 
   function renderFinalMessages(){
-
-    function tokenize(s){
-      // Unicode-safe tokenization (keeps accented letters together)
-      return String(s||"" ).match(/[\p{L}\p{N}_]+|[^\p{L}\p{N}_\s]+|\s+/gu) || [String(s||"" )];
-    }
-
-    function renderAfterHighlighted(before, after, perfect){
-      const tb = tokenize(before);
-      const ta = tokenize(after);
-      const tp = tokenize(perfect);
-      // se muito diferente, não arrisca highlight
-      if (Math.abs(ta.length - tp.length) > 25) return escapeHtml(after);
-      const out = [];
-      for (let i=0;i<ta.length;i++){
-        const tok = ta[i];
-        const p = tp[i] ?? "";
-        const b = tb[i] ?? "";
-        if (/^\s+$/.test(tok)) { out.push(tok); continue; }
-        const safe = escapeHtml(tok);
-        if (tok === p && tok !== b) out.push(`<span class="final-good">${safe}</span>`);
-        else if (tok !== p) out.push(`<span class="final-bad">${safe}</span>`);
-        else out.push(safe);
-      }
-      return out.join("");
-    }
-    // Preenche caixas do HTML (finalBox1/2/3) com texto antes/depois
+    // Preenche caixas do HTML (finalBox1/2/3) com 3 textos + explicação por clique
     const boxes = [dom.finalBox1, dom.finalBox2, dom.finalBox3];
     for (let i=0;i<3;i++){
       const box = boxes[i] || document.getElementById(`finalBox${i+1}`);
@@ -1095,52 +1195,139 @@ if (dom.finalMissionSpecialBtn){
       }
       const perfect = applyRules(snap.before, snap.rules);
 
-      // Mostra só:
-      // 1) Texto original (diferenças em vermelho)
-      // 2) Texto correto (correções em verde)
-      const beforeDiffHTML = (() => {
-        const a = tokenize(snap.before);
-        const b = tokenize(perfect);
-        const n = Math.max(a.length, b.length);
-        const out = [];
-        for (let k=0;k<n;k++){
-          const ta = a[k] ?? "";
-          const tb = b[k] ?? "";
-          const safeA = escapeHtml(ta);
-          if (ta !== tb && ta.trim() !== "") out.push(`<span class="final-bad">${safeA}</span>`);
-          else out.push(safeA);
-        }
-        return out.join("");
-      })();
+      // compila regras (string -> RegExp) e prepara explicações
+      const compiled = (snap.rules||[]).map((r, idx) => {
+        let rx;
+        try{ rx = (r.wrong instanceof RegExp) ? r.wrong : new RegExp(r.wrong, r.flags || "g"); }catch(e){ rx = null; }
+        const wrongLabel = (r.labelWrong || r.token || r.wrong || "").toString();
+        const correctLabel = (r.labelCorrect || (r.correct ?? "") || "").toString();
+        const why = (r.why || r.reason || r.hint || r.explain || "").toString();
+        return { ...r, id: r.id || `r${idx+1}`, rx, wrongLabel, correctLabel, why };
+      });
 
-      const perfectDiffHTML = (() => {
-        const a = tokenize(snap.before);
-        const b = tokenize(perfect);
-        const n = Math.max(a.length, b.length);
+      const explainById = new Map(compiled.map(r => [r.id, r]));
+
+      function highlightWrong(text){
+        let pos = 0;
         const out = [];
-        for (let k=0;k<n;k++){
-          const ta = a[k] ?? "";
-          const tb = b[k] ?? "";
-          const safeB = escapeHtml(tb);
-          if (ta !== tb && tb.trim() !== "") out.push(`<span class="final-good">${safeB}</span>`);
-          else out.push(safeB);
+        while (pos < text.length){
+          let best = null;
+          let bestRule = null;
+          for (const r of compiled){
+            if (!r.rx) continue;
+            const re = new RegExp(r.rx.source, r.rx.flags.includes('g') ? r.rx.flags : (r.rx.flags + 'g'));
+            re.lastIndex = pos;
+            const m = re.exec(text);
+            if (!m) continue;
+            if (!best || m.index < best.index){
+              best = { index:m.index, text:m[0] };
+              bestRule = r;
+            }
+          }
+          if (!best){ out.push(escapeHtml(text.slice(pos))); break; }
+          if (best.index > pos) out.push(escapeHtml(text.slice(pos, best.index)));
+
+          const chunk = String(best.text);
+          if (bestRule?.clickTokenOnly && bestRule?.token === ',' && chunk.includes(',')){
+            // destaca apenas a vírgula
+            for (let k=0;k<chunk.length;k++){
+              const ch = chunk[k];
+              if (ch === ',') out.push(`<span class="final-bad" data-ruleid="${escapeHtml(bestRule.id)}">,</span>`);
+              else out.push(escapeHtml(ch));
+            }
+          } else {
+            out.push(`<span class="final-bad" data-ruleid="${escapeHtml(bestRule.id)}">${escapeHtml(chunk)}</span>`);
+          }
+          pos = best.index + chunk.length;
         }
-        return out.join("");
-      })();
+        return out.join('');
+      }
+
+      function highlightCorrect(text){
+        let html = escapeHtml(text);
+        // tenta marcar a correção (quando existir) com base no "correct"
+        for (const r of compiled){
+          const c = String(r.correct ?? "");
+          if (!c || r.token === ',') continue;
+          const safe = escapeHtml(c);
+          // substitui só a primeira ocorrência
+          html = html.replace(safe, `<span class="final-good" data-ruleid="${escapeHtml(r.id)}">${safe}</span>`);
+        }
+        return html;
+      }
+
+      const beforeHTML = highlightWrong(snap.before);
+      // no texto do usuário, destacamos o que ficou diferente do original (tentativa heurística)
+      const userHTML = highlightCorrect(snap.after);
+      const perfectHTML = highlightCorrect(perfect);
 
       box.innerHTML = `
         <div class="final-msg">
           <div class="muted" style="font-size:12px; margin-bottom:6px">Texto original</div>
-          <div class="final-before">${beforeDiffHTML}</div>
+          <div class="final-before">${beforeHTML}</div>
+          <div class="muted" style="font-size:12px; margin:10px 0 6px">Seu texto</div>
+          <div class="final-after">${userHTML}</div>
           <div class="muted" style="font-size:12px; margin:10px 0 6px">Texto correto</div>
-          <div class="final-perfect">${perfectDiffHTML}</div>
-          <div class="muted" style="font-size:12px; margin:10px 0 0">Clique em <b>Correções e justificativas</b> para ver detalhes.</div>
+          <div class="final-perfect">${perfectHTML}</div>
+          <div class="final-explain muted" style="margin-top:10px; font-size:13px">Clique nos trechos <span class="final-good"><b>verdes</b></span> ou <span class="final-bad"><b>vermelhos</b></span> para ver a justificativa.</div>
         </div>`;
-    }
 
-    // Esconde botão "Próxima tarefa" no final (evita fluxo quebrado)
-    const nextBtn = document.getElementById("finalNextTaskBtn");
-    if (nextBtn) nextBtn.classList.add("hidden");
+      
+      function openJustifPopup({ wrong, correct, why }){
+        // popup simples dentro do overlay atual (não substitui a tela final)
+        const existing = document.getElementById("justifOverlay");
+        if (existing) existing.remove();
+
+        const ov = document.createElement("div");
+        ov.id = "justifOverlay";
+        ov.className = "justif-overlay";
+        ov.innerHTML = `
+          <div class="justif-pop" role="dialog" aria-modal="true">
+            <div class="justif-head">
+              <div class="justif-title">📌 Justificativa</div>
+              <button class="icon-btn" type="button" aria-label="Fechar">✕</button>
+            </div>
+            <div class="justif-body">
+              <div><b>Palavra/trecho errado:</b> ${escapeHtml(wrong || "")}</div>
+              <div><b>Correção:</b> ${escapeHtml(correct || "")}</div>
+              ${why ? `<div><b>Justificativa:</b> ${escapeHtml(why)}</div>` : '<div class="muted">(Sem justificativa cadastrada)</div>'}
+            </div>
+            <div class="justif-foot">
+              <button class="btn ghost" type="button">Fechar</button>
+            </div>
+          </div>
+        `;
+        const close = () => ov.remove();
+        ov.addEventListener("click", (e) => { if (e.target === ov) close(); });
+        ov.querySelector(".icon-btn")?.addEventListener("click", close);
+        ov.querySelector(".btn")?.addEventListener("click", close);
+        document.body.appendChild(ov);
+      }
+
+// interação: clique nos trechos para mostrar justificativa
+      const explainBox = box.querySelector('.final-explain');
+      box.querySelectorAll('[data-ruleid]')?.forEach(el => {
+        el.addEventListener('click', () => {
+          const id = el.getAttribute('data-ruleid');
+          const r = explainById.get(id);
+          if (!r || !explainBox) return;
+          const wrong = (r.wrongLabel || '').toString();
+          const correct = (String(r.correct ?? '') === '') ? '(remover)' : String(r.correct ?? '');
+          const why = (r.why || '').toString();
+          openModal({
+            title: "📌 Justificativa",
+            bodyHTML: `
+              <div style="display:grid; gap:8px">
+                <div><b>Palavra/trecho errado:</b> ${escapeHtml(wrong)}</div>
+                <div><b>Correção:</b> ${escapeHtml(correct)}</div>
+                ${why ? `<div><b>Justificativa:</b> ${escapeHtml(why)}</div>` : '<div class="muted">(Sem justificativa cadastrada)</div>'}
+              </div>
+            `,
+            buttons:[{label:"Fechar", variant:"ghost", onClick: closeModal}]
+          });
+        });
+      });
+    }
   }
 
 function onNext(){
