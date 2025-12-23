@@ -242,7 +242,7 @@ hr{
   border: 1px solid var(--stroke);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
-  overflow: hidden;
+  overflow: auto;
   backdrop-filter: blur(6px);
 }
 

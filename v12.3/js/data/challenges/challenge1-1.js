@@ -29,20 +29,11 @@ const RULES = [
 ];
 
 export default {
-  id: "challenge1-1",
-  title: "Atividade 1",
-  subtitle: "Fácil",
-  type: "replace",
-  difficulty: "easy",
-  points: {
-    correct: 2,
-    wrong: -1,
-    hint: -1
-  },
-  required: RULES.length,
-  textCorrect:
-    "Que o espírito do Natal renove sua alma e traga um recomeço repleto de paz e esperança.",
-  textWrong:
-    "Que o espirito do Natal renovee sua alma e traga um recomeco repleto de paz e esperança.",
+  id: "challenge1-2",
+  title: "Atividade 2 — Médio",
+  difficulty: "Médio",
+  goal: "Encontre os erros no texto e corrija.",
+  raw: "Que o espirito do Natal renovee sua alma e traga um recomeco repleto de paz e esperança.",
+  correctText: "Que o espírito do Natal renove sua alma e traga um recomeço repleto de paz e esperança.",
   rules: RULES
 };
