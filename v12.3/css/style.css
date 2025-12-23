@@ -204,7 +204,12 @@ hr{
   gap: 10px;
   align-items: center;
   justify-content: flex-end;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  padding-right: 6px;
+  -webkit-overflow-scrolling: touch;
 }
+.top-actions::-webkit-scrollbar{height:0}
 
 .icon-btn{
   width: 42px;
@@ -242,7 +247,8 @@ hr{
   border: 1px solid var(--stroke);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
-  overflow: hidden;
+  overflow: auto;
+  /* allow internal scroll for long content (mobile + desktop) */
   backdrop-filter: blur(6px);
 }
 
@@ -1678,27 +1684,3 @@ body > .header{
 .card-embed{width:100%;}
 .card-embed iframe{width:100%; height:min(72vh, 720px); border:0; border-radius:18px; background:transparent;}
 @media (max-width: 520px){.card-embed iframe{height:min(78vh, 680px);} }
-
-
-
-/* === Mobile topbar: keep all icons visible on one row (no wrap) === */
-@media (max-width: 520px){
-  .topbar-row .top-actions{
-    display:flex;
-    flex-wrap:nowrap;
-    align-items:center;
-    justify-content:space-between;
-    gap:8px;
-    width: min(360px, 100%);
-  }
-  .topbar-row .top-actions .icon-btn{
-    min-width:44px;
-    height:44px;
-    font-size:18px;
-    padding:0;
-    border-radius:14px;
-  }
-  /* allow slight logo shrink so ⚙️ fits */
-  .topbar-left .topbar-logo{ width: 118px; }
-}
-
