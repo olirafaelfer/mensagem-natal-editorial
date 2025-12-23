@@ -1193,7 +1193,7 @@ if (dom.finalMissionSpecialBtn){
     openModal({
       title:"💡 Dica",
       bodyHTML: first
-        ? `<p>${escapeHtml(first.reason || "Há um erro para corrigir no texto.")}</p>
+        ? `<p>${escapeHtml(first.hint || first.reason || "Há um erro para corrigir no texto.")}</p>
            <p class="muted">Você perdeu <b>${Math.abs(app.data.SCORE_RULES.hint)}</b> ponto por usar dica.</p>`
         : `<p>Não há mais correções pendentes nesta tarefa.</p>`,
       buttons: [
