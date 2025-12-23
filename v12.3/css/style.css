@@ -143,8 +143,6 @@ hr{
   width: 100%;
   padding: calc(12px + env(safe-area-inset-top)) 0 14px;
   border-bottom: 1px solid rgba(255,255,255,.10);
-
-  backdrop-filter: blur(8px);
 }
 
 .topbar-row{
@@ -1099,7 +1097,7 @@ html, body{
 
 /* Layout: manter conteúdo central e evitar ficar largo demais */
 .app{
-  display:flex;
+  display:contents;
   justify-content:center;
 }
 .container{
