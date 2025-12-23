@@ -171,13 +171,13 @@ function showWelcomeGateIfNeeded(){
       <p style="margin:0 0 10px;"><b>Ajude o Noel</b> com a missão de corrigir os textos natalinos antes que seja tarde!</p>
 
       <p style="margin:0 0 10px;">
-        Os <b>Desafios 2, 3</b> e a <b>Missão Especial</b> só estarão liberados para usuários cadastrados.
+        Os <b>Desafios 2, 3</b> e a <b>Missão Especial</b> só estarão liberados para usuários cadastrados. Também temos um <b>chat</b> e <b>ranking</b> para quem quiser se cadastrar.
       </p>
 
       <p style="margin:0 0 10px;">
         Se quiser participar de <b>toda a experiência natalina</b>, basta criar a sua conta ou fazer o login se já for cadastrado.
       </p>
-
+<hr>
       <p style="margin:0; opacity:.8;">
         <b>Spoiler:</b> o desafio 3 é de alto nível — realmente desafiador e difícil!
         Não se preocupe com o seu desempenho quando chegar nele. A intenção é mostrar os desafios que os revisores enfrentam todos os dias!
